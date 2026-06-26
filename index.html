@@ -1163,61 +1163,40 @@ async function saveImage(){
 
   const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
 
-  // ── วิธีที่ 1: Web Share API (iOS 15+ รองรับแชร์รูปโดยตรง) ──
-  if(navigator.share && navigator.canShare){
+  if(isIOS){
+    // แปลง dataURL → blob → objectURL เพื่อให้ Safari แสดงรูปเต็มจอ
     try{
-      // แปลง dataURL → Blob → File
       const res=await fetch(img);
       const blob=await res.blob();
-      const file=new File([blob], lastFilename, {type:'image/png'});
-      if(navigator.canShare({files:[file]})){
-        await navigator.share({
-          files:[file],
-          title:'รายงานน้ำหนัก'
-        });
-        showToast('แชร์/บันทึกสำเร็จ ✓','success');
-        return;
+      const blobUrl=URL.createObjectURL(blob);
+      const win=window.open(blobUrl,'_blank');
+      if(!win){
+        // popup blocked — fallback
+        showSaveInstructions(img);
       }
     }catch(e){
-      if(e.name!=='AbortError'){
-        // ถ้าไม่ได้ ลองวิธีถัดไป
-      } else {
-        return; // user กด cancel
-      }
+      showSaveInstructions(img);
     }
-  }
-
-  // ── วิธีที่ 2: iOS เปิด tab ใหม่ให้กดค้าง ──
-  if(isIOS){
-    const win=window.open();
-    if(win){
-      win.document.write(`
-        <html><head><meta name="viewport" content="width=device-width,initial-scale=1">
-        <title>บันทึกรูป</title>
-        <style>
-          *{box-sizing:border-box;margin:0;padding:0;}
-          body{background:#111;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:24px 16px;gap:20px;font-family:'Sarabun',sans-serif;}
-          .msg{color:white;font-size:18px;text-align:center;line-height:1.6;max-width:360px;}
-          .msg strong{color:#FFD54F;font-size:22px;}
-          img{max-width:100%;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.5);}
-          .close-btn{margin-top:8px;background:#444;color:white;border:none;padding:16px 40px;border-radius:12px;font-size:18px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;width:100%;max-width:360px;}
-          .close-btn:active{background:#666;}
-        </style>
-        </head><body>
-        <p class="msg">กดค้างที่รูปด้านล่าง<br><strong>"บันทึกไปยังรูปภาพ"</strong></p>
-        <img src="${img}" />
-        <button class="close-btn" onclick="window.close()">✕ ปิดหน้านี้</button>
-        </body></html>`);
-      win.document.close();
-    }
-    showToast('กดค้างที่รูปแล้วบันทึก','success');
     return;
   }
 
-  // ── วิธีที่ 3: Desktop/Android download ──
+  // Android / Desktop
   const a=document.createElement('a');
-  a.href=img;a.download=lastFilename;a.click();
+  a.href=img; a.download=lastFilename; a.click();
   showToast('บันทึกรูปแล้ว ✓','success');
+}
+
+function showSaveInstructions(img){
+  // แสดง overlay คำแนะนำในหน้าเดิมถ้า popup ถูกบล็อก
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:30px 20px;gap:16px;overflow-y:auto;';
+  ov.innerHTML=`
+    <p style="color:#FFD54F;font-size:20px;font-weight:700;text-align:center;font-family:Sarabun,sans-serif;">วิธีบันทึกรูปบน iPhone</p>
+    <p style="color:white;font-size:16px;text-align:center;font-family:Sarabun,sans-serif;line-height:1.7;">กดค้างที่รูปด้านล่าง<br>แล้วเลือก <strong style="color:#FFD54F;">"บันทึกไปยังรูปภาพ"</strong></p>
+    <img src="${img}" style="max-width:100%;border-radius:10px;" />
+    <button onclick="this.parentElement.remove()" style="background:#444;color:white;border:none;padding:16px 40px;border-radius:12px;font-size:18px;font-weight:700;font-family:Sarabun,sans-serif;width:100%;max-width:340px;touch-action:manipulation;">✕ ปิด</button>
+  `;
+  document.body.appendChild(ov);
 }
 
 // ── ZOOM RESET ─────────────────────────────────────────────
