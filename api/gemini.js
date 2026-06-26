@@ -2,6 +2,63 @@
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_URL   = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
+// ── API Key Rotation ──────────────────────────────────────
+// เพิ่ม key ใน Vercel Environment Variables:
+// GEMINI_API_KEY_1, GEMINI_API_KEY_2, GEMINI_API_KEY_3
+function getApiKeys() {
+  const keys = [
+    process.env.GEMINI_API_KEY_1,
+    process.env.GEMINI_API_KEY_2,
+    process.env.GEMINI_API_KEY_3,
+    process.env.GEMINI_API_KEY, // fallback key เดิม
+  ].filter(k => k && k.length > 0);
+  return keys;
+}
+
+// สุ่ม key จาก pool แล้ว retry ถ้า quota หมด
+async function callGeminiWithRotation(parts) {
+  const keys = getApiKeys();
+  if (keys.length === 0) throw new Error('ไม่พบ API Key ใน Environment Variables');
+
+  // สุ่ม key แรก
+  const shuffled = [...keys].sort(() => Math.random() - 0.5);
+
+  let lastError = null;
+  for (const key of shuffled) {
+    try {
+      const resp = await fetch(`${GEMINI_URL}?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts }] })
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json();
+        const msg = err.error?.message || `HTTP ${resp.status}`;
+        // ถ้า quota หมด ลอง key ถัดไป
+        if (resp.status === 429 || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
+          lastError = new Error(`Key quota หมด: ${msg}`);
+          continue;
+        }
+        throw new Error(msg);
+      }
+
+      const data = await resp.json();
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      return raw;
+
+    } catch (e) {
+      // quota error ลอง key ถัดไป
+      if (e.message.includes('quota') || e.message.includes('RESOURCE_EXHAUSTED') || e.message.includes('429')) {
+        lastError = e;
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastError || new Error('API Key ทุกตัว quota หมดแล้ว กรุณาลองใหม่พรุ่งนี้');
+}
+
 module.exports = async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -11,8 +68,8 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return res.status(500).json({ success: false, error: 'API Key ไม่ได้ตั้งค่าใน Environment Variables' });
+  const keys = getApiKeys();
+  if (keys.length === 0) return res.status(500).json({ success: false, error: 'ไม่พบ API Key ใน Environment Variables' });
 
   try {
     const { type, images } = req.body;
@@ -35,28 +92,8 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'type ไม่ถูกต้อง' });
     }
 
-    // เรียก Gemini API
-    const geminiRes = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts }] })
-    });
-
-    if (!geminiRes.ok) {
-      const err = await geminiRes.json();
-      throw new Error(err.error?.message || `HTTP ${geminiRes.status}`);
-    }
-
-    const geminiData = await geminiRes.json();
-    const raw = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    // debug: ถ้าไม่มี raw ให้ส่ง error บอก
-    if (!raw) {
-      return res.status(500).json({
-        success: false,
-        error: 'Gemini ไม่ส่งข้อมูลกลับมา: ' + JSON.stringify(geminiData).slice(0, 300)
-      });
-    }
+    // เรียก Gemini ด้วย key rotation
+    const raw = await callGeminiWithRotation(parts);
 
     // ประมวลผลตาม type
     // helper: extract JSON จาก response ที่อาจมี text อื่นปน
