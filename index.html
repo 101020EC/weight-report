@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
 <title>ระบบอ่านใบชั่งน้ำหนัก</title>
 <script>
 // iOS Safari + Apps Script iframe: ต้อง inject font-size ผ่าน JS เท่านั้น
@@ -21,6 +23,7 @@
 </script>
 <style>
 :root{
+  color-scheme: light;
   --orange:#E8691A;--orange-light:#FDF0E6;--orange-mid:#F5A623;--orange-dark:#B8520E;
   --gray-50:#FAFAFA;--gray-100:#F4F4F4;--gray-200:#E8E8E8;--gray-400:#ABABAB;
   --gray-600:#666;--gray-800:#333;
@@ -258,7 +261,7 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
         <div id="uploadPlaceholder">
           <div class="upload-icon" style="font-size:38px;margin-bottom:10px;">📷</div>
           <p>ลากรูปมาวางที่นี่ หรือ<br><strong>คลิกเพื่อเลือกไฟล์</strong></p>
-          <p class="upload-hint" style="margin-top:6px;font-size:12px;color:#bbb;">รองรับ JPG, PNG — ทีละไฟล์</p>
+          <p class="upload-hint" style="margin-top:6px;font-size:12px;color:#bbb;">รองรับ JPG, PNG — ทีละ 1 ไฟล์</p>
         </div>
         <div id="uploadPreviewBig" style="display:none;width:100%;"></div>
       </div>
@@ -489,7 +492,7 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
 </div><!-- /page-team -->
 
 <div class="toast" id="toast"></div>
-<canvas id="reportCanvas" style="display:none;"></canvas>
+<canvas id="reportCanvas" style="display:none;color-scheme:light;"></canvas>
 
 <script>
 let uploadedFiles=[], rowIdx=0, lastFilename='weight_report.png';
@@ -844,14 +847,18 @@ function generateImage(){
 
   // ── Canvas 1200px ───────────────────────────────────────
   const W=1200, M=48, rowH=56;
-  const infoH= og ? 156 : 130; // ถ้ามีประเทศกำเนิดเพิ่มความสูง
+  const infoH= og ? 156 : 130;
   const totalH=10+110+infoH+24+48+rowH*(vrows.length+2)+28+44+110+28+50;
   const canvas=document.getElementById('reportCanvas');
   canvas.width=W; canvas.height=totalH;
   const c=canvas.getContext('2d');
   c.imageSmoothingEnabled=true; c.imageSmoothingQuality='high';
 
-  const G2='#E8E8E8',G6='#666',G8='#222';
+  // บังคับพื้นหลังขาว ป้องกัน dark mode ทำให้สีเพี้ยน
+  c.fillStyle='#FFFFFF';
+  c.fillRect(0,0,W,totalH);
+
+  const G2='#E8E8E8',G6='#666666',G8='#222222';
   const RB='#FFF0F0',RT='#CC2222',GB='#F0FFF4',GT='#1A7A3A';
 
   const rr=(x,y,w,h,r,fill,stroke,sw=1)=>{
