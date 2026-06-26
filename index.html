@@ -4044,6 +4044,1446 @@ async function saveImage(){
   const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
 
   if(isIOS){
+    try{
+      // แปลง dataURL → Blob → File
+      const res=await fetch(img);
+      const blob=await res.blob();
+      const file=new File([blob], lastFilename, {type:'image/png'});
+
+      // Web Share API with files — iOS จะขึ้น Share Sheet
+      // ผู้ใช้กด "Save Image" ได้เลย ไม่ต้องกดค้าง
+      if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+        await navigator.share({files:[file]});
+        return;
+      }
+    }catch(e){
+      if(e.name==='AbortError') return; // user กด cancel
+      // ถ้า share ไม่ได้ fallback ด้านล่าง
+    }
+
+    // fallback: เปิด blob URL ใน tab ใหม่
+    try{
+      const res=await fetch(img);
+      const blob=await res.blob();
+      const blobUrl=URL.createObjectURL(blob);
+      const win=window.open(blobUrl,'_blank');
+      if(!win) showSaveInstructions(img);
+    }catch(e){
+      showSaveInstructions(img);
+    }
+    return;
+  }
+
+  // Android / Desktop
+  const a=document.createElement('a');
+  a.href=img; a.download=lastFilename; a.click();
+  showToast('บันทึกรูปแล้ว ✓','success');
+}
+
+function showSaveInstructions(img){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:30px 20px;gap:16px;overflow-y:auto;';
+  ov.innerHTML=`
+    <p style="color:#FFD54F;font-size:20px;font-weight:700;text-align:center;font-family:Sarabun,sans-serif;">วิธีบันทึกรูปบน iPhone</p>
+    <p style="color:white;font-size:16px;text-align:center;font-family:Sarabun,sans-serif;line-height:1.7;">กดค้างที่รูปด้านล่าง<br>แล้วเลือก <strong style="color:#FFD54F;">"บันทึกไปยังรูปภาพ"</strong></p>
+    <img src="${img}" style="max-width:100%;border-radius:10px;" />
+    <button onclick="this.parentElement.remove()" style="background:#444;color:white;border:none;padding:16px 40px;border-radius:12px;font-size:18px;font-weight:700;font-family:Sarabun,sans-serif;width:100%;max-width:340px;touch-action:manipulation;">✕ ปิด</button>
+  `;
+  document.body.appendChild(ov);
+}
+
+// ── ZOOM RESET ─────────────────────────────────────────────
+function applyFontScale(){
+  var w=window.innerWidth||document.documentElement.clientWidth;
+  var base=w<500?20:w<768?17:16;
+  document.documentElement.style.fontSize=base+'px';
+}
+function resetZoom(){ applyFontScale(); }
+
+// ตรวจ keyboard dismiss
+if(window.visualViewport){
+  let lastH=window.visualViewport.height;
+  window.visualViewport.addEventListener('resize',()=>{
+    const h=window.visualViewport.height;
+    if(h>lastH+100) applyFontScale(); // keyboard หุบ
+    lastH=h;
+  });
+}
+window.addEventListener('resize', applyFontScale);
+document.addEventListener('DOMContentLoaded', applyFontScale);
+
+// ── CLEAR ALL DATA ────────────────────────────────────────
+function clearAllData(){
+  // ไม่มีคำยืนยัน — reset กลับสภาพเริ่มต้นทั้งหมด
+  // ล้างไฟล์อัปโหลด
+  uploadedFiles=[];
+  document.getElementById('fileInput').value='';
+  renderBigPreview();
+  // ล้าง form fields
+  ['f_declaration','f_declared_weight','f_date',
+   'f_goods_type','f_origin','f_period'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.value='';el.classList.remove('changed','invalid');}
+  });
+  // reset importer
+  const impSel=document.getElementById('f_importer_sel');
+  const impInp=document.getElementById('f_importer');
+  if(impSel){impSel.value='';impSel.classList.remove('changed','invalid');}
+  if(impInp){impInp.value='';impInp.style.display='none';impInp.classList.remove('changed','invalid');}
+  // ล้างตาราง
+  document.getElementById('vehicleBody').innerHTML='';
+  rowIdx=0;
+  calcSummary();
+  // ซ่อน step 2, 3, clearBtn
+  document.getElementById('card-edit').style.display='none';
+  document.getElementById('card-result').style.display='none';
+  document.getElementById('clearBtnArea').style.display='none';
+  // แสดงปุ่ม clear ใต้สร้างรายงานกลับมา
+  const cb=document.getElementById('clearBeforeReport');
+  if(cb) cb.style.display='block';
+  // reset step indicator
+  document.getElementById('num-1').className='step-num';
+  document.getElementById('num-1').textContent='1';
+  REQUIRED_FIELDS.forEach(id=>document.getElementById(id)?.classList.remove('invalid'));
+  updateReadBtn();
+  window.scrollTo({top:0,behavior:'smooth'});
+  showToast('ล้างข้อมูลทั้งหมดแล้ว ✓','success');
+}
+
+// ── RESET ─────────────────────────────────────────────────
+function resetAll(){
+  if(!confirm('ต้องการเริ่มใหม่ทั้งหมดใช่ไหม?'))return;
+  uploadedFiles=[];rowIdx=0;
+  document.getElementById('fileInput').value='';
+  renderBigPreview();
+  document.getElementById('card-edit').style.display='none';
+  document.getElementById('card-result').style.display='none';
+  document.getElementById('num-1').className='step-num';
+  document.getElementById('num-1').textContent='1';
+  document.getElementById('vehicleBody').innerHTML='';
+  REQUIRED_FIELDS.forEach(id=>document.getElementById(id)?.classList.remove('invalid'));
+  updateReadBtn();window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── SIDEBAR ───────────────────────────────────────────────
+function openSidebar(){
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('menuOverlay').classList.add('open');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('menuOverlay').classList.remove('open');
+}
+function switchPage(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.s-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.getElementById('menu-'+page).classList.add('active');
+  const titles={weight:'🧅🌿 ระบบอ่านใบชั่งน้ำหนัก',team:'📋 รายงานตรวจทีม'};
+  document.getElementById('headerTitle').textContent=titles[page]||'';
+  closeSidebar();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── TEAM REPORT ───────────────────────────────────────────
+let teamFiles=[];
+
+function onDragOver2(e){e.preventDefault();document.getElementById('teamDropZone').classList.add('drag-over');}
+function onDragLeave2(){document.getElementById('teamDropZone').classList.remove('drag-over');}
+function onDrop2(e){e.preventDefault();onDragLeave2();handleTeamFiles(e.dataTransfer.files);}
+
+function handleTeamFiles(files){
+  for(const f of files){if(!f.type.startsWith('image/'))continue;teamFiles.push(f);}
+  renderTeamPreview();
+  updateTeamReadBtn();
+}
+function renderTeamPreview(){
+  const ph=document.getElementById('teamUploadPlaceholder');
+  const pg=document.getElementById('teamPreviewGrid');
+  const cb=document.getElementById('teamClearBtn');
+  if(teamFiles.length===0){
+    ph.style.display='flex';pg.style.display='none';cb.style.display='none';return;
+  }
+  ph.style.display='none';pg.style.display='flex';cb.style.display='';
+  pg.innerHTML='';
+  teamFiles.forEach((f,idx)=>{
+    const url=URL.createObjectURL(f);
+    const item=document.createElement('div');
+    item.style.cssText='position:relative;width:72px;height:72px;border-radius:6px;overflow:hidden;border:1.5px solid var(--gray-200);flex-shrink:0;';
+    const img=document.createElement('img');
+    img.src=url;
+    img.style.cssText='width:100%;height:100%;object-fit:cover;';
+    img.onload=()=>URL.revokeObjectURL(url);
+    const btn=document.createElement('button');
+    btn.onclick=(e)=>{e.stopPropagation();removeTeamFile(idx);};
+    btn.style.cssText='position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;';
+    btn.textContent='×';
+    item.appendChild(img);
+    item.appendChild(btn);
+    pg.appendChild(item);
+  });
+}
+function removeTeamFile(idx){teamFiles.splice(idx,1);renderTeamPreview();updateTeamReadBtn();}
+function clearTeamFiles(){teamFiles=[];document.getElementById('teamFileInput').value='';renderTeamPreview();updateTeamReadBtn();}
+function updateTeamReadBtn(){document.getElementById('teamReadBtn').disabled=teamFiles.length===0;}
+
+async function readTeamImages(){
+  if(teamFiles.length===0) return;
+  document.getElementById('teamLoadingArea').style.display='block';
+  document.getElementById('teamReadBtn').disabled=true;
+  try{
+    const imagesData=[];
+    for(const f of teamFiles){
+      document.getElementById('teamLoadingText').textContent=`กำลังประมวลผลภาพ ${imagesData.length+1}/${teamFiles.length}...`;
+      const encoded=await resizeAndEncode(f);
+      imagesData.push(encoded);
+    }
+    document.getElementById('teamLoadingText').textContent='กำลังส่งไปยัง Gemini AI...';
+    const resp = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({type:'team', images:imagesData})
+    });
+    if(!resp.ok){
+      const errText = await resp.text();
+      throw new Error(`Server error ${resp.status}: ${errText.slice(0,150)}`);
+    }
+    const result = await resp.json();
+    if(!result.success) throw new Error(result.error||'เกิดข้อผิดพลาด');
+
+    document.getElementById('teamChatBubble').textContent=result.text;
+
+    // แสดง warnings ถ้ามี
+    if(result.warnings && result.warnings.length>0){
+      const wb=document.getElementById('teamWarningBox');
+      const wl=document.getElementById('teamWarningList');
+      wb.style.display='block';
+      wl.innerHTML=result.warnings.map(w=>`• ${w}`).join('<br>');
+    } else {
+      document.getElementById('teamWarningBox').style.display='none';
+    }
+
+    document.getElementById('teamResultCard').style.display='block';
+    document.getElementById('teamClearBtnArea').style.display='block';
+    document.getElementById('teamResultCard').scrollIntoView({behavior:'smooth',block:'start'});
+    showToast('สร้างรายงานสำเร็จ ✓','success');
+  }catch(err){
+    showToast('ผิดพลาด: '+(err.message||'เกิดข้อผิดพลาด'),'error');
+  }finally{
+    document.getElementById('teamLoadingArea').style.display='none';
+    updateTeamReadBtn();
+  }
+}
+
+function copyTeamReport(){
+  const text=document.getElementById('teamChatBubble').textContent;
+  if(!text){showToast('ยังไม่มีข้อความ','error');return;}
+  navigator.clipboard.writeText(text).then(()=>showToast('คัดลอกแล้ว ✓','success')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('คัดลอกแล้ว ✓','success');
+  });
+}
+
+function clearTeamAll(){
+  teamFiles=[];document.getElementById('teamFileInput').value='';renderTeamPreview();updateTeamReadBtn();
+  document.getElementById('teamResultCard').style.display='none';
+  document.getElementById('teamClearBtnArea').style.display='none';
+  document.getElementById('teamChatBubble').textContent='';
+  document.getElementById('teamWarningBox').style.display='none';
+  document.getElementById('teamWarningList').innerHTML='';
+  window.scrollTo({top:0,behavior:'smooth'});
+  showToast('ล้างข้อมูลแล้ว ✓','success');
+}
+
+// ── TOAST ─────────────────────────────────────────────────
+let toastT;
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  // reset สี
+  t.style.background = type==='success'?'#1A7A3A' : type==='error'?'#AA2222' : type==='warn'?'#B87800' : '#333';
+  t.style.display='inline-block';
+  t.style.opacity='1';
+  t.style.transform='translateY(0)';
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>{
+    t.style.opacity='0';
+    setTimeout(()=>{ t.style.display='none'; },200);
+  },2000);
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  updateReadBtn();
+
+  // ── Safari iOS minimized toolbar fix ─────────────────
+  // เมื่อ toolbar หดแล้ว tap ครั้งแรกจะ wake browser ไม่ส่ง click
+  // แก้โดยใช้ touchstart แทน click สำหรับปุ่มสำคัญ
+  function safeTap(id, fn){
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.removeAttribute('onclick');
+    let tapped=false;
+    el.addEventListener('touchstart', (e)=>{
+      e.preventDefault(); // ป้องกัน 300ms delay
+      tapped=true;
+      fn();
+    }, {passive:false});
+    // fallback สำหรับ mouse (desktop)
+    el.addEventListener('click', ()=>{
+      if(!tapped) fn();
+      tapped=false;
+    });
+  }
+
+  // ระบบอ่านใบชั่งน้ำหนัก
+  safeTap('btnGenerate', ()=>{
+    // ซ่อนปุ่ม clear ก่อนรายงาน
+    const cb=document.getElementById('clearBeforeReport');
+    if(cb) cb.style.display='none';
+    generateImage();
+  });
+  safeTap('btnGenerateNew', ()=>{
+    const cb=document.getElementById('clearBeforeReport');
+    if(cb) cb.style.display='none';
+    generateImage();
+  });
+  safeTap('btnClearBefore', clearAllData);
+  safeTap('btnClearWeight', clearAllData);
+
+  // ระบบรายงานตรวจทีม
+  safeTap('btnClearTeam', clearTeamAll);
+});
+</script>
+</body>
+</html>    }
+  }
+})();
+</script>
+<title>ระบบอ่านใบชั่งน้ำหนัก</title>
+<script>
+// iOS Safari + Apps Script iframe: ต้อง inject font-size ผ่าน JS เท่านั้น
+(function(){
+  function applyScale(){
+    var w = window.innerWidth || document.documentElement.clientWidth;
+    // ถ้าหน้าจอแคบ (มือถือ) ให้ใช้ font-size ใหญ่ขึ้น
+    var base = w < 500 ? 20 : w < 768 ? 17 : 16;
+    document.documentElement.style.fontSize = base + 'px';
+  }
+  applyScale();
+  window.addEventListener('resize', applyScale);
+  // รอ DOM ready แล้ว apply อีกครั้ง เพื่อให้ชัวร์
+  document.addEventListener('DOMContentLoaded', applyScale);
+})();
+</script>
+<style>
+:root{
+  color-scheme: light;
+  --orange:#E8691A;--orange-light:#FDF0E6;--orange-mid:#F5A623;--orange-dark:#B8520E;
+  --gray-50:#FAFAFA;--gray-100:#F4F4F4;--gray-200:#E8E8E8;--gray-400:#ABABAB;
+  --gray-600:#666;--gray-800:#333;
+  --red-bg:#FFF0F0;--red-text:#CC2222;--red-border:#FFCCCC;
+  --green-bg:#F0FFF4;--green-text:#1A7A3A;--green-border:#B8E8C8;
+  --radius:10px;--shadow:0 2px 16px rgba(0,0,0,0.09);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:'Sarabun','Noto Sans Thai',sans-serif;color:var(--gray-800);min-height:100vh;
+  font-size:1rem;
+  background-color:#F2EDE6;
+}
+.topbar{background:var(--orange);height:5px;}
+.header{background:rgba(255,255,255,0.96);backdrop-filter:blur(8px);border-bottom:1px solid rgba(232,105,26,0.15);padding:16px 32px;display:flex;align-items:center;justify-content:center;gap:16px;position:sticky;top:0;z-index:100;}
+.header-title{font-size:22px;font-weight:700;color:var(--gray-800);display:flex;align-items:center;gap:10px;}
+.main{padding:28px 32px;max-width:960px;margin:0 auto;}
+.step-card{background:rgba(255,255,255,0.97);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden;border:1px solid rgba(232,105,26,0.08);}
+.step-header{background:white;border-bottom:1px solid var(--gray-100);padding:18px 22px;display:flex;align-items:center;justify-content:center;gap:12px;}
+.step-num{width:32px;height:32px;background:var(--orange);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;}
+.step-num.done{background:var(--green-text);}
+.step-label{font-size:18px;font-weight:700;text-align:center;}
+.step-body{padding:22px;}
+.upload-zone{border:2px dashed var(--gray-200);border-radius:var(--radius);padding:36px 24px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--orange);background:var(--orange-light);}
+.upload-zone input{display:none;}
+.upload-zone p{color:var(--gray-600);font-size:16px;line-height:1.7;}
+.upload-zone strong{color:var(--orange);}
+.preview-grid{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+.preview-item{position:relative;width:90px;height:90px;border-radius:8px;overflow:hidden;border:2px solid var(--gray-200);}
+.preview-item img{width:100%;height:100%;object-fit:cover;}
+.preview-remove{position:absolute;top:3px;right:3px;width:18px;height:18px;background:rgba(0,0,0,0.65);color:white;border:none;border-radius:50%;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;}
+.btn{padding:13px 22px;border-radius:8px;border:none;font-size:16px;font-weight:600;cursor:pointer;transition:opacity 0.15s,transform 0.1s;display:inline-flex;align-items:center;gap:8px;font-family:inherit;}
+.btn:hover{opacity:0.87;}.btn:active{transform:scale(0.97);}.btn:disabled{opacity:0.4;cursor:not-allowed;}
+.btn-primary{background:var(--orange);color:white;}
+.btn-secondary{background:white;color:var(--gray-800);border:1.5px solid var(--gray-200);}
+.btn-secondary:hover{background:var(--gray-50);border-color:var(--gray-400);}
+.btn-gen{background:white;color:#1A7A3A;border:1.5px solid #1A7A3A;}
+.btn-gen:hover{background:#F0FFF4;}
+.btn-save{background:#1A7A3A;color:white;border:none;padding:14px 28px;font-size:16px;}
+.loading-bar{height:4px;background:var(--gray-100);border-radius:2px;overflow:hidden;margin:12px 0;}
+.loading-bar-inner{height:100%;background:var(--orange);border-radius:2px;animation:loadAnim 1.4s ease-in-out infinite;width:40%;}
+@keyframes loadAnim{0%{transform:translateX(-100%);}100%{transform:translateX(350%);}}
+.loading-text{font-size:15px;color:var(--gray-600);text-align:center;}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group label{font-size:14px;color:var(--orange);font-weight:700;letter-spacing:0.01em;}
+.form-group label .req{color:#CC2222;}
+.form-group input,.form-group select{
+  padding:12px 14px;border:1.5px solid var(--gray-200);border-radius:7px;
+  font-size:1rem;font-family:inherit;color:var(--gray-800);background:white;
+  transition:border-color 0.15s;
+  min-height:3em;
+  height:3em;
+}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--orange);}
+.form-group input.changed,.form-group select.changed{border-color:var(--orange-mid);background:#FFFDF8;}
+.form-group input.invalid,.form-group select.invalid{border-color:#CC2222!important;background:#FFF5F5!important;}
+.table-label{font-size:16px;font-weight:700;color:var(--gray-800);border-left:4px solid var(--orange);padding-left:11px;margin-bottom:10px;}
+.table-wrap{overflow-x:auto;}
+table.dt{width:100%;border-collapse:collapse;font-size:15px;}
+table.dt thead tr{background:var(--orange);color:white;}
+table.dt thead th{padding:12px;text-align:center;font-weight:700;white-space:nowrap;font-size:15px;}
+table.dt tbody tr:nth-child(even){background:var(--gray-50);}
+table.dt tbody td{padding:9px 8px;border-bottom:1px solid var(--gray-100);text-align:center;}
+table.dt tbody td input{width:100%;padding:7px;border:1.5px solid transparent;border-radius:5px;font-size:14px;text-align:center;font-family:inherit;background:transparent;transition:border-color 0.15s,background 0.15s;}
+table.dt tbody td input:focus{border-color:var(--orange);background:white;outline:none;}
+table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF8;}
+.btn-add-row{margin-top:8px;padding:8px 16px;background:var(--gray-100);border:1px dashed var(--gray-400);border-radius:7px;font-size:14px;color:var(--gray-600);cursor:pointer;font-family:inherit;}
+.btn-add-row:hover{background:var(--orange-light);color:var(--orange);border-color:var(--orange);}
+.btn-del{background:none;border:none;color:#CC3333;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:14px;}
+.btn-del:hover{background:#FFF0F0;}
+.summary-box{margin-top:18px;background:var(--orange-light);border:1px solid #F5C89A;border-radius:var(--radius);padding:16px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.sum-item{text-align:center;}
+.sum-item .sl{font-size:13px;color:var(--gray-600);margin-bottom:3px;}
+.sum-item .sv{font-size:22px;font-weight:700;color:var(--orange-dark);}
+.diff-box{border-radius:8px;padding:12px 18px;text-align:center;min-width:160px;}
+/* บวก=แดง, ลบ=เขียว */
+.diff-box.pos{background:var(--red-bg);border:1px solid var(--red-border);}
+.diff-box.neg{background:var(--green-bg);border:1px solid var(--green-border);}
+.diff-box.zero{background:var(--gray-100);border:1px solid var(--gray-200);}
+.diff-box .dl{font-size:13px;margin-bottom:3px;}
+.diff-box.pos .dl{color:var(--red-text);}
+.diff-box.neg .dl{color:var(--green-text);}
+.diff-box .dv{font-size:18px;font-weight:700;}
+.diff-box.pos .dv{color:var(--red-text);}
+.diff-box.neg .dv{color:var(--green-text);}
+.diff-box.zero .dl,.diff-box.zero .dv{color:var(--gray-600);}
+.diff-box .dp{font-size:12px;margin-top:2px;}
+.diff-box.pos .dp{color:#E05555;}
+.diff-box.neg .dp{color:#2E8A50;}
+.action-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:18px;}
+.action-row .sp{flex:1;}
+.result-card{background:rgba(255,255,255,0.97);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden;border:1px solid rgba(232,105,26,0.08);}
+.result-header{background:white;border-bottom:1px solid var(--gray-100);padding:16px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.result-img-wrap{padding:20px;background:#F8F8F8;display:flex;flex-direction:column;align-items:center;gap:16px;}
+.result-img-wrap img{max-width:100%;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.12);border:1px solid var(--gray-200);}
+.save-area{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;}
+.toast{
+  position:fixed;
+  top:16px;
+  right:16px;
+  bottom:auto;
+  left:auto;
+  display:inline-block;
+  width:auto;
+  max-width:240px;
+  min-width:0;
+  background:var(--gray-800);
+  color:white;
+  padding:10px 16px;
+  border-radius:8px;
+  font-size:0.85rem;
+  font-weight:600;
+  line-height:1.4;
+  box-shadow:0 2px 12px rgba(0,0,0,0.25);
+  opacity:0;
+  transform:translateY(-8px);
+  transition:opacity 0.2s,transform 0.2s;
+  z-index:9999;
+  pointer-events:none;
+  word-wrap:break-word;
+  white-space:normal;
+}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast.success{background:#1A7A3A;}
+.toast.error{background:#AA2222;}
+.toast.warn{background:#B87800;}
+.alert{border-radius:8px;padding:12px 16px;font-size:14px;margin-bottom:14px;}
+.alert-info{background:#F0F6FF;border:1px solid #B8D4F8;color:#1A4A8A;}
+/* Safari single-tap fix — ครอบคลุมทุก interactive element */
+*, *::before, *::after {
+  -webkit-tap-highlight-color: transparent;
+}
+button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
+.btn-save, .upload-zone, .hamburger, .preview-remove {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.icon{width:20px;height:20px;display:inline-block;vertical-align:middle;flex-shrink:0;}
+@media(max-width:640px){
+  /* ลดขนาด 20% จาก base 20px → 16px */
+  html{ font-size: 16px !important; }
+  .main{padding:10px;}.step-body{padding:14px;}
+  .header{padding:12px 14px;gap:10px;}
+  .header-title{font-size:1.1rem;}
+  .step-header{padding:14px 16px;}
+  .step-label{font-size:1rem;}
+  .step-num{width:2rem;height:2rem;font-size:0.85rem;}
+  .form-grid{grid-template-columns:1fr;}
+  .form-group{gap:4px;}
+  .form-group label{font-size:0.9rem;}
+  .form-group input,.form-group select{
+    font-size:1rem;min-height:2.8em;height:2.8em;padding:0.4em 0.7em;
+  }
+  .table-label{font-size:0.95rem;}
+  table.dt{font-size:0.85rem;}
+  table.dt thead th{padding:8px 4px;font-size:0.85rem;}
+  table.dt tbody td{padding:6px 4px;}
+  table.dt tbody td input{font-size:0.85rem;padding:5px 3px;}
+  .btn{font-size:1rem;padding:0.7em 1em;}
+  .btn-add-row{font-size:0.9rem;padding:6px 12px;}
+  .btn-del{font-size:0.9rem;}
+  .summary-box{flex-direction:column;align-items:stretch;padding:12px;}
+  .sum-item{display:flex;justify-content:space-between;align-items:center;}
+  .sum-item .sl{font-size:0.85rem;}
+  .sum-item .sv{font-size:1.1rem;}
+  .diff-box{min-width:unset;width:100%;padding:10px 12px;}
+  .diff-box .dl{font-size:0.85rem;}
+  .diff-box .dv{font-size:1rem;}
+  .diff-box .dp{font-size:0.8rem;}
+  .action-row{flex-direction:column;}.action-row .sp{display:none;}
+  .action-row .btn,.save-area .btn,.btn-save{
+    width:100%;justify-content:center;padding:0.8em;font-size:1rem;
+  }
+  .alert{font-size:0.88rem;padding:10px 12px;}
+  .loading-text{font-size:0.9rem;}
+  .toast{left:10px;right:10px;bottom:12px;text-align:center;font-size:0.9rem;}
+  .result-header span{font-size:0.9rem;}
+  .sidebar{width:82vw;}
+  .s-item{font-size:1rem;padding:16px 18px;}
+  .s-item .mi{font-size:1.3rem;}
+  .sidebar-hdr h2{font-size:1.1rem;}
+  .hamburger span{width:22px;}
+  .upload-zone{padding:14px 12px;}
+  .upload-icon{font-size:24px!important;margin-bottom:6px!important;}
+  .upload-zone p{font-size:0.9rem;}
+  .upload-hint{font-size:0.78rem!important;}
+}
+/* ── SIDEBAR MENU ──────────────────────────────────────── */
+.menu-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;opacity:0;pointer-events:none;transition:opacity 0.25s;}
+.menu-overlay.open{opacity:1;pointer-events:all;}
+.sidebar{position:fixed;left:-320px;top:0;bottom:0;width:320px;background:white;z-index:201;box-shadow:4px 0 24px rgba(0,0,0,0.18);transition:left 0.28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;}
+.sidebar.open{left:0;}
+.sidebar-hdr{background:var(--orange);padding:28px 24px 22px;color:white;}
+.sidebar-hdr h2{font-size:26px;font-weight:700;margin-bottom:3px;}
+.sidebar-menu{padding:12px 0;flex:1;overflow-y:auto;}
+.s-item{display:flex;align-items:center;gap:16px;padding:20px 24px;font-size:20px;font-weight:700;color:var(--gray-800);cursor:pointer;transition:background 0.15s;border:none;background:none;width:100%;font-family:inherit;text-align:left;}
+.s-item:hover{background:var(--gray-100);}
+.s-item.active{background:var(--orange-light);color:var(--orange);border-right:4px solid var(--orange);}
+.s-item .mi{font-size:28px;width:36px;text-align:center;}
+.hamburger{background:none;border:none;cursor:pointer;padding:9px;display:flex;flex-direction:column;gap:6px;border-radius:6px;transition:background 0.15s;}
+.hamburger:hover{background:var(--gray-100);}
+.hamburger span{display:block;width:28px;height:3px;background:var(--gray-800);border-radius:2px;}
+.page{display:none;}.page.active{display:block;}
+.team-placeholder{text-align:center;padding:80px 24px;color:var(--gray-400);}
+.team-placeholder .tp-icon{font-size:64px;margin-bottom:16px;}
+.team-placeholder h2{font-size:20px;font-weight:700;color:var(--gray-600);margin-bottom:10px;}
+.team-placeholder p{font-size:14px;line-height:1.7;}
+</style>
+</head>
+<body>
+<!-- OVERLAY -->
+<div class="menu-overlay" id="menuOverlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-hdr">
+    <h2>🧅🌿 เมนูหลัก</h2>
+  </div>
+  <div class="sidebar-menu">
+    <button class="s-item active" id="menu-weight" onclick="switchPage('weight')">
+      <span class="mi">🧅</span> ระบบอ่านใบชั่งน้ำหนัก
+    </button>
+    <button class="s-item" id="menu-team" onclick="switchPage('team')">
+      <span class="mi">📋</span> รายงานตรวจทีม
+    </button>
+  </div>
+  <div style="padding:16px 22px;border-top:1px solid var(--gray-100);">
+    <button class="s-item" onclick="closeSidebar()" style="color:var(--gray-600);padding:10px 0;font-weight:400;">
+      <span class="mi">✕</span> ปิดเมนู
+    </button>
+  </div>
+</div>
+
+<div class="topbar"></div>
+<div class="header" style="justify-content:flex-start;gap:14px;">
+  <button class="hamburger" onclick="openSidebar()" aria-label="เมนู">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="header-title" id="headerTitle">🧅🌿 ระบบอ่านใบชั่งน้ำหนัก</div>
+</div>
+
+<!-- PAGE: ระบบอ่านใบชั่งน้ำหนัก -->
+<div class="page active" id="page-weight">
+<div class="main">
+  <!-- STEP 1 -->
+  <div class="step-card" id="card-upload">
+    <div class="step-header">
+      <div class="step-num" id="num-1">1</div>
+      <div class="step-label">อัปโหลดภาพใบชั่งน้ำหนัก</div>
+    </div>
+    <div class="step-body">
+      <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()"
+           ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+        <input type="file" id="fileInput" accept="image/*" onchange="handleFiles(this.files)" />
+        <div id="uploadPlaceholder">
+          <div class="upload-icon" style="font-size:38px;margin-bottom:10px;">📷</div>
+          <p>ลากรูปมาวางที่นี่ หรือ<br><strong>คลิกเพื่อเลือกไฟล์</strong></p>
+          <p class="upload-hint" style="margin-top:6px;font-size:12px;color:#bbb;">รองรับ JPG, PNG — ทีละ 1 ไฟล์</p>
+        </div>
+        <div id="uploadPreviewBig" style="display:none;width:100%;"></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="readImages()" id="readBtn" disabled>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          อ่านข้อมูลด้วย Gemini
+        </button>
+        <button class="btn btn-secondary" id="clearBtn" onclick="clearFiles()" style="display:none;padding:10px 14px;">
+          ✕ ล้างรูป
+        </button>
+      </div>
+      <div id="loadingArea" style="display:none;margin-top:14px;">
+        <div class="loading-bar"><div class="loading-bar-inner"></div></div>
+        <p class="loading-text" id="loadingText">กำลังส่งภาพไปยัง Gemini AI...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step-card" id="card-edit" style="display:none;">
+    <div class="step-header">
+      <div class="step-num" id="num-2">2</div>
+      <div class="step-label">ตรวจสอบและแก้ไขข้อมูล</div>
+    </div>
+    <div class="step-body">
+      <div class="alert alert-info" id="editAlert">✅ ตรวจสอบความถูกต้องก่อนสร้างรายงาน — ช่องที่มี * ต้องกรอกให้ครบ</div>
+      <div class="table-label">ข้อมูลทั่วไป</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>ผู้นำเข้า <span class="req">*</span></label>
+          <select id="f_importer_sel" onchange="onImporterChange(this)" onblur="resetZoom()" style="margin-bottom:0;">
+            <option value="">— เลือกผู้นำเข้า —</option>
+            <option value="ดิเรก">ดิเรก</option>
+            <option value="ติก๊ะ">ติก๊ะ</option>
+            <option value="ก๊ะลี">ก๊ะลี</option>
+            <option value="__other__">อื่นๆ (โปรดระบุ)</option>
+          </select>
+          <input type="text" id="f_importer" placeholder="พิมชื่อผู้นำเข้า..." oninput="markChanged(this)" onblur="resetZoom()" style="display:none;margin-top:8px;" />
+        </div>
+        <div class="form-group">
+          <label>เลขที่ใบขนสินค้า <span class="req">*</span></label>
+          <input type="text" id="f_declaration" placeholder="A000-00000-00000" oninput="markChanged(this);fmtDeclaration(this)" onblur="resetZoom()" />
+        </div>
+        <div class="form-group">
+          <label>น้ำหนักหน้าใบขนสินค้า (KG) <span class="req">*</span></label>
+          <input type="number" id="f_declared_weight" placeholder="เช่น 15000" oninput="markChanged(this);calcSummary()" onblur="resetZoom()" />
+        </div>
+        <div class="form-group">
+          <label>วันที่ <span class="req">*</span></label>
+          <input type="text" id="f_date" placeholder="เช่น 25 มิถุนายน 2569" oninput="markChanged(this);checkDateWarning(this.value)" onblur="normThaiDate(this);resetZoom()" />
+          <span id="dateWarning" style="display:none;color:#CC2222;font-size:0.78rem;margin-top:4px;">⚠️ ตรวจสอบความถูกต้องของวันที่</span>
+        </div>
+        <div class="form-group">
+          <label>ประเภทสินค้า <span class="req">*</span></label>
+          <input type="text" id="f_goods_type" list="goodsList" placeholder="พิมหรือเลือก..." oninput="markChanged(this)" onblur="resetZoom()" autocomplete="off" />
+          <datalist id="goodsList">
+            <option value="หอม">
+            <option value="กระเทียม">
+          </datalist>
+        </div>
+        <div class="form-group">
+          <label>ประเทศกำเนิด <span class="req">*</span></label>
+          <input type="text" id="f_origin" placeholder="เช่น อินเดีย, จีน" oninput="markChanged(this)" onblur="resetZoom()" />
+        </div>
+        <div class="form-group">
+          <label>ชุดที่</label>
+          <input type="text" id="f_period" placeholder="เช่น ชุดที่ 1" oninput="markChanged(this)" onblur="resetZoom()" />
+        </div>
+      </div>
+
+      <div style="margin-top:22px;">
+        <div class="table-label">รายละเอียดการชั่งน้ำหนักรถและสินค้า</div>
+        <div class="table-wrap" style="overflow-x:hidden;">
+          <table class="dt" style="table-layout:fixed;width:100%;">
+            <colgroup>
+              <col style="width:28px;">
+              <col style="width:29%;">
+              <col style="width:22%;">
+              <col style="width:22%;">
+              <col style="width:22%;">
+              <col style="width:28px;">
+            </colgroup>
+            <thead><tr>
+              <th>#</th>
+              <th>ทะเบียนรถ</th>
+              <th>น้ำหนักรถเปล่า<br><span style="font-weight:400;font-size:0.85em;">(KG)</span></th>
+              <th>น้ำหนักชั่งได้<br><span style="font-weight:400;font-size:0.85em;">(KG)</span></th>
+              <th>น้ำหนักสุทธิ<br><span style="font-weight:400;font-size:0.85em;">(KG)</span></th>
+              <th></th>
+            </tr></thead>
+            <tbody id="vehicleBody"></tbody>
+          </table>
+        </div>
+        <button class="btn-add-row" onclick="addRow()">+ เพิ่มแถว</button>
+        <span style="font-size:0.78rem;color:var(--orange);margin-left:10px;">กดที่ช่องที่ต้องการแก้ไข</span>
+      </div>
+
+      <div class="summary-box">
+        <div class="sum-item"><div class="sl">น้ำหนักสินค้าสุทธิทั้งหมด</div><div class="sv" id="sum_net">0 KG</div></div>
+        <div class="sum-item"><div class="sl">น้ำหนักหน้าใบขนสินค้า</div><div class="sv" id="sum_declared">- KG</div></div>
+        <div class="diff-box zero" id="diffBox">
+          <div class="dl">ผลต่างน้ำหนัก</div>
+          <div class="dv" id="diff_val">-</div>
+          <div class="dp" id="diff_pct"></div>
+        </div>
+      </div>
+
+      <div class="action-row" style="justify-content:flex-end;padding-bottom:16px;">
+        <button class="btn btn-gen" id="btnGenerate" style="padding:20px 36px;font-size:1.2rem;">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          สร้างรายงาน
+        </button>
+      </div>
+      <!-- ปุ่ม Clear ใต้สร้างรายงาน — หายไปเมื่อกดสร้างรายงานแล้ว -->
+      <div id="clearBeforeReport" style="margin-bottom:16px;padding-bottom:60px;text-align:left;">
+        <button class="btn" id="btnClearBefore" style="background:#DC2626;color:white;width:auto;min-width:100px;justify-content:center;font-size:1rem;padding:14px 20px;border-radius:10px;">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          Clear
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="result-card" id="card-result" style="display:none;">
+    <div class="result-header">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="step-num done">✓</div>
+        <span style="font-size:15px;font-weight:600;">รายงานพร้อมแล้ว</span>
+      </div>
+      <button class="btn btn-secondary" onclick="document.getElementById('card-result').style.display='none'" style="padding:6px 14px;font-size:13px;">ปิด</button>
+    </div>
+    <div class="result-img-wrap">
+      <img id="resultImg" src="" alt="รายงานน้ำหนัก" />
+      <div class="save-area">
+        <button class="btn btn-save" onclick="saveImage()">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          บันทึกรูป
+        </button>
+        <button class="btn btn-secondary" id="btnGenerateNew" style="padding:10px 18px;">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          สร้างใหม่
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ปุ่ม Clear — แสดงหลังสร้างรายงาน -->
+  <div id="clearBtnArea" style="display:none;margin-bottom:80px;padding-bottom:40px;text-align:left;">
+    <button class="btn" id="btnClearWeight" style="background:#DC2626;color:white;width:100%;justify-content:center;font-size:1rem;padding:14px 20px;border-radius:10px;">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      Clear — ล้างข้อมูลทั้งหมด
+    </button>
+  </div>
+</div><!-- /main -->
+</div><!-- /page-weight -->
+
+<!-- PAGE: รายงานตรวจทีม -->
+<div class="page" id="page-team">
+  <div class="main">
+
+    <!-- อัปโหลด -->
+    <div class="step-card">
+      <div class="step-header" style="justify-content:center;">
+        <div class="step-label">📋 รายงานตรวจทีม</div>
+      </div>
+      <div class="step-body">
+        <p style="font-size:14px;color:var(--gray-600);margin-bottom:10px;">อัปโหลดภาพใบขนสินค้า หรือรายงานใบชั่งน้ำหนักได้หลายไฟล์</p>
+        <!-- upload zone — ใช้ label เพื่อให้ iOS file picker ทำงานได้แน่นอน -->
+        <label for="teamFileInput" style="display:block;border:2px dashed var(--gray-200);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;touch-action:manipulation;" id="teamDropZone">
+          <input type="file" id="teamFileInput" accept="image/*" multiple style="display:none;" onchange="handleTeamFiles(this.files)" />
+          <div id="teamUploadPlaceholder" style="display:flex;align-items:center;justify-content:center;gap:10px;color:var(--gray-600);font-size:1rem;">
+            <span style="font-size:22px;">📄</span>
+            <strong style="color:var(--orange);">คลิกเพื่อเลือกรูป</strong>
+          </div>
+          <div id="teamPreviewGrid" style="display:none;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;"></div>
+        </label>
+        <div style="margin-top:12px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;">
+          <button class="btn btn-primary" id="teamReadBtn" onclick="readTeamImages()" disabled>
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            อ่านข้อมูลด้วย Gemini
+          </button>
+          <button class="btn btn-secondary" id="teamClearBtn" onclick="clearTeamFiles()" style="display:none;padding:10px 14px;">✕ ล้างรูป</button>
+        </div>
+        <div id="teamLoadingArea" style="display:none;margin-top:14px;">
+          <div class="loading-bar"><div class="loading-bar-inner"></div></div>
+          <p class="loading-text" id="teamLoadingText">กำลังอ่านข้อมูล...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ผลลัพธ์ — กล่องแชท -->
+    <div class="step-card" id="teamResultCard" style="display:none;">
+      <div class="step-header" style="justify-content:center;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="step-num done" style="background:var(--orange);">✓</div>
+          <span style="font-size:15px;font-weight:600;">ข้อความรายงาน</span>
+        </div>
+      </div>
+      <!-- คำเตือนข้อมูลขาด -->
+      <div id="teamWarningBox" style="display:none;background:#FFF8E1;border-bottom:1px solid #FFD54F;padding:12px 18px;">
+        <div style="font-size:13px;font-weight:700;color:#E65100;margin-bottom:6px;">⚠️ พบข้อมูลไม่ครบในบางใบขน</div>
+        <div id="teamWarningList" style="font-size:13px;color:#BF360C;line-height:1.8;"></div>
+      </div>
+      <div class="step-body" style="padding:0;">
+        <div id="teamChatWrap" style="background:#F5F5F5;padding:20px;min-height:200px;">
+          <div style="display:flex;justify-content:center;">
+            <div id="teamChatBubble" style="
+              background:white;border-radius:18px 18px 18px 4px;
+              padding:18px 22px;max-width:640px;width:100%;
+              box-shadow:0 2px 12px rgba(0,0,0,0.08);border:1px solid var(--gray-200);
+              font-size:15px;line-height:1.85;color:var(--gray-800);
+              white-space:pre-wrap;word-break:break-word;
+            "></div>
+          </div>
+          <!-- ปุ่มคัดลอก — ใต้ข้อความ -->
+          <div style="display:flex;justify-content:center;margin-top:16px;">
+            <button class="btn btn-secondary" onclick="copyTeamReport()" style="padding:12px 28px;font-size:15px;gap:10px;">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              คัดลอกข้อความ
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ปุ่ม Clear -->
+    <div id="teamClearBtnArea" style="display:none;margin-bottom:80px;padding-bottom:40px;">
+      <button class="btn" id="btnClearTeam" style="background:#DC2626;color:white;width:100%;justify-content:center;font-size:1.2rem;padding:28px 36px;border-radius:10px;">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        Clear — ล้างข้อมูลทั้งหมด
+      </button>
+    </div>
+
+  </div>
+</div><!-- /page-team -->
+
+<div id="toast" style="
+  position:fixed;
+  bottom:20px;
+  left:12px;
+  top:auto;
+  right:auto;
+  width:200px;
+  background:#333;
+  color:white;
+  padding:10px 14px;
+  border-radius:8px;
+  font-size:14px;
+  font-weight:600;
+  box-shadow:0 2px 10px rgba(0,0,0,0.3);
+  display:none;
+  z-index:9999;
+  pointer-events:none;
+  word-wrap:break-word;
+"></div>
+<canvas id="reportCanvas" style="display:none;color-scheme:light;"></canvas>
+
+<script>
+let uploadedFiles=[], rowIdx=0, lastFilename='weight_report.png';
+
+// ── THEME ─────────────────────────────────────────────────
+function getTheme(im){
+  if(im==='ก๊ะลี') return{primary:'#E8691A',light:'#FDF0E6',dark:'#B8520E',border:'#F5C89A',rowAlt:'#FDF8F5',totalBg:'#F5DFC0',totalTxt:'#7A3800',infoLbl:'#E8691A'};
+  if(im==='ติก๊ะ') return{primary:'#1A7A3A',light:'#EDF7F1',dark:'#0F5028',border:'#90CFA8',rowAlt:'#F4FBF6',totalBg:'#C8EDD6',totalTxt:'#0A3A1E',infoLbl:'#1A7A3A'};
+  if(im==='ดิเรก') return{primary:'#1A55A0',light:'#EBF2FC',dark:'#0E3570',border:'#90B8E8',rowAlt:'#F2F6FC',totalBg:'#C0D8F5',totalTxt:'#0A2550',infoLbl:'#1A55A0'};
+  // อื่นๆ → ชมพูเข้ม
+  return{primary:'#C2185B',light:'#FCE4EC',dark:'#880E4F',border:'#F48FB1',rowAlt:'#FDF0F5',totalBg:'#F8BBD0',totalTxt:'#560027',infoLbl:'#C2185B'};
+}
+
+// ── UPLOAD ────────────────────────────────────────────────
+function onDragOver(e){e.preventDefault();document.getElementById('dropZone').classList.add('drag-over');}
+function onDragLeave(){document.getElementById('dropZone').classList.remove('drag-over');}
+function onDrop(e){e.preventDefault();onDragLeave();handleFiles(e.dataTransfer.files);}
+
+function handleFiles(files){
+  for(const f of files){if(!f.type.startsWith('image/'))continue;uploadedFiles.push(f);}
+  renderBigPreview();
+  updateReadBtn();
+  // มือถือ: เลื่อนลงมาที่ปุ่มอ่านข้อมูลอัตโนมัติ
+  setTimeout(()=>{
+    document.getElementById('readBtn')?.scrollIntoView({behavior:'smooth',block:'center'});
+  },300);
+}
+
+function renderBigPreview(){
+  const ph=document.getElementById('uploadPlaceholder');
+  const pb=document.getElementById('uploadPreviewBig');
+  const cb=document.getElementById('clearBtn');
+  if(uploadedFiles.length===0){
+    ph.style.display=''; pb.style.display='none'; cb.style.display='none'; return;
+  }
+  ph.style.display='none'; pb.style.display='block'; cb.style.display='';
+  pb.innerHTML='';
+  uploadedFiles.forEach((f,idx)=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      const wrap=document.createElement('div');
+      wrap.style.cssText='position:relative;margin-bottom:8px;';
+      wrap.innerHTML=`
+        <img src="${e.target.result}" style="width:100%;border-radius:8px;display:block;max-height:480px;object-fit:contain;background:#f0f0f0;"/>
+        <button onclick="removeFile(${idx})" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.6);color:white;border:none;border-radius:50%;width:28px;height:28px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
+        <div style="font-size:11px;color:#aaa;text-align:center;margin-top:4px;">${f.name}</div>`;
+      pb.appendChild(wrap);
+    };
+    r.readAsDataURL(f);
+  });
+}
+
+function removeFile(idx){
+  uploadedFiles.splice(idx,1);
+  renderBigPreview();
+  updateReadBtn();
+}
+
+function clearFiles(){
+  uploadedFiles=[];
+  document.getElementById('fileInput').value='';
+  renderBigPreview();
+  updateReadBtn();
+}
+function updateReadBtn(){document.getElementById('readBtn').disabled=uploadedFiles.length===0;}
+
+// ── RESIZE + BASE64 ───────────────────────────────────────
+// Resize รูปให้ใหญ่ขึ้น (max 2000px) ก่อนส่ง Gemini เพื่อให้อ่านได้ชัดขึ้น
+function resizeAndEncode(file){
+  return new Promise((resolve)=>{
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      const MAX=2000;
+      let w=img.width, h=img.height;
+      if(w<MAX&&h<MAX){
+        // รูปเล็กกว่า MAX ให้ scale up
+        const scale=MAX/Math.max(w,h);
+        w=Math.round(w*scale); h=Math.round(h*scale);
+      }
+      const canvas=document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      const ctx=canvas.getContext('2d');
+      ctx.imageSmoothingEnabled=true;
+      ctx.imageSmoothingQuality='high';
+      ctx.drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      const dataUrl=canvas.toDataURL('image/jpeg',0.95);
+      resolve({mimeType:'image/jpeg', data:dataUrl.split(',')[1]});
+    };
+    img.onerror=()=>{
+      // fallback: ส่งต้นฉบับ
+      const r=new FileReader();
+      r.onload=()=>resolve({mimeType:file.type, data:r.result.split(',')[1]});
+      r.readAsDataURL(file);
+    };
+    img.src=url;
+  });
+}
+
+// ── GEMINI CALL ───────────────────────────────────────────
+async function readImages(){
+  document.getElementById('loadingArea').style.display='block';
+  document.getElementById('readBtn').disabled=true;
+  document.getElementById('loadingText').textContent='กำลังเตรียมภาพ...';
+  try{
+    const imagesData=[];
+    for(const f of uploadedFiles){
+      document.getElementById('loadingText').textContent=`กำลังประมวลผลภาพ ${imagesData.length+1}/${uploadedFiles.length}...`;
+      const encoded=await resizeAndEncode(f);
+      imagesData.push(encoded);
+    }
+    document.getElementById('loadingText').textContent='กำลังส่งไปยัง Gemini AI...';
+    const resp = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({type:'weight', images:imagesData})
+    });
+    if(!resp.ok){
+      const errText = await resp.text();
+      throw new Error(`Server error ${resp.status}: ${errText.slice(0,150)}`);
+    }
+    const result = await resp.json();
+    if(!result.success) throw new Error(result.error||'เกิดข้อผิดพลาด');
+    populateForm(result.data);
+    document.getElementById('card-edit').style.display='block';
+    // เลื่อนไปแค่หัว "2 ตรวจสอบและแก้ไขข้อมูล" พอดี
+    setTimeout(()=>{
+      document.getElementById('card-edit').scrollIntoView({behavior:'smooth',block:'start'});
+    },100);
+    document.getElementById('num-1').classList.add('done');
+    document.getElementById('num-1').textContent='✓';
+    showToast('อ่านข้อมูลสำเร็จ ✓','success');
+  }catch(err){
+    showToast('ผิดพลาด: '+(err.message||'เกิดข้อผิดพลาด'),'error');
+  }finally{
+    document.getElementById('loadingArea').style.display='none';
+    updateReadBtn();
+  }
+}
+
+// ── FORM ──────────────────────────────────────────────────
+function populateForm(data){
+  // importer
+  const impVal=matchImporter(data.importer)||data.importer||'';
+  const sel=document.getElementById('f_importer_sel');
+  const customInp=document.getElementById('f_importer');
+  const knownVals=['ดิเรก','ติก๊ะ','ก๊ะลี'];
+  if(knownVals.includes(impVal)){
+    sel.value=impVal; customInp.style.display='none'; customInp.value=impVal;
+  } else if(impVal){
+    sel.value='__other__'; customInp.style.display='block'; customInp.value=impVal;
+  } else {
+    sel.value=''; customInp.style.display='none'; customInp.value='';
+  }
+
+  setF('f_declaration',data.declaration_no);
+  setF('f_declared_weight',data.declared_weight);
+  setF('f_date', data.date||'');
+  checkDateWarning(data.date||'');
+
+  setF('f_goods_type',data.goods_type);
+  setF('f_origin',data.origin||'');
+  setF('f_period',data.period);
+  document.getElementById('vehicleBody').innerHTML='';rowIdx=0;
+  const vs=data.vehicles||[];
+  if(vs.length===0)addRow();else vs.forEach(v=>addRow(v));
+  calcSummary();
+}
+function matchImporter(val){
+  if(!val)return'';const v=val.toLowerCase();
+  if(v.includes('ดิเรก')||v.includes('direk'))return'ดิเรก';
+  if(v.includes('ติก')||v.includes('tika'))return'ติก๊ะ';
+  if(v.includes('ลี')||v.includes('lee')||v.includes('li'))return'ก๊ะลี';
+  return'';
+}
+function matchGoods(val){
+  if(!val)return'';const v=val.toLowerCase();
+  if(v.includes('กระเทียม'))return'กระเทียม';
+  if(v.includes('หอม'))return'หอม';
+  return'';
+}
+function setF(id,val){const el=document.getElementById(id);if(!el)return;el.value=(val!=null&&val!=='')? val:'';}
+function markChanged(el){el.classList.add('changed');}
+
+// ── SIDEBAR ───────────────────────────────────────────────
+function openSidebar(){
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('menuOverlay').classList.add('open');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('menuOverlay').classList.remove('open');
+}
+function switchPage(page){
+  // ซ่อนทุก page
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.s-item').forEach(i=>i.classList.remove('active'));
+  // แสดง page ที่เลือก
+  document.getElementById('page-'+page).classList.add('active');
+  document.getElementById('menu-'+page).classList.add('active');
+  // อัปเดต header title
+  const titles={weight:'🧅🌿 ระบบอ่านใบชั่งน้ำหนัก', team:'📋 รายงานตรวจทีม'};
+  document.getElementById('headerTitle').innerHTML=`<span style="font-size:22px;">${titles[page].split(' ')[0]}</span> ${titles[page].split(' ').slice(1).join(' ')}`;
+  closeSidebar();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── IMPORTER SELECT ───────────────────────────────────────
+function onImporterChange(sel){
+  const customInput=document.getElementById('f_importer');
+  if(sel.value==='__other__'){
+    customInput.style.display='block';
+    customInput.value='';
+    customInput.focus();
+    // ค่า f_importer = ที่พิมเอง
+  } else {
+    customInput.style.display='none';
+    customInput.value=sel.value; // sync ค่าไปยัง f_importer
+  }
+  markChanged(sel);
+}
+const REQUIRED_FIELDS=['f_importer','f_declaration','f_declared_weight','f_date','f_goods_type','f_origin'];
+const FIELD_NAMES={'f_importer':'ผู้นำเข้า','f_declaration':'เลขที่ใบขนสินค้า','f_declared_weight':'น้ำหนักหน้าใบขนสินค้า','f_date':'วันที่','f_goods_type':'ประเภทสินค้า','f_origin':'ประเทศกำเนิด'};
+
+function validateForm(){
+  let missing=[];
+
+  // importer: อ่านจาก f_importer (text) ซึ่ง sync จาก select เสมอ
+  const impInp=document.getElementById('f_importer');
+  const impSel=document.getElementById('f_importer_sel');
+  // sync ก่อนเช็ค
+  if(impSel && impSel.value!=='__other__' && impSel.value){
+    impInp.value=impSel.value;
+  }
+  const impVal=(impInp?.value||'').trim();
+  const impEmpty=!impVal;
+  impSel?.classList.toggle('invalid', impEmpty);
+  if(impEmpty) missing.push('ผู้นำเข้า');
+
+  // check other required fields
+  ['f_declaration','f_declared_weight','f_date','f_goods_type','f_origin'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    const empty=(el.value==null||el.value.trim()==='');
+    el.classList.toggle('invalid',empty);
+    if(empty) missing.push(FIELD_NAMES[id]);
+  });
+  return missing;
+}
+
+// ── DECLARATION FORMAT ────────────────────────────────────
+function fmtDeclaration(el){
+  // รับ input ที่อาจติดกัน เช่น A1234567891234 หรือ A025-06906-07007
+  let v=el.value.replace(/[-\s]/g,'').toUpperCase(); // ลบ - และ space ออกก่อน
+  let out='';
+  if(v.length>0)  out+=v.slice(0,4);
+  if(v.length>4)  out+=' '+v.slice(4,9);
+  if(v.length>9)  out+=' '+v.slice(9,14);
+  el.value=out;
+  markChanged(el);
+}
+
+// ── THAI DATE NORMALIZER ──────────────────────────────────
+// แปลงเดือนย่อ → เต็ม เช่น มิ.ย. → มิถุนายน
+const MONTH_MAP={
+  'ม.ค.':'มกราคม','ก.พ.':'กุมภาพันธ์','มี.ค.':'มีนาคม',
+  'เม.ย.':'เมษายน','พ.ค.':'พฤษภาคม','มิ.ย.':'มิถุนายน',
+  'ก.ค.':'กรกฎาคม','ส.ค.':'สิงหาคม','ก.ย.':'กันยายน',
+  'ต.ค.':'ตุลาคม','พ.ย.':'พฤศจิกายน','ธ.ค.':'ธันวาคม'
+};
+// ── DATE WARNING ──────────────────────────────────────────
+const THAI_MONTHS_MAP={
+  'มกราคม':1,'กุมภาพันธ์':2,'มีนาคม':3,'เมษายน':4,
+  'พฤษภาคม':5,'มิถุนายน':6,'กรกฎาคม':7,'สิงหาคม':8,
+  'กันยายน':9,'ตุลาคม':10,'พฤศจิกายน':11,'ธันวาคม':12
+};
+function checkDateWarning(val){
+  const w=document.getElementById('dateWarning');
+  if(!w||!val){if(w)w.style.display='none';return;}
+  const m=val.trim().match(/^(\d{1,2})\s+(\S+)\s+(\d{4})$/);
+  if(!m){w.style.display='none';return;}
+  const d=parseInt(m[1]),monthName=m[2],thaiYear=parseInt(m[3]);
+  const monthNum=THAI_MONTHS_MAP[monthName];
+  if(!monthNum){w.style.display='none';return;}
+  const adYear=thaiYear-543;
+  const docDate=new Date(adYear,monthNum-1,d);
+  const today=new Date();
+  const diffDays=(docDate-today)/(1000*60*60*24);
+  w.style.display=diffDays>30?'inline':'none';
+}
+
+function normThaiDate(el){
+  let v=el.value;
+  Object.entries(MONTH_MAP).forEach(([abbr,full])=>{
+    v=v.replace(new RegExp(abbr.replace('.','\\.').replace('.','\\.').replace('.','\\.'),'g'),full);
+  });
+  if(v!==el.value){el.value=v;markChanged(el);}
+}
+
+// ── ROWS ──────────────────────────────────────────────────
+function addRow(data={}){
+  const tbody=document.getElementById('vehicleBody');
+  const i=rowIdx++;
+  const emV=data.empty_weight||'',grV=data.gross_weight||'',neV=data.net_weight||'';
+  // คำนวณ net จาก gross-empty ถ้ามีข้อมูล
+  const calcNet=(g,e)=>{const n=Number(g)-Number(e);return(n>0)?n.toLocaleString('en-US'):'';}
+  const netDisplay=grV&&emV?calcNet(grV,emV):(neV?Number(neV).toLocaleString('en-US'):'');
+  const tr=document.createElement('tr');tr.id='row-'+i;
+  tr.innerHTML=`
+    <td style="color:#aaa;font-size:0.8rem;">${tbody.children.length+1}</td>
+    <td><input type="text" id="plate_${i}" value="${data.plate||''}" placeholder="ทะเบียน" oninput="markChanged(this)" style="font-size:0.85rem;"/></td>
+    <td><input type="text" id="empty_${i}" value="${emV?Number(emV).toLocaleString('en-US'):''}" placeholder="0" oninput="markChanged(this);autoNet(${i})" style="font-size:0.85rem;"/></td>
+    <td><input type="text" id="gross_${i}" value="${grV?Number(grV).toLocaleString('en-US'):''}" placeholder="0" oninput="markChanged(this);autoNet(${i})" style="font-size:0.85rem;"/></td>
+    <td><input type="text" id="net_${i}" value="${netDisplay}" readonly style="background:#F0F0F0;color:#555;font-size:0.85rem;cursor:default;"/></td>
+    <td><button class="btn-del" onclick="removeRow('row-${i}')">✕</button></td>`;
+  tbody.appendChild(tr);reNumberRows();
+}
+function getN(id){return parseFloat((document.getElementById(id)?.value||'').replace(/,/g,''))||0;}
+function autoNet(i){
+  const em=getN('empty_'+i), gr=getN('gross_'+i);
+  const ne=document.getElementById('net_'+i);
+  if(ne){ const n=gr-em; ne.value=n>0?n.toLocaleString('en-US'):''; }
+  calcSummary();
+}
+function removeRow(id){document.getElementById(id)?.remove();reNumberRows();calcSummary();}
+function reNumberRows(){document.querySelectorAll('#vehicleBody tr').forEach((tr,i)=>{const td=tr.querySelector('td:first-child');if(td)td.textContent=i+1;});}
+
+// ── SUMMARY ───────────────────────────────────────────────
+function calcSummary(){
+  let tN=0;
+  document.querySelectorAll('#vehicleBody tr').forEach(tr=>{
+    const ne=tr.querySelector('td:nth-child(5) input');
+    if(ne)tN+=parseFloat((ne.value||'').replace(/,/g,''))||0;
+  });
+  const decl=parseFloat((document.getElementById('f_declared_weight')?.value||'').replace(/,/g,''))||0;
+  const diff=tN-decl, pct=decl>0?((diff/decl)*100).toFixed(2):0;
+  document.getElementById('sum_net').textContent=tN.toLocaleString('en-US')+' KG';
+  document.getElementById('sum_declared').textContent=decl>0?decl.toLocaleString('en-US')+' KG':'- KG';
+  const db=document.getElementById('diffBox'),dv=document.getElementById('diff_val'),dp=document.getElementById('diff_pct');
+  db.className='diff-box';
+  if(decl===0){db.classList.add('zero');dv.textContent='-';dp.textContent='';}
+  else if(diff>0){db.classList.add('pos');dv.textContent='+'+diff.toLocaleString('en-US')+' KG';dp.textContent=`(มากกว่าที่แจ้ง ${Math.abs(pct)}%)`;}
+  else if(diff<0){db.classList.add('neg');dv.textContent=diff.toLocaleString('en-US')+' KG';dp.textContent=`(น้อยกว่าที่แจ้ง ${Math.abs(pct)}%)`;}
+  else{db.classList.add('zero');dv.textContent='0 KG';dp.textContent='ตรงกัน 100%';}
+}
+
+// ── GENERATE IMAGE ────────────────────────────────────────
+function generateImage(){
+  // validate required fields
+  const missing=validateForm();
+  if(missing.length>0){
+    showToast('กรุณากรอก: '+missing.join(', '),'error');
+    return;
+  }
+
+  const im  = document.getElementById('f_importer').value||'-';
+  const dn  = document.getElementById('f_declaration').value||'-';
+  const dw  = (document.getElementById('f_declared_weight').value||'0').replace(/,/g,'');
+  const dt  = document.getElementById('f_date').value||'-';
+  const gt  = document.getElementById('f_goods_type').value||'-';
+  const og  = document.getElementById('f_origin').value||'';
+  const pd  = document.getElementById('f_period').value||'';
+  const decl= parseFloat(dw)||0;
+  const T   = getTheme(im);
+
+  const vrows=[];let tE=0,tG=0,tN=0;
+  document.querySelectorAll('#vehicleBody tr').forEach((tr,idx)=>{
+    const pl=tr.querySelector('td:nth-child(2) input')?.value||'-';
+    const em=parseFloat((tr.querySelector('td:nth-child(3) input')?.value||'').replace(/,/g,''))||0;
+    const gr=parseFloat((tr.querySelector('td:nth-child(4) input')?.value||'').replace(/,/g,''))||0;
+    const ne=parseFloat((tr.querySelector('td:nth-child(5) input')?.value||'').replace(/,/g,''))||0;
+    tE+=em;tG+=gr;tN+=ne;
+    vrows.push({num:idx+1,plate:pl,empty:em,gross:gr,net:ne});
+  });
+  const diff=tN-decl, pct=decl>0?((diff/decl)*100).toFixed(2):0;
+
+  // ── Canvas 1200px ───────────────────────────────────────
+  const W=1200, M=48, rowH=56;
+  const infoH= og ? 156 : 130;
+  const totalH=10+110+infoH+24+48+rowH*(vrows.length+2)+28+44+110+28+50;
+  const canvas=document.getElementById('reportCanvas');
+  canvas.width=W; canvas.height=totalH;
+  const c=canvas.getContext('2d');
+  c.imageSmoothingEnabled=true; c.imageSmoothingQuality='high';
+
+  // บังคับพื้นหลังขาว ป้องกัน dark mode ทำให้สีเพี้ยน
+  c.fillStyle='#FFFFFF';
+  c.fillRect(0,0,W,totalH);
+
+  const G2='#E8E8E8',G6='#666666',G8='#222222';
+  const RB='#FFF0F0',RT='#CC2222',GB='#F0FFF4',GT='#1A7A3A';
+
+  const rr=(x,y,w,h,r,fill,stroke,sw=1)=>{
+    c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);
+    c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);c.lineTo(x+r,y+h);
+    c.quadraticCurveTo(x,y+h,x,y+h-r);c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);
+    c.closePath();if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=sw;c.stroke();}
+  };
+  const txt=(t,x,y,font,color,align='left',maxW=0)=>{
+    c.font=font;c.fillStyle=color;c.textAlign=align;
+    maxW>0?c.fillText(String(t),x,y,maxW):c.fillText(String(t),x,y);
+  };
+
+  let y=0;
+  // Top stripe
+  c.fillStyle=T.primary;c.fillRect(0,0,W,10);y=10;
+
+  // Header — วันที่อยู่หลังชื่อรายงาน
+  const headerH=90;
+  c.fillStyle='white';c.fillRect(0,y,W,headerH);
+  // วัดความกว้างหัวข้อก่อน แล้วใส่วันที่ต่อท้าย
+  c.font='bold 38px Sarabun,sans-serif';
+  const titleW=c.measureText('รายงานสรุปน้ำหนักหอม กระเทียม').width;
+  txt('รายงานสรุปน้ำหนักหอม กระเทียม',M,y+54,'bold 38px Sarabun,sans-serif',G8);
+  txt(dt, M+titleW+22, y+54, '22px Sarabun,sans-serif','#AAA');
+  c.strokeStyle=T.primary;c.lineWidth=3;
+  c.beginPath();c.moveTo(M,y+72);c.lineTo(W-M,y+72);c.stroke();
+  y+=headerH;
+
+  // Info box
+  rr(M,y+12,W-M*2,infoH,10,T.light,T.border,1.5);
+  const col1=M+24,col2=W/2+24,lh=38;
+  const lbl=(t,x,yy)=>txt(t,x,yy,'bold 18px Sarabun,sans-serif',T.infoLbl);
+  const val=(t,x,yy,mw=350)=>txt(t,x,yy,'18px Sarabun,sans-serif',G8,'left',mw);
+  lbl('ผู้นำเข้า:',col1,y+46);          val(im,col1+102,y+46);
+  lbl('เลขที่ใบขนสินค้า:',col2,y+46);   val(dn,col2+162,y+46);
+  lbl('น้ำหนักหน้าใบขน:',col1,y+46+lh); val(decl>0?decl.toLocaleString('en-US')+' KG':'-',col1+162,y+46+lh);
+  lbl('ชุดที่:',col2,y+46+lh);           val(pd||'-',col2+70,y+46+lh);
+  lbl('ประเภทสินค้า:',col1,y+46+lh*2);  val(gt,col1+130,y+46+lh*2);
+  if(og){
+    lbl('ประเทศกำเนิด:',col2,y+46+lh*2); val(og,col2+140,y+46+lh*2);
+  }
+  y+=infoH+24;
+
+  // Section label — table
+  c.fillStyle=T.primary;c.fillRect(M,y,7,30);
+  txt('ตารางรายละเอียดการชั่งน้ำหนักรถและสินค้า',M+16,y+22,'bold 20px Sarabun,sans-serif',G8);
+  y+=44;
+
+  // ── วาดตาราง: ใช้ measureText เพื่อ center ภาษาไทยได้แม่นยำ 100%
+  const COL_W=[60,240,268,268,268];
+  const tableW=W-M*2;
+  const hdrH=80;
+  const dRowH=rowH;
+
+  // คำนวณ x เริ่มของแต่ละ col (absolute)
+  const colStart=[];
+  let _cx=M;
+  COL_W.forEach(w=>{colStart.push(_cx);_cx+=w;});
+
+  // วาด text กึ่งกลาง column โดยวัด textWidth ก่อน
+  function cellText(text,colIdx,ty,rowH2,font,color){
+    c.font=font;
+    c.fillStyle=color;
+    c.textBaseline='middle';
+    c.textAlign='left';
+    const tw=c.measureText(text).width;
+    const x=colStart[colIdx]+Math.floor((COL_W[colIdx]-tw)/2);
+    const my=ty+Math.floor(rowH2/2);
+    c.fillText(text,x,my);
+  }
+
+  // Header
+  c.fillStyle=T.primary;
+  c.fillRect(M,y,tableW,hdrH);
+  const HDR=[
+    {lines:['#']},
+    {lines:['ทะเบียนรถ']},
+    {lines:['น้ำหนักรถเปล่า','(KG)']},
+    {lines:['น้ำหนักชั่งได้','(KG)']},
+    {lines:['น้ำหนักสินค้าสุทธิ','(KG)']}
+  ];
+  const hFont='bold 16px Sarabun,sans-serif';
+  HDR.forEach((col,ci)=>{
+    c.font=hFont;
+    c.fillStyle='white';
+    c.textBaseline='middle';
+    c.textAlign='left';
+    if(col.lines.length===1){
+      const tw=c.measureText(col.lines[0]).width;
+      const x=colStart[ci]+Math.floor((COL_W[ci]-tw)/2);
+      c.fillText(col.lines[0],x,y+Math.floor(hdrH/2));
+    } else {
+      const tw0=c.measureText(col.lines[0]).width;
+      const tw1=c.measureText(col.lines[1]).width;
+      const x0=colStart[ci]+Math.floor((COL_W[ci]-tw0)/2);
+      const x1=colStart[ci]+Math.floor((COL_W[ci]-tw1)/2);
+      c.fillText(col.lines[0],x0,y+Math.floor(hdrH/2)-14);
+      c.fillText(col.lines[1],x1,y+Math.floor(hdrH/2)+14);
+    }
+  });
+  y+=hdrH;
+
+  // Data rows
+  vrows.forEach((row,i)=>{
+    c.fillStyle=i%2===0?'white':T.rowAlt;
+    c.fillRect(M,y,tableW,dRowH);
+    c.strokeStyle=G2;c.lineWidth=1;
+    c.beginPath();c.moveTo(M,y+dRowH);c.lineTo(W-M,y+dRowH);c.stroke();
+    const cells=[
+      String(row.num), row.plate,
+      row.empty>0?row.empty.toLocaleString('en-US'):'-',
+      row.gross>0?row.gross.toLocaleString('en-US'):'-',
+      row.net>0?row.net.toLocaleString('en-US'):'-'
+    ];
+    cells.forEach((cell,ci)=>{
+      const fnt=ci===4?'bold 17px Sarabun,sans-serif':'17px Sarabun,sans-serif';
+      cellText(cell,ci,y,dRowH,fnt,ci===4?T.dark:G8);
+    });
+    y+=dRowH;
+  });
+
+  // Total row
+  c.fillStyle=T.totalBg;
+  c.fillRect(M,y,tableW,dRowH);
+  ['','รวมทั้งสิ้น',
+    tE>0?tE.toLocaleString('en-US'):'-',
+    tG>0?tG.toLocaleString('en-US'):'-',
+    tN>0?tN.toLocaleString('en-US'):'-'
+  ].forEach((cell,ci)=>{
+    cellText(cell,ci,y,dRowH,'bold 17px Sarabun,sans-serif',ci===4?T.totalTxt:G8);
+  });
+  y+=dRowH+28;
+
+  // Section label — summary
+  c.fillStyle=T.primary;c.fillRect(M,y,7,30);
+  txt('สรุปผลการเปรียบเทียบน้ำหนัก',M+16,y+22,'bold 20px Sarabun,sans-serif',G8);
+  y+=44;
+
+  // 3 summary boxes — ใช้ measureText จัดกลางแม่นยำ
+  const bw=Math.floor((W-M*2-24)/3), bh=100;
+  const bx=[M, M+bw+12, M+(bw+12)*2];
+
+  // วาด text กึ่งกลาง box ด้วย measureText
+  function boxText(text, boxX, textY, font, color){
+    c.font=font; c.fillStyle=color;
+    c.textBaseline='middle'; c.textAlign='left';
+    const tw=c.measureText(text).width;
+    const x=boxX+Math.floor((bw-tw)/2);
+    c.fillText(text, x, textY);
+  }
+
+  function drawBox(x, lb, vl, sub, fill, border, tc, vc){
+    rr(x,y,bw,bh,10,fill,border,1.5);
+    // label บน
+    boxText(lb, x, y+24, '15px Sarabun,sans-serif', tc);
+    // value กลาง
+    boxText(vl, x, y+(sub?58:bh/2+6), 'bold 28px Sarabun,sans-serif', vc);
+    // sub ล่าง
+    if(sub) boxText(sub, x, y+86, '13px Sarabun,sans-serif', tc);
+  }
+
+  drawBox(bx[0],'น้ำหนักสินค้าสุทธิทั้งหมด',tN.toLocaleString('en-US')+' KG','',T.light,T.border,'#705020',T.dark);
+  drawBox(bx[1],'น้ำหนักหน้าใบขนสินค้า',decl>0?decl.toLocaleString('en-US')+' KG':'-','',T.light,T.border,'#705020',T.dark);
+
+  const dfStr=diff===0?'0 KG':(diff>0?'+':'')+diff.toLocaleString('en-US')+' KG';
+  const dfSub=decl>0?`(${diff>0?'มากกว่า':diff<0?'น้อยกว่า':'ตรงกัน'}ที่แจ้ง ${Math.abs(pct)}%)`:'';
+  const dfFill=diff>0?RB:diff<0?GB:'#F4F4F4';
+  const dfBrd=diff>0?'#FFCCCC':diff<0?'#B8E8C8':'#E8E8E8';
+  const dfTc=diff>0?RT:diff<0?GT:G6;
+  drawBox(bx[2],'ผลต่างน้ำหนัก',dfStr,dfSub,dfFill,dfBrd,dfTc,dfTc);
+  y+=bh+22;
+
+  // Footer — ลบวันที่ฝั่งขวาออก
+  c.strokeStyle='#E0E0E0';c.lineWidth=1;
+  c.beginPath();c.moveTo(M,y);c.lineTo(W-M,y);c.stroke();y+=16;
+  txt('ระบบอ่านใบชั่งน้ำหนัก | Gemini Vision',M,y+16,'16px Sarabun,sans-serif','#BBB');
+
+  const imgData=canvas.toDataURL('image/png');
+  document.getElementById('resultImg').src=imgData;
+  document.getElementById('card-result').style.display='block';
+  document.getElementById('clearBtnArea').style.display='block';
+  document.getElementById('card-result').scrollIntoView({behavior:'smooth',block:'start'});
+  lastFilename=`weight_report_${(dn||'unknown').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.png`;
+  showToast('สร้างรายงานสำเร็จ ✓','success');
+}
+
+// ── SAVE — รองรับ iPhone Save to Photos ─────────────────
+async function saveImage(){
+  const img=document.getElementById('resultImg').src;
+  if(!img||img===''){showToast('ยังไม่มีรูปรายงาน','error');return;}
+
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+
+  if(isIOS){
     // แปลง dataURL → blob → objectURL เพื่อให้ Safari แสดงรูปเต็มจอ
     try{
       const res=await fetch(img);
