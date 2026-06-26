@@ -209,7 +209,7 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
   .step-header{padding:14px 16px;}
   .step-label{font-size:1rem;}
   .step-num{width:2rem;height:2rem;font-size:0.85rem;}
-  .form-grid{grid-template-columns:1fr;}
+  .form-grid{grid-template-columns:1fr 1fr;}
   .form-group{gap:4px;}
   .form-group label{font-size:0.9rem;}
   .form-group input,.form-group select{
@@ -348,7 +348,8 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
     <div class="step-body">
       <div class="alert alert-info" id="editAlert">✅ ตรวจสอบความถูกต้องก่อนสร้างรายงาน — ช่องที่มี * ต้องกรอกให้ครบ</div>
       <div class="table-label">ข้อมูลทั่วไป</div>
-      <div class="form-grid">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px;">
+        <!-- แถว 1: ผู้นำเข้า | เลขที่ใบขน -->
         <div class="form-group">
           <label>ผู้นำเข้า <span class="req">*</span></label>
           <select id="f_importer_sel" onchange="onImporterChange(this)" onblur="resetZoom()" style="margin-bottom:0;">
@@ -364,18 +365,20 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
           <label>เลขที่ใบขนสินค้า <span class="req">*</span></label>
           <input type="text" id="f_declaration" placeholder="A000-00000-00000" oninput="markChanged(this);fmtDeclaration(this)" onblur="resetZoom()" />
         </div>
+        <!-- แถว 2: น้ำหนักหน้าใบขน | วันที่ -->
         <div class="form-group">
-          <label>น้ำหนักหน้าใบขนสินค้า (KG) <span class="req">*</span></label>
+          <label>น้ำหนักหน้าใบขน (KG) <span class="req">*</span></label>
           <input type="number" id="f_declared_weight" placeholder="เช่น 15000" oninput="markChanged(this);calcSummary()" onblur="resetZoom()" />
         </div>
         <div class="form-group">
           <label>วันที่ <span class="req">*</span></label>
-          <input type="text" id="f_date" placeholder="เช่น 25 มิถุนายน 2569" oninput="markChanged(this);checkDateWarning(this.value)" onblur="normThaiDate(this);resetZoom()" />
+          <input type="text" id="f_date" placeholder="เช่น 25 มิ.ย. 2569" oninput="markChanged(this);checkDateWarning(this.value)" onblur="normThaiDate(this);resetZoom()" />
           <span id="dateWarning" style="display:none;color:#CC2222;font-size:0.78rem;margin-top:4px;">⚠️ ตรวจสอบความถูกต้องของวันที่</span>
         </div>
+        <!-- แถว 3: ประเภทสินค้า | ประเทศกำเนิด -->
         <div class="form-group">
           <label>ประเภทสินค้า <span class="req">*</span></label>
-          <input type="text" id="f_goods_type" list="goodsList" placeholder="พิมหรือเลือก..." oninput="markChanged(this)" onblur="resetZoom()" autocomplete="off" />
+          <input type="text" id="f_goods_type" list="goodsList" placeholder="หอม / กระเทียม" oninput="markChanged(this)" onblur="resetZoom()" autocomplete="off" />
           <datalist id="goodsList">
             <option value="หอม">
             <option value="กระเทียม">
@@ -383,12 +386,14 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
         </div>
         <div class="form-group">
           <label>ประเทศกำเนิด <span class="req">*</span></label>
-          <input type="text" id="f_origin" placeholder="เช่น อินเดีย, จีน" oninput="markChanged(this)" onblur="resetZoom()" />
+          <input type="text" id="f_origin" placeholder="เช่น อินเดีย" oninput="markChanged(this)" onblur="resetZoom()" />
         </div>
+        <!-- แถว 4: ชุดที่ (ครึ่งซ้าย) -->
         <div class="form-group">
           <label>ชุดที่</label>
           <input type="text" id="f_period" placeholder="เช่น ชุดที่ 1" oninput="markChanged(this)" onblur="resetZoom()" />
         </div>
+        <div></div><!-- spacer -->
       </div>
 
       <div style="margin-top:22px;">
@@ -429,7 +434,7 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
       </div>
 
       <div class="action-row" style="justify-content:flex-end;padding-bottom:16px;">
-        <button class="btn btn-gen" id="btnGenerate" style="padding:20px 36px;font-size:1.2rem;">
+        <button class="btn btn-gen" id="btnGenerate" style="padding:12px 36px;font-size:1.2rem;">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
           สร้างรายงาน
         </button>
@@ -1151,7 +1156,10 @@ function generateImage(){
   document.getElementById('resultImg').src=imgData;
   document.getElementById('card-result').style.display='block';
   document.getElementById('clearBtnArea').style.display='block';
-  document.getElementById('card-result').scrollIntoView({behavior:'smooth',block:'start'});
+  // เลื่อนลงล่างสุดบนมือถือ
+  setTimeout(()=>{
+    window.scrollTo({top:document.body.scrollHeight, behavior:'smooth'});
+  },200);
   lastFilename=`weight_report_${(dn||'unknown').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.png`;
   showToast('สร้างรายงานสำเร็จ ✓','success');
 }
