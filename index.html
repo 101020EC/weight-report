@@ -558,7 +558,25 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
   </div>
 </div><!-- /page-team -->
 
-<div class="toast" id="toast" style="position:fixed;top:16px;right:16px;left:auto;bottom:auto;width:auto;max-width:220px;display:none;"></div>
+<div id="toast" style="
+  position:fixed;
+  bottom:20px;
+  left:12px;
+  top:auto;
+  right:auto;
+  width:200px;
+  background:#333;
+  color:white;
+  padding:10px 14px;
+  border-radius:8px;
+  font-size:14px;
+  font-weight:600;
+  box-shadow:0 2px 10px rgba(0,0,0,0.3);
+  display:none;
+  z-index:9999;
+  pointer-events:none;
+  word-wrap:break-word;
+"></div>
 <canvas id="reportCanvas" style="display:none;color-scheme:light;"></canvas>
 
 <script>
@@ -1139,13 +1157,37 @@ function generateImage(){
 }
 
 // ── SAVE — รองรับ iPhone Save to Photos ─────────────────
-function saveImage(){
+async function saveImage(){
   const img=document.getElementById('resultImg').src;
   if(!img||img===''){showToast('ยังไม่มีรูปรายงาน','error');return;}
 
-  // ตรวจสอบว่าเป็น iOS หรือไม่
   const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
 
+  // ── วิธีที่ 1: Web Share API (iOS 15+ รองรับแชร์รูปโดยตรง) ──
+  if(navigator.share && navigator.canShare){
+    try{
+      // แปลง dataURL → Blob → File
+      const res=await fetch(img);
+      const blob=await res.blob();
+      const file=new File([blob], lastFilename, {type:'image/png'});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({
+          files:[file],
+          title:'รายงานน้ำหนัก'
+        });
+        showToast('แชร์/บันทึกสำเร็จ ✓','success');
+        return;
+      }
+    }catch(e){
+      if(e.name!=='AbortError'){
+        // ถ้าไม่ได้ ลองวิธีถัดไป
+      } else {
+        return; // user กด cancel
+      }
+    }
+  }
+
+  // ── วิธีที่ 2: iOS เปิด tab ใหม่ให้กดค้าง ──
   if(isIOS){
     const win=window.open();
     if(win){
@@ -1156,32 +1198,26 @@ function saveImage(){
           *{box-sizing:border-box;margin:0;padding:0;}
           body{background:#111;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:24px 16px;gap:20px;font-family:'Sarabun',sans-serif;}
           .msg{color:white;font-size:18px;text-align:center;line-height:1.6;max-width:360px;}
-          .msg strong{color:#FFD54F;}
+          .msg strong{color:#FFD54F;font-size:22px;}
           img{max-width:100%;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.5);}
-          .close-btn{
-            margin-top:8px;
-            background:#444;color:white;border:none;
-            padding:16px 40px;border-radius:12px;
-            font-size:18px;font-weight:700;cursor:pointer;
-            font-family:'Sarabun',sans-serif;
-            width:100%;max-width:360px;
-          }
+          .close-btn{margin-top:8px;background:#444;color:white;border:none;padding:16px 40px;border-radius:12px;font-size:18px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;width:100%;max-width:360px;}
           .close-btn:active{background:#666;}
         </style>
         </head><body>
-        <p class="msg">กดค้างที่รูปแล้วเลือก<br><strong>"บันทึกไปยังรูปภาพ"</strong></p>
+        <p class="msg">กดค้างที่รูปด้านล่าง<br><strong>"บันทึกไปยังรูปภาพ"</strong></p>
         <img src="${img}" />
         <button class="close-btn" onclick="window.close()">✕ ปิดหน้านี้</button>
         </body></html>`);
       win.document.close();
-    } else {
-      const a=document.createElement('a');a.href=img;a.download=lastFilename;a.click();
     }
-  } else {
-    // Android / Desktop: ดาวน์โหลดปกติ
-    const a=document.createElement('a');a.href=img;a.download=lastFilename;a.click();
+    showToast('กดค้างที่รูปแล้วบันทึก','success');
+    return;
   }
-  showToast(isIOS?'กดค้างที่รูปแล้วเลือก "บันทึกไปยังรูปภาพ" ✓':'บันทึกรูปแล้ว ✓','success');
+
+  // ── วิธีที่ 3: Desktop/Android download ──
+  const a=document.createElement('a');
+  a.href=img;a.download=lastFilename;a.click();
+  showToast('บันทึกรูปแล้ว ✓','success');
 }
 
 // ── ZOOM RESET ─────────────────────────────────────────────
