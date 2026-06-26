@@ -1293,35 +1293,48 @@ function showToast(msg,type=''){
 window.addEventListener('DOMContentLoaded',()=>{
   updateReadBtn();
 
-  // ── Safari single-tap fix ─────────────────────────────
-  // ผูก event ด้วย addEventListener แทน onclick ทุกปุ่มที่มีปัญหา
-  // Safari mobile จะ fire single-tap ถูกต้องเมื่อใช้ addEventListener
-  function tap(id, fn){
+  // ── Safari iOS minimized toolbar fix ─────────────────
+  // เมื่อ toolbar หดแล้ว tap ครั้งแรกจะ wake browser ไม่ส่ง click
+  // แก้โดยใช้ touchstart แทน click สำหรับปุ่มสำคัญ
+  function safeTap(id, fn){
     const el=document.getElementById(id);
     if(!el) return;
-    // ลบ onclick เดิมออกก่อน ป้องกัน double-fire
     el.removeAttribute('onclick');
-    el.addEventListener('click', fn, {passive:false});
+    let tapped=false;
+    el.addEventListener('touchstart', (e)=>{
+      e.preventDefault(); // ป้องกัน 300ms delay
+      tapped=true;
+      fn();
+    }, {passive:false});
+    // fallback สำหรับ mouse (desktop)
+    el.addEventListener('click', ()=>{
+      if(!tapped) fn();
+      tapped=false;
+    });
   }
 
   // ระบบอ่านใบชั่งน้ำหนัก
-  tap('btnGenerate', generateImage);
-  tap('btnGenerateNew', generateImage);
-  tap('btnClearWeight', clearAllData);
+  safeTap('btnGenerate', generateImage);
+  safeTap('btnGenerateNew', generateImage);
+  safeTap('btnClearWeight', clearAllData);
 
   // ระบบรายงานตรวจทีม
-  tap('btnClearTeam', clearTeamAll);
+  safeTap('btnClearTeam', clearTeamAll);
 
-  // teamDropZone — click เปิด file picker
+  // teamDropZone
   const teamZone=document.getElementById('teamDropZone');
   const teamInput=document.getElementById('teamFileInput');
   if(teamZone && teamInput){
     teamZone.removeAttribute('onclick');
-    teamZone.addEventListener('click', (e)=>{
-      if(e.target===teamZone || e.target.closest('#teamUploadPlaceholder')){
+    teamZone.addEventListener('touchstart',(e)=>{
+      e.preventDefault();
+      teamInput.click();
+    },{passive:false});
+    teamZone.addEventListener('click',(e)=>{
+      if(e.target===teamZone||e.target.closest('#teamUploadPlaceholder')){
         teamInput.click();
       }
-    }, {passive:false});
+    });
   }
 });
 </script>
