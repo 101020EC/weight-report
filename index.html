@@ -558,7 +558,7 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
   </div>
 </div><!-- /page-team -->
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" style="position:fixed;top:16px;right:16px;left:auto;bottom:auto;width:auto;max-width:220px;display:none;"></div>
 <canvas id="reportCanvas" style="display:none;color-scheme:light;"></canvas>
 
 <script>
@@ -1389,8 +1389,18 @@ function clearTeamAll(){
 // ── TOAST ─────────────────────────────────────────────────
 let toastT;
 function showToast(msg,type=''){
-  const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;
-  clearTimeout(toastT);toastT=setTimeout(()=>t.className='toast',2000);
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  // reset สี
+  t.style.background = type==='success'?'#1A7A3A' : type==='error'?'#AA2222' : type==='warn'?'#B87800' : '#333';
+  t.style.display='inline-block';
+  t.style.opacity='1';
+  t.style.transform='translateY(0)';
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>{
+    t.style.opacity='0';
+    setTimeout(()=>{ t.style.display='none'; },200);
+  },2000);
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
