@@ -51,14 +51,31 @@ module.exports = async function handler(req, res) {
     const raw = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
     // ประมวลผลตาม type
+    // helper: extract JSON จาก response ที่อาจมี text อื่นปน
+    function extractJSON(raw) {
+      // ลอง parse ตรงๆ ก่อน
+      try {
+        return JSON.parse(raw.trim());
+      } catch(e) {}
+      // ลบ markdown code blocks
+      let clean = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      try {
+        return JSON.parse(clean);
+      } catch(e) {}
+      // หา JSON object ที่ใหญ่ที่สุดในข้อความ
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (match) {
+        try { return JSON.parse(match[0]); } catch(e) {}
+      }
+      throw new Error('ไม่สามารถอ่านข้อมูลจากรูปได้ กรุณาลองใหม่');
+    }
+
     if (type === 'weight') {
-      const clean = raw.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(clean);
+      const parsed = extractJSON(raw);
       return res.status(200).json({ success: true, data: parsed });
 
     } else if (type === 'team') {
-      const clean = raw.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(clean);
+      const parsed = extractJSON(raw);
 
       const date  = parsed.date || '';
       const decls = parsed.declarations || [];
@@ -91,8 +108,9 @@ module.exports = async function handler(req, res) {
     }
 
   } catch (err) {
-    console.error('Gemini error:', err);
-    return res.status(500).json({ success: false, error: err.message || 'เกิดข้อผิดพลาด' });
+    console.error('Gemini error:', err.message);
+    const msg = err.message || 'เกิดข้อผิดพลาด';
+    return res.status(500).json({ success: false, error: msg });
   }
 }
 
