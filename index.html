@@ -348,34 +348,30 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
     <div class="step-body">
       <div class="alert alert-info" id="editAlert">✅ ตรวจสอบความถูกต้องก่อนสร้างรายงาน — ช่องที่มี * ต้องกรอกให้ครบ</div>
       <div class="table-label">ข้อมูลทั่วไป</div>
+      <!-- เลขที่ใบขน — เต็มแถว กึ่งกลาง -->
+      <div class="form-group" style="margin-bottom:12px;">
+        <label style="text-align:center;display:block;">เลขที่ใบขนสินค้า <span class="req">*</span></label>
+        <input type="text" id="f_declaration" placeholder="A000-00000-00000" oninput="markChanged(this);fmtDeclaration(this)" onblur="resetZoom()" style="text-align:center;" />
+      </div>
       <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px;">
-        <!-- แถว 1: ผู้นำเข้า | เลขที่ใบขน -->
+        <!-- แถว 1: ผู้นำเข้า | วันที่ -->
         <div class="form-group">
           <label>ผู้นำเข้า <span class="req">*</span></label>
           <select id="f_importer_sel" onchange="onImporterChange(this)" onblur="resetZoom()" style="margin-bottom:0;">
-            <option value="">— เลือกผู้นำเข้า —</option>
+            <option value="">— เลือก —</option>
             <option value="ดิเรก">ดิเรก</option>
             <option value="ติก๊ะ">ติก๊ะ</option>
             <option value="ก๊ะลี">ก๊ะลี</option>
             <option value="__other__">อื่นๆ (โปรดระบุ)</option>
           </select>
-          <input type="text" id="f_importer" placeholder="พิมชื่อผู้นำเข้า..." oninput="markChanged(this)" onblur="resetZoom()" style="display:none;margin-top:8px;" />
-        </div>
-        <div class="form-group">
-          <label>เลขที่ใบขนสินค้า <span class="req">*</span></label>
-          <input type="text" id="f_declaration" placeholder="A000-00000-00000" oninput="markChanged(this);fmtDeclaration(this)" onblur="resetZoom()" />
-        </div>
-        <!-- แถว 2: น้ำหนักหน้าใบขน | วันที่ -->
-        <div class="form-group">
-          <label>น้ำหนักหน้าใบขน (KG) <span class="req">*</span></label>
-          <input type="number" id="f_declared_weight" placeholder="เช่น 15000" oninput="markChanged(this);calcSummary()" onblur="resetZoom()" />
+          <input type="text" id="f_importer" placeholder="พิมชื่อ..." oninput="markChanged(this)" onblur="resetZoom()" style="display:none;margin-top:8px;" />
         </div>
         <div class="form-group">
           <label>วันที่ <span class="req">*</span></label>
-          <input type="text" id="f_date" placeholder="เช่น 25 มิ.ย. 2569" oninput="markChanged(this);checkDateWarning(this.value)" onblur="normThaiDate(this);resetZoom()" />
-          <span id="dateWarning" style="display:none;color:#CC2222;font-size:0.78rem;margin-top:4px;">⚠️ ตรวจสอบความถูกต้องของวันที่</span>
+          <input type="text" id="f_date" placeholder="25 มิ.ย. 2569" oninput="markChanged(this);checkDateWarning(this.value)" onblur="normThaiDate(this);resetZoom()" />
+          <span id="dateWarning" style="display:none;color:#CC2222;font-size:0.75rem;margin-top:3px;">⚠️ ตรวจสอบวันที่</span>
         </div>
-        <!-- แถว 3: ประเภทสินค้า | ประเทศกำเนิด -->
+        <!-- แถว 2: ประเภทสินค้า | ประเทศกำเนิด -->
         <div class="form-group">
           <label>ประเภทสินค้า <span class="req">*</span></label>
           <input type="text" id="f_goods_type" list="goodsList" placeholder="หอม / กระเทียม" oninput="markChanged(this)" onblur="resetZoom()" autocomplete="off" />
@@ -388,12 +384,15 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
           <label>ประเทศกำเนิด <span class="req">*</span></label>
           <input type="text" id="f_origin" placeholder="เช่น อินเดีย" oninput="markChanged(this)" onblur="resetZoom()" />
         </div>
-        <!-- แถว 4: ชุดที่ (ครึ่งซ้าย) -->
+        <!-- แถว 3: น้ำหนักหน้าใบขน | ชุดที่ -->
+        <div class="form-group">
+          <label>น้ำหนักหน้าใบขน (KG) <span class="req">*</span></label>
+          <input type="number" id="f_declared_weight" placeholder="เช่น 15000" oninput="markChanged(this);calcSummary()" onblur="resetZoom()" />
+        </div>
         <div class="form-group">
           <label>ชุดที่</label>
           <input type="text" id="f_period" placeholder="เช่น ชุดที่ 1" oninput="markChanged(this)" onblur="resetZoom()" />
         </div>
-        <div></div><!-- spacer -->
       </div>
 
       <div style="margin-top:22px;">
@@ -605,10 +604,67 @@ function handleFiles(files){
   for(const f of files){if(!f.type.startsWith('image/'))continue;uploadedFiles.push(f);}
   renderBigPreview();
   updateReadBtn();
-  // มือถือ: เลื่อนลงมาที่ปุ่มอ่านข้อมูลอัตโนมัติ
-  setTimeout(()=>{
-    document.getElementById('readBtn')?.scrollIntoView({behavior:'smooth',block:'center'});
-  },300);
+  // รัน readImages อัตโนมัติหลังอัปโหลด
+  if(uploadedFiles.length>0){
+    setTimeout(()=>{
+      document.getElementById('readBtn')?.scrollIntoView({behavior:'smooth',block:'center'});
+      setTimeout(()=>readImagesWithRetry(),400);
+    },300);
+  }
+}
+
+async function readImagesWithRetry(){
+  const success = await runReadImages();
+  if(!success){
+    // retry ครั้งที่ 2
+    showToast('ลองใหม่อีกครั้ง...','warn');
+    await new Promise(r=>setTimeout(r,1500));
+    await runReadImages(true);
+  }
+}
+
+async function runReadImages(isFinal=false){
+  if(uploadedFiles.length===0) return false;
+  document.getElementById('loadingArea').style.display='block';
+  document.getElementById('readBtn').disabled=true;
+  document.getElementById('loadingText').textContent='กำลังเตรียมภาพ...';
+  try{
+    const imagesData=[];
+    for(const f of uploadedFiles){
+      document.getElementById('loadingText').textContent=`กำลังประมวลผลภาพ ${imagesData.length+1}/${uploadedFiles.length}...`;
+      const encoded=await resizeAndEncode(f);
+      imagesData.push(encoded);
+    }
+    document.getElementById('loadingText').textContent='กำลังส่งไปยัง Gemini AI...';
+    const resp=await fetch('/api/gemini',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({type:'weight',images:imagesData})
+    });
+    if(!resp.ok){
+      const errText=await resp.text();
+      throw new Error(`Server error ${resp.status}: ${errText.slice(0,150)}`);
+    }
+    const result=await resp.json();
+    if(!result.success) throw new Error(result.error||'เกิดข้อผิดพลาด');
+    populateForm(result.data);
+    document.getElementById('card-edit').style.display='block';
+    setTimeout(()=>{
+      document.getElementById('card-edit').scrollIntoView({behavior:'smooth',block:'start'});
+    },100);
+    document.getElementById('num-1').classList.add('done');
+    document.getElementById('num-1').textContent='✓';
+    showToast('อ่านข้อมูลสำเร็จ ✓','success');
+    return true;
+  }catch(err){
+    if(isFinal){
+      showToast('ผิดพลาด: '+(err.message||'เกิดข้อผิดพลาด'),'error');
+    }
+    return false;
+  }finally{
+    document.getElementById('loadingArea').style.display='none';
+    updateReadBtn();
+  }
 }
 
 function renderBigPreview(){
@@ -685,43 +741,8 @@ function resizeAndEncode(file){
 
 // ── GEMINI CALL ───────────────────────────────────────────
 async function readImages(){
-  document.getElementById('loadingArea').style.display='block';
-  document.getElementById('readBtn').disabled=true;
-  document.getElementById('loadingText').textContent='กำลังเตรียมภาพ...';
-  try{
-    const imagesData=[];
-    for(const f of uploadedFiles){
-      document.getElementById('loadingText').textContent=`กำลังประมวลผลภาพ ${imagesData.length+1}/${uploadedFiles.length}...`;
-      const encoded=await resizeAndEncode(f);
-      imagesData.push(encoded);
-    }
-    document.getElementById('loadingText').textContent='กำลังส่งไปยัง Gemini AI...';
-    const resp = await fetch('/api/gemini', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({type:'weight', images:imagesData})
-    });
-    if(!resp.ok){
-      const errText = await resp.text();
-      throw new Error(`Server error ${resp.status}: ${errText.slice(0,150)}`);
-    }
-    const result = await resp.json();
-    if(!result.success) throw new Error(result.error||'เกิดข้อผิดพลาด');
-    populateForm(result.data);
-    document.getElementById('card-edit').style.display='block';
-    // เลื่อนไปแค่หัว "2 ตรวจสอบและแก้ไขข้อมูล" พอดี
-    setTimeout(()=>{
-      document.getElementById('card-edit').scrollIntoView({behavior:'smooth',block:'start'});
-    },100);
-    document.getElementById('num-1').classList.add('done');
-    document.getElementById('num-1').textContent='✓';
-    showToast('อ่านข้อมูลสำเร็จ ✓','success');
-  }catch(err){
-    showToast('ผิดพลาด: '+(err.message||'เกิดข้อผิดพลาด'),'error');
-  }finally{
-    document.getElementById('loadingArea').style.display='none';
-    updateReadBtn();
-  }
+  // เรียกจากปุ่มกด — retry 1 ครั้งถ้า error
+  await readImagesWithRetry();
 }
 
 // ── FORM ──────────────────────────────────────────────────
