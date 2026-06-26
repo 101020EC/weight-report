@@ -121,8 +121,8 @@ table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF
 .result-img-wrap{padding:20px;background:#F8F8F8;display:flex;flex-direction:column;align-items:center;gap:16px;}
 .result-img-wrap img{max-width:100%;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.12);border:1px solid var(--gray-200);}
 .save-area{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;}
-.toast{position:fixed;bottom:22px;right:22px;background:var(--gray-800);color:white;padding:13px 20px;border-radius:8px;font-size:15px;box-shadow:0 4px 20px rgba(0,0,0,0.2);opacity:0;transform:translateY(10px);transition:opacity 0.25s,transform 0.25s;z-index:999;max-width:360px;}
-.toast.show{opacity:1;transform:translateY(0);}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--gray-800);color:white;padding:14px 24px;border-radius:10px;font-size:1rem;font-weight:600;box-shadow:0 4px 24px rgba(0,0,0,0.3);opacity:0;transition:opacity 0.25s,transform 0.25s;z-index:9999;white-space:nowrap;max-width:90vw;text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .toast.success{background:#1A7A3A;}.toast.error{background:#AA2222;}.toast.warn{background:#B87800;}
 .alert{border-radius:8px;padding:12px 16px;font-size:14px;margin-bottom:14px;}
 .alert-info{background:#F0F6FF;border:1px solid #B8D4F8;color:#1A4A8A;}
@@ -714,15 +714,18 @@ const FIELD_NAMES={'f_importer':'ผู้นำเข้า','f_declaration':'�
 
 function validateForm(){
   let missing=[];
-  // check importer separately
-  const impSel=document.getElementById('f_importer_sel');
+
+  // importer: อ่านจาก f_importer (text) ซึ่ง sync จาก select เสมอ
   const impInp=document.getElementById('f_importer');
-  const impVal= impSel?.value==='__other__' ? impInp?.value?.trim() : impSel?.value?.trim();
+  const impSel=document.getElementById('f_importer_sel');
+  // sync ก่อนเช็ค
+  if(impSel && impSel.value!=='__other__' && impSel.value){
+    impInp.value=impSel.value;
+  }
+  const impVal=(impInp?.value||'').trim();
   const impEmpty=!impVal;
-  impSel?.classList.toggle('invalid',impEmpty);
+  impSel?.classList.toggle('invalid', impEmpty);
   if(impEmpty) missing.push('ผู้นำเข้า');
-  // sync f_importer value for generateImage to read
-  if(impInp && impSel?.value!=='__other__') impInp.value=impSel?.value||'';
 
   // check other required fields
   ['f_declaration','f_declared_weight','f_date','f_goods_type','f_origin'].forEach(id=>{
@@ -815,8 +818,7 @@ function generateImage(){
   // validate required fields
   const missing=validateForm();
   if(missing.length>0){
-    showToast('กรุณากรอกข้อมูล: '+missing.join(', '),'error');
-    document.getElementById(REQUIRED_FIELDS.find(id=>!document.getElementById(id).value))?.focus();
+    showToast('กรุณากรอก: '+missing.join(', '),'error');
     return;
   }
 
