@@ -157,10 +157,10 @@ table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF
 .save-area{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;}
 .toast{
   position:fixed;
-  top:16px;
-  right:16px;
-  left:auto;
-  bottom:auto;
+  bottom:24px;
+  left:16px;
+  top:auto;
+  right:auto;
   width:auto;
   max-width:260px;
   background:var(--gray-800);color:white;
@@ -169,12 +169,12 @@ table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF
   font-size:0.9rem;font-weight:600;
   box-shadow:0 4px 24px rgba(0,0,0,0.3);
   opacity:0;
-  transform:translateY(-10px);
+  transform:translateY(10px);
   transition:opacity 0.25s,transform 0.25s;
   z-index:9999;
   text-align:left;
   word-break:break-word;
-  pointer-events:none; /* ไม่บังการกด */
+  pointer-events:none;
 }
 .toast.show{opacity:1;transform:translateY(0);}
 .toast.success{background:#1A7A3A;}
