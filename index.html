@@ -126,9 +126,16 @@ table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF
 .toast.success{background:#1A7A3A;}.toast.error{background:#AA2222;}.toast.warn{background:#B87800;}
 .alert{border-radius:8px;padding:12px 16px;font-size:14px;margin-bottom:14px;}
 .alert-info{background:#F0F6FF;border:1px solid #B8D4F8;color:#1A4A8A;}
+/* Safari single-tap fix — ต้องมี cursor:pointer และ touch-action:manipulation */
+button, .btn, .btn-add-row, .s-item, .btn-del, .btn-save {
+  cursor:pointer;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
 .icon{width:20px;height:20px;display:inline-block;vertical-align:middle;flex-shrink:0;}
 @media(max-width:640px){
-  /* JS inject font-size=20px ที่ html แล้ว ทุก rem จะใหญ่ขึ้นอัตโนมัติ */
+  /* ลดขนาด 20% จาก base 20px → 16px */
+  html{ font-size: 16px !important; }
   .main{padding:10px;}.step-body{padding:14px;}
   .header{padding:12px 14px;gap:10px;}
   .header-title{font-size:1.1rem;}
@@ -318,15 +325,23 @@ table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF
 
       <div style="margin-top:22px;">
         <div class="table-label">รายละเอียดการชั่งน้ำหนักรถและสินค้า</div>
-        <div class="table-wrap">
-          <table class="dt">
+        <div class="table-wrap" style="overflow-x:hidden;">
+          <table class="dt" style="table-layout:fixed;width:100%;">
+            <colgroup>
+              <col style="width:32px;">
+              <col style="width:22%;">
+              <col style="width:20%;">
+              <col style="width:20%;">
+              <col style="width:20%;">
+              <col style="width:32px;">
+            </colgroup>
             <thead><tr>
-              <th style="width:40px;">#</th>
+              <th>#</th>
               <th>ทะเบียนรถ</th>
-              <th>น้ำหนักรถเปล่า (KG)</th>
-              <th>น้ำหนักชั่งได้ (KG)</th>
-              <th>น้ำหนักสินค้าสุทธิ (KG)</th>
-              <th style="width:36px;"></th>
+              <th>น้ำหนักรถเปล่า<br><span style="font-weight:400;font-size:0.85em;">(KG)</span></th>
+              <th>น้ำหนักชั่งได้<br><span style="font-weight:400;font-size:0.85em;">(KG)</span></th>
+              <th>น้ำหนักสุทธิ<br><span style="font-weight:400;font-size:0.85em;">(KG)</span></th>
+              <th></th>
             </tr></thead>
             <tbody id="vehicleBody"></tbody>
           </table>
@@ -749,21 +764,24 @@ function addRow(data={}){
   const tbody=document.getElementById('vehicleBody');
   const i=rowIdx++;
   const emV=data.empty_weight||'',grV=data.gross_weight||'',neV=data.net_weight||'';
+  // คำนวณ net จาก gross-empty ถ้ามีข้อมูล
+  const calcNet=(g,e)=>{const n=Number(g)-Number(e);return(n>0)?n.toLocaleString('en-US'):'';}
+  const netDisplay=grV&&emV?calcNet(grV,emV):(neV?Number(neV).toLocaleString('en-US'):'');
   const tr=document.createElement('tr');tr.id='row-'+i;
   tr.innerHTML=`
-    <td style="color:#aaa;font-size:13px;">${tbody.children.length+1}</td>
-    <td><input type="text" id="plate_${i}" value="${data.plate||''}" placeholder="ทะเบียนรถ" oninput="markChanged(this)"/></td>
-    <td><input type="text" id="empty_${i}" value="${emV?Number(emV).toLocaleString('en-US'):''}" placeholder="0" oninput="markChanged(this);calcSummary()"/></td>
-    <td><input type="text" id="gross_${i}" value="${grV?Number(grV).toLocaleString('en-US'):''}" placeholder="0" oninput="markChanged(this);autoNet(${i})"/></td>
-    <td><input type="text" id="net_${i}" value="${neV?Number(neV).toLocaleString('en-US'):''}" placeholder="อัตโนมัติ" oninput="markChanged(this);calcSummary()" style="background:#FAFAFA;"/></td>
+    <td style="color:#aaa;font-size:0.8rem;">${tbody.children.length+1}</td>
+    <td><input type="text" id="plate_${i}" value="${data.plate||''}" placeholder="ทะเบียน" oninput="markChanged(this)" style="font-size:0.85rem;"/></td>
+    <td><input type="text" id="empty_${i}" value="${emV?Number(emV).toLocaleString('en-US'):''}" placeholder="0" oninput="markChanged(this);autoNet(${i})" style="font-size:0.85rem;"/></td>
+    <td><input type="text" id="gross_${i}" value="${grV?Number(grV).toLocaleString('en-US'):''}" placeholder="0" oninput="markChanged(this);autoNet(${i})" style="font-size:0.85rem;"/></td>
+    <td><input type="text" id="net_${i}" value="${netDisplay}" readonly style="background:#F0F0F0;color:#555;font-size:0.85rem;cursor:default;"/></td>
     <td><button class="btn-del" onclick="removeRow('row-${i}')">✕</button></td>`;
   tbody.appendChild(tr);reNumberRows();
 }
 function getN(id){return parseFloat((document.getElementById(id)?.value||'').replace(/,/g,''))||0;}
 function autoNet(i){
-  const em=getN('empty_'+i),gr=getN('gross_'+i);
+  const em=getN('empty_'+i), gr=getN('gross_'+i);
   const ne=document.getElementById('net_'+i);
-  if(ne&&gr>0){const n=gr-em;ne.value=n>0?n.toLocaleString('en-US'):'';}
+  if(ne){ const n=gr-em; ne.value=n>0?n.toLocaleString('en-US'):''; }
   calcSummary();
 }
 function removeRow(id){document.getElementById(id)?.remove();reNumberRows();calcSummary();}
@@ -1161,11 +1179,8 @@ function onDrop2(e){e.preventDefault();onDragLeave2();handleTeamFiles(e.dataTran
 
 function handleTeamFiles(files){
   for(const f of files){if(!f.type.startsWith('image/'))continue;teamFiles.push(f);}
-  // force repaint ก่อน render เพื่อแก้ Safari ที่บางครั้งไม่แสดงรูป
-  requestAnimationFrame(()=>{
-    renderTeamPreview();
-    updateTeamReadBtn();
-  });
+  renderTeamPreview();
+  updateTeamReadBtn();
 }
 function renderTeamPreview(){
   const ph=document.getElementById('teamUploadPlaceholder');
@@ -1273,14 +1288,6 @@ function showToast(msg,type=''){
 
 window.addEventListener('DOMContentLoaded',()=>{
   updateReadBtn();
-  // แก้ Safari mobile double-tap: เพิ่ม touchend → click ให้ปุ่มทุกปุ่ม
-  document.addEventListener('touchend', function(e){
-    const btn = e.target.closest('button, .btn, .btn-add-row, .s-item, .btn-del');
-    if(btn && !btn.disabled){
-      e.preventDefault();
-      btn.click();
-    }
-  }, {passive:false});
 });
 </script>
 </body>
