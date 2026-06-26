@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ระบบอ่านใบชั่งน้ำหนัก</title>
 <script>
-// iOS Safari + Apps Script iframe: ต้อง inject font-size ผ่าน JS เท่านั้น 
+// iOS Safari + Apps Script iframe: ต้อง inject font-size ผ่าน JS เท่านั้น
 (function(){
   function applyScale(){
     var w = window.innerWidth || document.documentElement.clientWidth;
@@ -426,15 +426,11 @@ table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF
 
     <!-- ผลลัพธ์ — กล่องแชท -->
     <div class="step-card" id="teamResultCard" style="display:none;">
-      <div class="step-header" style="justify-content:space-between;">
+      <div class="step-header" style="justify-content:center;">
         <div style="display:flex;align-items:center;gap:10px;">
           <div class="step-num done" style="background:var(--orange);">✓</div>
           <span style="font-size:15px;font-weight:600;">ข้อความรายงาน</span>
         </div>
-        <button class="btn btn-secondary" onclick="copyTeamReport()" style="padding:7px 14px;font-size:13px;">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          คัดลอก
-        </button>
       </div>
       <!-- คำเตือนข้อมูลขาด -->
       <div id="teamWarningBox" style="display:none;background:#FFF8E1;border-bottom:1px solid #FFD54F;padding:12px 18px;">
@@ -451,6 +447,13 @@ table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF
               font-size:15px;line-height:1.85;color:var(--gray-800);
               white-space:pre-wrap;word-break:break-word;
             "></div>
+          </div>
+          <!-- ปุ่มคัดลอก — ใต้ข้อความ -->
+          <div style="display:flex;justify-content:center;margin-top:16px;">
+            <button class="btn btn-secondary" onclick="copyTeamReport()" style="padding:12px 28px;font-size:15px;gap:10px;">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              คัดลอกข้อความ
+            </button>
           </div>
         </div>
       </div>
@@ -491,6 +494,10 @@ function handleFiles(files){
   for(const f of files){if(!f.type.startsWith('image/'))continue;uploadedFiles.push(f);}
   renderBigPreview();
   updateReadBtn();
+  // มือถือ: เลื่อนลงมาที่ปุ่มอ่านข้อมูลอัตโนมัติ
+  setTimeout(()=>{
+    document.getElementById('readBtn')?.scrollIntoView({behavior:'smooth',block:'center'});
+  },300);
 }
 
 function renderBigPreview(){
@@ -583,6 +590,10 @@ async function readImages(){
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({type:'weight', images:imagesData})
     });
+    if(!resp.ok){
+      const errText = await resp.text();
+      throw new Error(`Server error ${resp.status}: ${errText.slice(0,150)}`);
+    }
     const result = await resp.json();
     if(!result.success) throw new Error(result.error||'เกิดข้อผิดพลาด');
     populateForm(result.data);
@@ -1150,7 +1161,11 @@ function onDrop2(e){e.preventDefault();onDragLeave2();handleTeamFiles(e.dataTran
 
 function handleTeamFiles(files){
   for(const f of files){if(!f.type.startsWith('image/'))continue;teamFiles.push(f);}
-  renderTeamPreview();updateTeamReadBtn();
+  // force repaint ก่อน render เพื่อแก้ Safari ที่บางครั้งไม่แสดงรูป
+  requestAnimationFrame(()=>{
+    renderTeamPreview();
+    updateTeamReadBtn();
+  });
 }
 function renderTeamPreview(){
   const ph=document.getElementById('teamUploadPlaceholder');
@@ -1162,14 +1177,20 @@ function renderTeamPreview(){
   ph.style.display='none';pg.style.display='flex';cb.style.display='';
   pg.innerHTML='';
   teamFiles.forEach((f,idx)=>{
-    const r=new FileReader();
-    r.onload=e=>{
-      const item=document.createElement('div');
-      item.style.cssText='position:relative;width:72px;height:72px;border-radius:6px;overflow:hidden;border:1.5px solid var(--gray-200);flex-shrink:0;';
-      item.innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;"/>
-        <button onclick="removeTeamFile(${idx})" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">×</button>`;
-      pg.appendChild(item);
-    };r.readAsDataURL(f);
+    const url=URL.createObjectURL(f);
+    const item=document.createElement('div');
+    item.style.cssText='position:relative;width:72px;height:72px;border-radius:6px;overflow:hidden;border:1.5px solid var(--gray-200);flex-shrink:0;';
+    const img=document.createElement('img');
+    img.src=url;
+    img.style.cssText='width:100%;height:100%;object-fit:cover;';
+    img.onload=()=>URL.revokeObjectURL(url);
+    const btn=document.createElement('button');
+    btn.onclick=(e)=>{e.stopPropagation();removeTeamFile(idx);};
+    btn.style.cssText='position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;';
+    btn.textContent='×';
+    item.appendChild(img);
+    item.appendChild(btn);
+    pg.appendChild(item);
   });
 }
 function removeTeamFile(idx){teamFiles.splice(idx,1);renderTeamPreview();updateTeamReadBtn();}
@@ -1193,6 +1214,10 @@ async function readTeamImages(){
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({type:'team', images:imagesData})
     });
+    if(!resp.ok){
+      const errText = await resp.text();
+      throw new Error(`Server error ${resp.status}: ${errText.slice(0,150)}`);
+    }
     const result = await resp.json();
     if(!result.success) throw new Error(result.error||'เกิดข้อผิดพลาด');
 
@@ -1246,7 +1271,17 @@ function showToast(msg,type=''){
   clearTimeout(toastT);toastT=setTimeout(()=>t.className='toast',4000);
 }
 
-window.addEventListener('DOMContentLoaded',()=>updateReadBtn());
+window.addEventListener('DOMContentLoaded',()=>{
+  updateReadBtn();
+  // แก้ Safari mobile double-tap: เพิ่ม touchend → click ให้ปุ่มทุกปุ่ม
+  document.addEventListener('touchend', function(e){
+    const btn = e.target.closest('button, .btn, .btn-add-row, .s-item, .btn-del');
+    if(btn && !btn.disabled){
+      e.preventDefault();
+      btn.click();
+    }
+  }, {passive:false});
+});
 </script>
 </body>
 </html>
