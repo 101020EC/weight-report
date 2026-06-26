@@ -254,7 +254,7 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
     <div class="step-body">
       <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()"
            ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
-        <input type="file" id="fileInput" accept="image/*" multiple onchange="handleFiles(this.files)" />
+        <input type="file" id="fileInput" accept="image/*" onchange="handleFiles(this.files)" />
         <div id="uploadPlaceholder">
           <div class="upload-icon" style="font-size:38px;margin-bottom:10px;">📷</div>
           <p>ลากรูปมาวางที่นี่ หรือ<br><strong>คลิกเพื่อเลือกไฟล์</strong></p>
