@@ -1,10 +1,8 @@
 // api/gemini.js — Vercel Serverless Function
-// API Key เก็บใน Vercel Environment Variables (ไม่โชว์ใน code)
-
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_URL   = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
