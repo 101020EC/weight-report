@@ -157,23 +157,23 @@ table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF
 .save-area{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;}
 .toast{
   position:fixed;
-  top:24px;
+  top:16px;
+  right:16px;
+  left:auto;
   bottom:auto;
-  left:0;
-  right:0;
-  margin:0 auto;
-  width:fit-content;
-  max-width:88vw;
+  width:auto;
+  max-width:260px;
   background:var(--gray-800);color:white;
-  padding:14px 24px;
+  padding:12px 18px;
   border-radius:10px;
-  font-size:1rem;font-weight:600;
+  font-size:0.9rem;font-weight:600;
   box-shadow:0 4px 24px rgba(0,0,0,0.3);
   opacity:0;
-  transform:translateY(-20px);
+  transform:translateY(-10px);
   transition:opacity 0.25s,transform 0.25s;
   z-index:9999;
-  text-align:center;
+  text-align:left;
+  word-break:break-word;
 }
 .toast.show{opacity:1;transform:translateY(0);}
 .toast.success{background:#1A7A3A;}
@@ -429,9 +429,9 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
         </button>
       </div>
       <!-- ปุ่ม Clear ใต้สร้างรายงาน — หายไปเมื่อกดสร้างรายงานแล้ว -->
-      <div id="clearBeforeReport" style="margin-bottom:16px;padding-bottom:60px;">
-        <button class="btn" id="btnClearBefore" style="background:#DC2626;color:white;width:100%;justify-content:center;font-size:1.2rem;padding:20px 36px;border-radius:10px;">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      <div id="clearBeforeReport" style="margin-bottom:16px;padding-bottom:60px;text-align:left;">
+        <button class="btn" id="btnClearBefore" style="background:#DC2626;color:white;width:auto;min-width:100px;justify-content:center;font-size:1rem;padding:14px 20px;border-radius:10px;">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           Clear
         </button>
       </div>
@@ -464,9 +464,9 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
 
   <!-- ปุ่ม Clear — แสดงหลังสร้างรายงาน -->
   <div id="clearBtnArea" style="display:none;margin-bottom:80px;padding-bottom:40px;text-align:left;">
-    <button class="btn" id="btnClearWeight" style="background:#DC2626;color:white;width:auto;min-width:120px;justify-content:center;font-size:0.9rem;padding:14px 20px;border-radius:10px;">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-      Clear
+    <button class="btn" id="btnClearWeight" style="background:#DC2626;color:white;width:100%;justify-content:center;font-size:1rem;padding:14px 20px;border-radius:10px;">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      Clear — ล้างข้อมูลทั้งหมด
     </button>
   </div>
 </div><!-- /main -->
