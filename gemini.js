@@ -50,6 +50,14 @@ module.exports = async function handler(req, res) {
     const geminiData = await geminiRes.json();
     const raw = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
+    // debug: ถ้าไม่มี raw ให้ส่ง error บอก
+    if (!raw) {
+      return res.status(500).json({
+        success: false,
+        error: 'Gemini ไม่ส่งข้อมูลกลับมา: ' + JSON.stringify(geminiData).slice(0, 300)
+      });
+    }
+
     // ประมวลผลตาม type
     // helper: extract JSON จาก response ที่อาจมี text อื่นปน
     function extractJSON(raw) {
@@ -67,7 +75,7 @@ module.exports = async function handler(req, res) {
       if (match) {
         try { return JSON.parse(match[0]); } catch(e) {}
       }
-      throw new Error('ไม่สามารถอ่านข้อมูลจากรูปได้ กรุณาลองใหม่');
+      throw new Error('อ่าน JSON ไม่ได้ raw: ' + raw.slice(0, 200));
     }
 
     if (type === 'weight') {
