@@ -126,11 +126,17 @@ table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF
 .toast.success{background:#1A7A3A;}.toast.error{background:#AA2222;}.toast.warn{background:#B87800;}
 .alert{border-radius:8px;padding:12px 16px;font-size:14px;margin-bottom:14px;}
 .alert-info{background:#F0F6FF;border:1px solid #B8D4F8;color:#1A4A8A;}
-/* Safari single-tap fix — ต้องมี cursor:pointer และ touch-action:manipulation */
-button, .btn, .btn-add-row, .s-item, .btn-del, .btn-save {
-  cursor:pointer;
-  touch-action:manipulation;
-  -webkit-tap-highlight-color:transparent;
+/* Safari single-tap fix — ครอบคลุมทุก interactive element */
+*, *::before, *::after {
+  -webkit-tap-highlight-color: transparent;
+}
+button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
+.btn-save, .upload-zone, .hamburger, .preview-remove {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .icon{width:20px;height:20px;display:inline-block;vertical-align:middle;flex-shrink:0;}
 @media(max-width:640px){
@@ -384,7 +390,7 @@ button, .btn, .btn-add-row, .s-item, .btn-del, .btn-save {
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           บันทึกรูป
         </button>
-        <button class="btn btn-secondary" onclick="generateImage()" style="padding:10px 18px;">
+        <button class="btn btn-secondary" id="btnGenerateNew" style="padding:10px 18px;">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
           สร้างใหม่
         </button>
@@ -1287,26 +1293,35 @@ function showToast(msg,type=''){
 window.addEventListener('DOMContentLoaded',()=>{
   updateReadBtn();
 
-  // ── ผูก event ด้วย addEventListener แทน onclick ────────
+  // ── Safari single-tap fix ─────────────────────────────
+  // ผูก event ด้วย addEventListener แทน onclick ทุกปุ่มที่มีปัญหา
   // Safari mobile จะ fire single-tap ถูกต้องเมื่อใช้ addEventListener
-  function bindBtn(id, fn){
+  function tap(id, fn){
     const el=document.getElementById(id);
     if(!el) return;
-    el.addEventListener('click', fn);
+    // ลบ onclick เดิมออกก่อน ป้องกัน double-fire
+    el.removeAttribute('onclick');
+    el.addEventListener('click', fn, {passive:false});
   }
 
   // ระบบอ่านใบชั่งน้ำหนัก
-  bindBtn('btnGenerate', generateImage);
-  bindBtn('btnClearWeight', clearAllData);
+  tap('btnGenerate', generateImage);
+  tap('btnGenerateNew', generateImage);
+  tap('btnClearWeight', clearAllData);
 
   // ระบบรายงานตรวจทีม
-  bindBtn('btnClearTeam', clearTeamAll);
+  tap('btnClearTeam', clearTeamAll);
 
   // teamDropZone — click เปิด file picker
   const teamZone=document.getElementById('teamDropZone');
   const teamInput=document.getElementById('teamFileInput');
   if(teamZone && teamInput){
-    teamZone.addEventListener('click', ()=>teamInput.click());
+    teamZone.removeAttribute('onclick');
+    teamZone.addEventListener('click', (e)=>{
+      if(e.target===teamZone || e.target.closest('#teamUploadPlaceholder')){
+        teamInput.click();
+      }
+    }, {passive:false});
   }
 });
 </script>
