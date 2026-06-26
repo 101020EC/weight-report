@@ -157,24 +157,29 @@ table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF
 .save-area{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;}
 .toast{
   position:fixed;
-  bottom:24px;
-  left:16px;
-  top:auto;
-  right:auto;
+  top:16px;
+  right:16px;
+  bottom:auto;
+  left:auto;
+  display:inline-block;
   width:auto;
-  max-width:260px;
-  background:var(--gray-800);color:white;
-  padding:12px 18px;
-  border-radius:10px;
-  font-size:0.9rem;font-weight:600;
-  box-shadow:0 4px 24px rgba(0,0,0,0.3);
+  max-width:240px;
+  min-width:0;
+  background:var(--gray-800);
+  color:white;
+  padding:10px 16px;
+  border-radius:8px;
+  font-size:0.85rem;
+  font-weight:600;
+  line-height:1.4;
+  box-shadow:0 2px 12px rgba(0,0,0,0.25);
   opacity:0;
-  transform:translateY(10px);
-  transition:opacity 0.25s,transform 0.25s;
+  transform:translateY(-8px);
+  transition:opacity 0.2s,transform 0.2s;
   z-index:9999;
-  text-align:left;
-  word-break:break-word;
   pointer-events:none;
+  word-wrap:break-word;
+  white-space:normal;
 }
 .toast.show{opacity:1;transform:translateY(0);}
 .toast.success{background:#1A7A3A;}
