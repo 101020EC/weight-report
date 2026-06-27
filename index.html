@@ -320,17 +320,18 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
       <div class="step-label">อัปโหลดภาพใบชั่งน้ำหนัก</div>
     </div>
     <div class="step-body">
-      <label for="fileInput" class="upload-zone" id="dropZone"
+      <div class="upload-zone" id="dropZone"
            ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)"
-           style="display:block;cursor:pointer;">
-        <input type="file" id="fileInput" accept="image/*" onchange="handleFiles(this.files)" />
+           style="cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;">
+        <input type="file" id="fileInput" accept="image/*" onchange="handleFiles(this.files)"
+               style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" />
         <div id="uploadPlaceholder">
           <div class="upload-icon" style="font-size:38px;margin-bottom:10px;">📷</div>
           <p>ลากรูปมาวางที่นี่ หรือ<br><strong>คลิกเพื่อเลือกไฟล์</strong></p>
           <p class="upload-hint" style="margin-top:6px;font-size:12px;color:#bbb;">รองรับ JPG, PNG — ทีละ 1 ไฟล์</p>
         </div>
         <div id="uploadPreviewBig" style="display:none;width:100%;"></div>
-      </label>
+      </div>
       <div style="margin-top:14px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;">
         <button class="btn btn-primary" onclick="readImages()" id="readBtn" disabled>
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
@@ -478,7 +479,7 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
   </div>
 
   <!-- ปุ่ม Clear — แสดงหลังสร้างรายงาน -->
-  <div id="clearBtnArea" style="display:none;margin-bottom:80px;padding-bottom:40px;display:none;text-align:center;">
+  <div id="clearBtnArea" style="display:none;margin-bottom:32px;padding-bottom:16px;margin-top:-8px;text-align:center;">
     <button class="btn" id="btnClearWeight" style="background:#DC2626;color:white;padding:12px 24px;font-size:1rem;border-radius:10px;touch-action:manipulation;">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
       Clear
@@ -1182,7 +1183,6 @@ function generateImage(){
   document.getElementById('resultImg').src=imgData;
   document.getElementById('card-result').style.display='block';
   document.getElementById('clearBtnArea').style.display='block';
-  document.getElementById('clearBtnArea').style.padding='40px 0 80px';
   // เลื่อนลงล่างสุดบนมือถือ
   setTimeout(()=>{
     window.scrollTo({top:document.body.scrollHeight, behavior:'smooth'});
@@ -1475,6 +1475,28 @@ function showToast(msg,type=''){
 
 window.addEventListener('DOMContentLoaded',()=>{
   updateReadBtn();
+
+  // ── dropZone single-tap → file picker ────────────────
+  // วิธีที่ได้ผลบน iOS: ผูก touchend กับ click พร้อมกัน
+  // touchend สำหรับ iOS, click สำหรับ desktop
+  const dropZone=document.getElementById('dropZone');
+  const fileInput=document.getElementById('fileInput');
+  if(dropZone && fileInput){
+    let touching=false;
+    dropZone.addEventListener('touchend',(e)=>{
+      // อนุญาตเฉพาะ tap บน placeholder หรือ zone เอง
+      if(e.target.closest('#uploadPreviewBig button')) return; // ปุ่ม x ใน preview
+      e.preventDefault();
+      touching=true;
+      fileInput.click();
+      setTimeout(()=>{touching=false;},300);
+    },{passive:false});
+    dropZone.addEventListener('click',(e)=>{
+      if(touching) return;
+      if(e.target.closest('#uploadPreviewBig button')) return;
+      fileInput.click();
+    });
+  }
 
   // ── Safari iOS minimized toolbar fix ─────────────────
   // เมื่อ toolbar หดแล้ว tap ครั้งแรกจะ wake browser ไม่ส่ง click
