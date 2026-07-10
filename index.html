@@ -396,7 +396,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
             <thead><tr>
               <th>#</th>
               <th>ทะเบียนรถ</th>
-              <th>น้ำหนัก<br><span style="font-weight:400;font-size:0.85em;">รถเปล่า (KG)</span></th>
+              <th>น้ำหนักรถ<br>เปล่า (KG)</th>
               <th>น้ำหนักชั่งได้<br><span style="font-weight:400;font-size:0.85em;">(KG)</span></th>
               <th>น้ำหนักสุทธิ<br><span style="font-weight:400;font-size:0.85em;">(KG)</span></th>
               <th></th>
@@ -633,9 +633,7 @@ async function runReadImages(isFinal=false){
     populateForm(result.data);
     document.getElementById('card-edit').style.display='block';
     setTimeout(()=>{
-      const el=document.getElementById('card-edit');
-      const top=el.getBoundingClientRect().top+window.scrollY+48; // +2 บรรทัด จากตำแหน่งเดิม
-      window.scrollTo({top,behavior:'smooth'});
+      scrollBelowHeader(document.getElementById('card-edit'));
     },100);
     document.getElementById('num-1').classList.add('done');
     document.getElementById('num-1').textContent='✓';
@@ -1273,6 +1271,13 @@ function resetAll(){
   updateReadBtn();window.scrollTo({top:0,behavior:'smooth'});
 }
 
+// เลื่อนให้ขอบบนของ el โผล่พ้น header แบบ sticky พอดี (ไม่ให้ข้อความถูกบังใต้ header)
+function scrollBelowHeader(el){
+  const headerH=document.querySelector('.header')?.getBoundingClientRect().height||0;
+  const top=el.getBoundingClientRect().top+window.scrollY-headerH-8;
+  window.scrollTo({top,behavior:'smooth'});
+}
+
 // ── NAV ───────────────────────────────────────────────────
 function switchPage(page){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -1342,7 +1347,7 @@ async function runReadTeam(isFinal=false){
     }
     document.getElementById('teamResultCard').style.display='block';
     document.getElementById('teamClearBtnArea').style.display='block';
-    document.getElementById('teamResultCard').scrollIntoView({behavior:'smooth',block:'start'});
+    scrollBelowHeader(document.getElementById('teamResultCard'));
     showToast('สร้างรายงานสำเร็จ ✓','success');
     return true;
   }catch(err){
