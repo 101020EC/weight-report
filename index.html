@@ -80,7 +80,7 @@ body{
 .topbar{background:var(--orange);height:5px;}
 .header{background:rgba(255,255,255,0.96);backdrop-filter:blur(8px);border-bottom:1px solid rgba(232,105,26,0.15);padding:16px 32px;display:flex;align-items:center;justify-content:center;gap:16px;position:sticky;top:0;z-index:100;}
 .header-title{font-size:22px;font-weight:700;color:var(--gray-800);display:flex;align-items:center;gap:10px;}
-.main{padding:28px 32px;max-width:960px;margin:0 auto;}
+.main{padding:28px 32px 120px;max-width:960px;margin:0 auto;}
 .step-card{background:rgba(255,255,255,0.97);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden;border:1px solid rgba(232,105,26,0.08);}
 .step-header{background:white;border-bottom:1px solid var(--gray-100);padding:18px 22px;display:flex;align-items:center;justify-content:center;gap:12px;}
 .step-num{width:32px;height:32px;background:var(--orange);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;}
@@ -198,8 +198,8 @@ table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF
 *, *::before, *::after {
   -webkit-tap-highlight-color: transparent;
 }
-button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
-.btn-save, .upload-zone, .hamburger, .preview-remove {
+button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
+.btn-save, .upload-zone, .preview-remove {
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -246,31 +246,19 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
   .loading-text{font-size:0.9rem;}
   .toast{left:10px;right:10px;bottom:12px;text-align:center;font-size:0.9rem;}
   .result-header span{font-size:0.9rem;}
-  .sidebar{width:82vw;}
-  .s-item{font-size:1rem;padding:16px 18px;}
-  .s-item .mi{font-size:1.3rem;}
-  .sidebar-hdr h2{font-size:1.1rem;}
-  .hamburger span{width:22px;}
+  .nav-item{font-size:0.72rem;}
+  .nav-item .mi{font-size:1.2rem;}
   .upload-zone{padding:14px 12px;}
   .upload-icon{font-size:24px!important;margin-bottom:6px!important;}
   .upload-zone p{font-size:0.9rem;}
   .upload-hint{font-size:0.78rem!important;}
 }
-/* ── SIDEBAR MENU ──────────────────────────────────────── */
-.menu-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;opacity:0;pointer-events:none;transition:opacity 0.25s;}
-.menu-overlay.open{opacity:1;pointer-events:all;}
-.sidebar{position:fixed;left:-320px;top:0;bottom:0;width:320px;background:white;z-index:201;box-shadow:4px 0 24px rgba(0,0,0,0.18);transition:left 0.28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;}
-.sidebar.open{left:0;}
-.sidebar-hdr{background:var(--orange);padding:28px 24px 22px;color:white;}
-.sidebar-hdr h2{font-size:26px;font-weight:700;margin-bottom:3px;}
-.sidebar-menu{padding:12px 0;flex:1;overflow-y:auto;}
-.s-item{display:flex;align-items:center;gap:16px;padding:20px 24px;font-size:20px;font-weight:700;color:var(--gray-800);cursor:pointer;transition:background 0.15s;border:none;background:none;width:100%;font-family:inherit;text-align:left;}
-.s-item:hover{background:var(--gray-100);}
-.s-item.active{background:var(--orange-light);color:var(--orange);border-right:4px solid var(--orange);}
-.s-item .mi{font-size:28px;width:36px;text-align:center;}
-.hamburger{background:none;border:none;cursor:pointer;padding:9px;display:flex;flex-direction:column;gap:6px;border-radius:6px;transition:background 0.15s;}
-.hamburger:hover{background:var(--gray-100);}
-.hamburger span{display:block;width:28px;height:3px;background:var(--gray-800);border-radius:2px;}
+/* ── BOTTOM NAV ────────────────────────────────────────── */
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:200;display:flex;justify-content:center;padding:8px 16px calc(env(safe-area-inset-bottom) + 12px);pointer-events:none;}
+.bottom-nav-card{pointer-events:auto;width:100%;max-width:380px;background:white;border-radius:1.75rem;box-shadow:0 8px 30px -8px rgba(0,0,0,0.22);border:1px solid var(--gray-100);padding:6px;display:flex;align-items:center;justify-content:space-between;gap:4px;}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 4px;border-radius:1.4rem;border:none;background:none;font-family:inherit;font-size:0.8rem;font-weight:600;color:var(--gray-600);transition:all 0.2s;}
+.nav-item .mi{font-size:1.4rem;line-height:1;}
+.nav-item.active{background:var(--orange);color:white;box-shadow:0 8px 20px -8px rgba(232,105,26,0.7);}
 .page{display:none;}.page.active{display:block;}
 .team-placeholder{text-align:center;padding:80px 24px;color:var(--gray-400);}
 .team-placeholder .tp-icon{font-size:64px;margin-bottom:16px;}
@@ -279,36 +267,21 @@ button, [onclick], .btn, .btn-add-row, .s-item, .btn-del,
 </style>
 </head>
 <body>
-<!-- OVERLAY -->
-<div class="menu-overlay" id="menuOverlay" onclick="closeSidebar()"></div>
-
-<!-- SIDEBAR -->
-<div class="sidebar" id="sidebar">
-  <div class="sidebar-hdr">
-    <h2>🧅🌿 เมนูหลัก</h2>
-  </div>
-  <div class="sidebar-menu">
-    <button class="s-item active" id="menu-weight" onclick="switchPage('weight')">
-      <span class="mi">🧅</span> ระบบอ่านใบชั่งน้ำหนัก
-    </button>
-    <button class="s-item" id="menu-team" onclick="switchPage('team')">
-      <span class="mi">📋</span> รายงานตรวจทีม
-    </button>
-  </div>
-  <div style="padding:16px 22px;border-top:1px solid var(--gray-100);">
-    <button class="s-item" onclick="closeSidebar()" style="color:var(--gray-600);padding:10px 0;font-weight:400;">
-      <span class="mi">✕</span> ปิดเมนู
-    </button>
-  </div>
-</div>
-
 <div class="topbar"></div>
-<div class="header" style="justify-content:flex-start;gap:14px;">
-  <button class="hamburger" onclick="openSidebar()" aria-label="เมนู">
-    <span></span><span></span><span></span>
-  </button>
+<div class="header">
   <div class="header-title" id="headerTitle">🧅🌿 ระบบอ่านใบชั่งน้ำหนัก</div>
 </div>
+
+<nav class="bottom-nav">
+  <div class="bottom-nav-card">
+    <button class="nav-item active" id="menu-weight" onclick="switchPage('weight')">
+      <span class="mi">🧅</span><span>ชั่งน้ำหนัก</span>
+    </button>
+    <button class="nav-item" id="menu-team" onclick="switchPage('team')">
+      <span class="mi">📋</span><span>ตรวจทีม</span>
+    </button>
+  </div>
+</nav>
 
 <!-- PAGE: ระบบอ่านใบชั่งน้ำหนัก -->
 <div class="page active" id="page-weight">
@@ -794,29 +767,6 @@ function matchGoods(val){
 }
 function setF(id,val){const el=document.getElementById(id);if(!el)return;el.value=(val!=null&&val!=='')? val:'';}
 function markChanged(el){el.classList.add('changed');}
-
-// ── SIDEBAR ───────────────────────────────────────────────
-function openSidebar(){
-  document.getElementById('sidebar').classList.add('open');
-  document.getElementById('menuOverlay').classList.add('open');
-}
-function closeSidebar(){
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('menuOverlay').classList.remove('open');
-}
-function switchPage(page){
-  // ซ่อนทุก page
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.s-item').forEach(i=>i.classList.remove('active'));
-  // แสดง page ที่เลือก
-  document.getElementById('page-'+page).classList.add('active');
-  document.getElementById('menu-'+page).classList.add('active');
-  // อัปเดต header title
-  const titles={weight:'🧅🌿 ระบบอ่านใบชั่งน้ำหนัก', team:'📋 รายงานตรวจทีม'};
-  document.getElementById('headerTitle').innerHTML=`<span style="font-size:22px;">${titles[page].split(' ')[0]}</span> ${titles[page].split(' ').slice(1).join(' ')}`;
-  closeSidebar();
-  window.scrollTo({top:0,behavior:'smooth'});
-}
 
 // ── IMPORTER SELECT ───────────────────────────────────────
 function onImporterChange(sel){
@@ -1317,23 +1267,14 @@ function resetAll(){
   updateReadBtn();window.scrollTo({top:0,behavior:'smooth'});
 }
 
-// ── SIDEBAR ───────────────────────────────────────────────
-function openSidebar(){
-  document.getElementById('sidebar').classList.add('open');
-  document.getElementById('menuOverlay').classList.add('open');
-}
-function closeSidebar(){
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('menuOverlay').classList.remove('open');
-}
+// ── NAV ───────────────────────────────────────────────────
 function switchPage(page){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.s-item').forEach(i=>i.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   document.getElementById('menu-'+page).classList.add('active');
   const titles={weight:'🧅🌿 ระบบอ่านใบชั่งน้ำหนัก',team:'📋 รายงานตรวจทีม'};
   document.getElementById('headerTitle').textContent=titles[page]||'';
-  closeSidebar();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
