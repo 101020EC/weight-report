@@ -80,6 +80,8 @@ body{
 .topbar{background:var(--orange);height:5px;}
 .header{background:rgba(255,255,255,0.96);backdrop-filter:blur(8px);border-bottom:1px solid rgba(232,105,26,0.15);padding:16px 32px;display:flex;align-items:center;justify-content:center;gap:16px;position:sticky;top:0;z-index:100;}
 .header-title{font-size:22px;font-weight:700;color:var(--gray-800);display:flex;align-items:center;gap:10px;}
+.header-badge{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,var(--orange-mid),var(--orange-dark));color:white;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 6px 16px -6px rgba(232,105,26,0.6);flex-shrink:0;}
+.header-badge svg{width:18px;height:18px;}
 .main{padding:28px 32px 120px;max-width:960px;margin:0 auto;}
 .step-card{background:rgba(255,255,255,0.97);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden;border:1px solid rgba(232,105,26,0.08);}
 .step-header{background:white;border-bottom:1px solid var(--gray-100);padding:18px 22px;display:flex;align-items:center;justify-content:center;gap:12px;}
@@ -247,7 +249,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
   .toast{left:10px;right:10px;bottom:12px;text-align:center;font-size:0.9rem;}
   .result-header span{font-size:0.9rem;}
   .nav-item{font-size:0.72rem;}
-  .nav-item .mi{font-size:1.2rem;}
+  .nav-item .mi{width:20px;height:20px;}
   .upload-zone{padding:14px 12px;}
   .upload-icon{font-size:24px!important;margin-bottom:6px!important;}
   .upload-zone p{font-size:0.9rem;}
@@ -257,28 +259,30 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
 .bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:200;display:flex;justify-content:center;padding:8px 16px calc(env(safe-area-inset-bottom) + 12px);pointer-events:none;}
 .bottom-nav-card{pointer-events:auto;width:100%;max-width:380px;background:white;border-radius:1.75rem;box-shadow:0 8px 30px -8px rgba(0,0,0,0.22);border:1px solid var(--gray-100);padding:6px;display:flex;align-items:center;justify-content:space-between;gap:4px;}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 4px;border-radius:1.4rem;border:none;background:none;font-family:inherit;font-size:0.8rem;font-weight:600;color:var(--gray-600);transition:all 0.2s;}
-.nav-item .mi{font-size:1.4rem;line-height:1;}
+.nav-item .mi{width:22px;height:22px;}
 .nav-item.active{background:var(--orange);color:white;box-shadow:0 8px 20px -8px rgba(232,105,26,0.7);}
 .page{display:none;}.page.active{display:block;}
-.team-placeholder{text-align:center;padding:80px 24px;color:var(--gray-400);}
-.team-placeholder .tp-icon{font-size:64px;margin-bottom:16px;}
-.team-placeholder h2{font-size:20px;font-weight:700;color:var(--gray-600);margin-bottom:10px;}
-.team-placeholder p{font-size:14px;line-height:1.7;}
 </style>
 </head>
 <body>
 <div class="topbar"></div>
 <div class="header">
-  <div class="header-title" id="headerTitle">🧅🌿 ระบบอ่านใบชั่งน้ำหนัก</div>
+  <span class="header-badge">
+    <svg id="badge-weight" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><path d="M6.5 8a2 2 0 0 0-1.905 1.46L2.1 18.5A2 2 0 0 0 4 21h16a2 2 0 0 0 1.925-2.54L19.4 9.5A2 2 0 0 0 17.48 8Z"/></svg>
+    <svg id="badge-team" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
+  </span>
+  <div class="header-title" id="headerTitle">ระบบอ่านใบชั่งน้ำหนัก</div>
 </div>
 
 <nav class="bottom-nav">
   <div class="bottom-nav-card">
     <button class="nav-item active" id="menu-weight" onclick="switchPage('weight')">
-      <span class="mi">🧅</span><span>ชั่งน้ำหนัก</span>
+      <svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><path d="M6.5 8a2 2 0 0 0-1.905 1.46L2.1 18.5A2 2 0 0 0 4 21h16a2 2 0 0 0 1.925-2.54L19.4 9.5A2 2 0 0 0 17.48 8Z"/></svg>
+      <span>ชั่งน้ำหนัก</span>
     </button>
     <button class="nav-item" id="menu-team" onclick="switchPage('team')">
-      <span class="mi">📋</span><span>ตรวจทีม</span>
+      <svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
+      <span>ตรวจทีม</span>
     </button>
   </div>
 </nav>
@@ -468,7 +472,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
     <!-- อัปโหลด -->
     <div class="step-card">
       <div class="step-header" style="justify-content:center;">
-        <div class="step-label">📋 รายงานตรวจทีม</div>
+        <div class="step-label" style="display:flex;align-items:center;justify-content:center;gap:8px;"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg> รายงานตรวจทีม</div>
       </div>
       <div class="step-body">
         <p style="font-size:14px;color:var(--gray-600);margin-bottom:10px;">อัปโหลดภาพใบขนสินค้า หรือรายงานใบชั่งน้ำหนักได้หลายไฟล์</p>
@@ -1273,8 +1277,11 @@ function switchPage(page){
   document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   document.getElementById('menu-'+page).classList.add('active');
-  const titles={weight:'🧅🌿 ระบบอ่านใบชั่งน้ำหนัก',team:'📋 รายงานตรวจทีม'};
+  const titles={weight:'ระบบอ่านใบชั่งน้ำหนัก',team:'รายงานตรวจทีม'};
   document.getElementById('headerTitle').textContent=titles[page]||'';
+  // สลับไอคอนบน badge ของ header ตามหน้าที่เลือก
+  document.getElementById('badge-weight').style.display=(page==='weight')?'':'none';
+  document.getElementById('badge-team').style.display=(page==='team')?'':'none';
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
