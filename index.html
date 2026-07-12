@@ -69,7 +69,7 @@
   --gray-600:#666;--gray-800:#333;
   --red-bg:#FFF0F0;--red-text:#CC2222;--red-border:#FFCCCC;
   --green-bg:#F0FFF4;--green-text:#1A7A3A;--green-border:#B8E8C8;
-  --radius:10px;--shadow:0 2px 16px rgba(0,0,0,0.09);
+  --radius:14px;--shadow:0 12px 32px -14px rgba(0,0,0,0.16);
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{
@@ -83,12 +83,13 @@ body{
 .header-badge{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,var(--orange-mid),var(--orange-dark));color:white;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 6px 16px -6px rgba(232,105,26,0.6);flex-shrink:0;}
 .header-badge svg{width:18px;height:18px;}
 .main{padding:28px 32px 120px;max-width:960px;margin:0 auto;}
-.step-card{background:rgba(255,255,255,0.97);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden;border:1px solid rgba(232,105,26,0.08);}
-.step-header{background:white;border-bottom:1px solid var(--gray-100);padding:18px 22px;display:flex;align-items:center;justify-content:center;gap:12px;}
-.step-num{width:32px;height:32px;background:var(--orange);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;}
-.step-num.done{background:var(--green-text);}
+.step-card{background:rgba(255,255,255,0.97);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:28px;overflow:hidden;border:1px solid rgba(232,105,26,0.08);}
+.step-header{background:white;border-bottom:1px solid var(--gray-100);padding:20px 24px;display:flex;align-items:center;justify-content:center;gap:12px;}
+.step-num{width:38px;height:38px;background:var(--orange-light);color:var(--orange);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;}
+.step-num svg{width:19px;height:19px;}
+.step-num.done{background:var(--green-text);color:white;}
 .step-label{font-size:18px;font-weight:700;text-align:center;}
-.step-body{padding:22px;}
+.step-body{padding:24px;}
 .upload-zone{border:2px dashed var(--gray-200);border-radius:var(--radius);padding:36px 24px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;}
 .upload-zone:hover,.upload-zone.drag-over{border-color:var(--orange);background:var(--orange-light);}
 .upload-zone input{display:none;}
@@ -218,6 +219,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
   .step-header{padding:14px 16px;}
   .step-label{font-size:1rem;}
   .step-num{width:2rem;height:2rem;font-size:0.85rem;}
+  .step-num svg{width:1rem;height:1rem;}
   .form-grid{grid-template-columns:1fr 1fr;}
   .form-group{gap:4px;}
   .form-group label{font-size:0.9rem;}
@@ -293,7 +295,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
   <!-- STEP 1 -->
   <div class="step-card" id="card-upload">
     <div class="step-header">
-      <div class="step-num" id="num-1">1</div>
+      <div class="step-num" id="num-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
       <div class="step-label">อัปโหลดภาพใบชั่งน้ำหนัก</div>
     </div>
     <div class="step-body">
@@ -314,6 +316,10 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
           อ่านข้อมูลด้วย Gemini
         </button>
+        <button class="btn btn-secondary" id="manualBtn" onclick="manualEntry()">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          Manual
+        </button>
         <button class="btn btn-secondary" id="clearBtn" onclick="clearFiles()" style="display:none;padding:10px 14px;">
           ✕ ล้างรูป
         </button>
@@ -328,7 +334,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
   <!-- STEP 2 -->
   <div class="step-card" id="card-edit" style="display:none;">
     <div class="step-header">
-      <div class="step-num" id="num-2">2</div>
+      <div class="step-num" id="num-2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></div>
       <div class="step-label">ตรวจสอบและแก้ไขข้อมูล</div>
     </div>
     <div class="step-body">
@@ -418,7 +424,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
         </div>
       </div>
 
-      <div style="display:flex;justify-content:center;align-items:center;gap:12px;padding-bottom:60px;margin-top:18px;">
+      <div style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:18px;">
         <button class="btn" id="btnClearBefore" style="background:#DC2626;color:white;padding:12px 24px;font-size:1rem;border-radius:10px;touch-action:manipulation;">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           Clear
@@ -568,6 +574,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
 
 <script>
 let uploadedFiles=[], rowIdx=0, lastFilename='weight_report.png';
+const STEP1_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
 
 // ── THEME ─────────────────────────────────────────────────
 function getTheme(im){
@@ -726,6 +733,14 @@ function resizeAndEncode(file){
 async function readImages(){
   // เรียกจากปุ่มกด — retry 1 ครั้งถ้า error
   await readImagesWithRetry();
+}
+
+function manualEntry(){
+  // ข้ามการอ่านด้วย Gemini — ไปหน้าตรวจสอบและแก้ไขข้อมูลโดยตรง
+  document.getElementById('card-edit').style.display='block';
+  setTimeout(()=>{
+    scrollBelowHeader(document.getElementById('card-edit'));
+  },100);
 }
 
 // ── FORM ──────────────────────────────────────────────────
@@ -1249,7 +1264,7 @@ function clearAllData(){
   document.getElementById('clearBtnArea').style.display='none';
   // reset step indicator
   document.getElementById('num-1').className='step-num';
-  document.getElementById('num-1').textContent='1';
+  document.getElementById('num-1').innerHTML=STEP1_ICON;
   REQUIRED_FIELDS.forEach(id=>document.getElementById(id)?.classList.remove('invalid'));
   updateReadBtn();
   window.scrollTo({top:0,behavior:'smooth'});
@@ -1265,7 +1280,7 @@ function resetAll(){
   document.getElementById('card-edit').style.display='none';
   document.getElementById('card-result').style.display='none';
   document.getElementById('num-1').className='step-num';
-  document.getElementById('num-1').textContent='1';
+  document.getElementById('num-1').innerHTML=STEP1_ICON;
   document.getElementById('vehicleBody').innerHTML='';
   REQUIRED_FIELDS.forEach(id=>document.getElementById(id)?.classList.remove('invalid'));
   updateReadBtn();window.scrollTo({top:0,behavior:'smooth'});
