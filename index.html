@@ -117,12 +117,16 @@ body{
 .btn-gen{background-image:linear-gradient(135deg,var(--orange-mid),var(--orange-deep));color:white;box-shadow:var(--shadow-btn);}
 .btn-gen:hover{opacity:0.92;}
 .btn-save{background-image:linear-gradient(135deg,#22A34A,#158038);color:white;border:none;padding:0.8rem 1.6rem;font-size:16px;box-shadow:0 10px 24px -10px rgba(21,128,56,0.55);}
+.btn-danger{background-image:linear-gradient(135deg,#EF4444,#DC2626);color:white;border:none;box-shadow:0 10px 24px -10px rgba(220,38,38,0.55);}
+.btn-danger:hover{opacity:0.92;}
 .loading-bar{height:4px;background:var(--gray-100);border-radius:2px;overflow:hidden;margin:12px 0;}
 .loading-bar-inner{height:100%;background:var(--orange);border-radius:2px;animation:loadAnim 1.4s ease-in-out infinite;width:40%;}
 @keyframes loadAnim{0%{transform:translateX(-100%);}100%{transform:translateX(350%);}}
 .loading-text{font-size:15px;color:var(--gray-600);text-align:center;}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.form-grid>.form-group{min-width:0;}
 .form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group input,.form-group select{min-width:0;}
 .form-group label{font-size:14px;color:var(--orange);font-weight:700;letter-spacing:0.01em;}
 .form-group label .req{color:#CC2222;}
 .form-group input,.form-group select{
@@ -264,9 +268,12 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
   .diff-box .dv{font-size:1rem;}
   .diff-box .dp{font-size:0.8rem;}
   .action-row{flex-direction:column;}.action-row .sp{display:none;}
-  .action-row .btn,.save-area .btn,.btn-save{
+  .action-row .btn{
     width:100%;justify-content:center;padding:0.8em;font-size:1rem;
   }
+  /* บันทึกรูป + สร้างใหม่ อยู่บรรทัดเดียว กว้างเท่ากัน */
+  .save-area{flex-wrap:nowrap;align-items:stretch;}
+  .save-area .btn{flex:1;justify-content:center;padding:0.8em 0.4em;font-size:0.95rem;min-width:0;white-space:nowrap;}
   .alert{font-size:0.88rem;padding:10px 12px;}
   .loading-text{font-size:0.9rem;}
   .toast{left:10px;right:10px;bottom:12px;text-align:center;font-size:0.9rem;}
@@ -359,7 +366,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
       <div class="step-label">ตรวจสอบและแก้ไขข้อมูล</div>
     </div>
     <div class="step-body">
-      <div class="alert alert-info" id="editAlert">✅ ตรวจสอบความถูกต้องของข้อมูล — ช่องที่มี * ต้องกรอกให้ครบ</div>
+      <div class="alert alert-info" id="editAlert">ตรวจสอบความถูกต้อง และกรอกช่อง * ให้ครบ</div>
       <div class="table-label">ข้อมูลทั่วไป</div>
       <!-- บรรทัด 1: เลขที่ใบขน — เต็มแถว กึ่งกลาง -->
       <div class="form-group" style="margin-bottom:14px;">
@@ -389,10 +396,10 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
         <input type="text" id="f_importer_other" placeholder="ระบุผู้นำเข้า" oninput="markChanged(this);onImporterOtherInput(this)" onblur="resetZoom()" style="display:none;margin-top:8px;" />
       </div>
       <!-- บรรทัด 4: ประเภทสินค้า (chips) | ประเทศกำเนิด -->
-      <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;align-items:start;">
+      <div class="form-grid" style="grid-template-columns:1.95fr 1fr;gap:12px;margin-bottom:14px;align-items:start;">
         <div class="form-group">
           <label>ประเภทสินค้า <span class="req">*</span></label>
-          <div class="chip-row chip-group" id="goodsChips">
+          <div class="chip-row chip-group" id="goodsChips" style="flex-wrap:nowrap;gap:6px;">
             <button type="button" class="chip" data-val="หอม" data-color="c-orange" onclick="pickGoods(this)">หอม</button>
             <button type="button" class="chip" data-val="กระเทียม" data-color="c-orange" onclick="pickGoods(this)">กระเทียม</button>
             <button type="button" class="chip" data-val="__other__" data-color="c-pink" onclick="pickGoods(this)">อื่นๆ</button>
@@ -406,7 +413,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
         </div>
       </div>
       <!-- บรรทัด 5: น้ำหนักหน้าใบขน (ตัวเลข) | ชุดที่ -->
-      <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-grid" style="grid-template-columns:1.95fr 1fr;gap:12px;">
         <div class="form-group">
           <label>น้ำหนักหน้าใบขน (KG) <span class="req">*</span></label>
           <input type="text" inputmode="numeric" id="f_declared_weight" placeholder="เช่น 15000" oninput="onlyDigits(this);markChanged(this);calcSummary()" onblur="resetZoom()" />
@@ -455,7 +462,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
       </div>
 
       <div style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:18px;">
-        <button class="btn" id="btnClearBefore" style="background:#DC2626;color:white;padding:12px 24px;font-size:1rem;border-radius:10px;touch-action:manipulation;">
+        <button class="btn btn-danger" id="btnClearBefore" style="padding:12px 24px;font-size:1rem;touch-action:manipulation;">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           Clear
         </button>
@@ -479,13 +486,13 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
     <div class="result-img-wrap">
       <img id="resultImg" src="" alt="รายงานน้ำหนัก" />
       <div class="save-area">
-        <button class="btn btn-save" onclick="saveImage()" style="padding:10px 20px;font-size:1rem;">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          บันทึกรูป
-        </button>
-        <button class="btn btn-secondary" id="btnGenerateNew" style="padding:10px 16px;font-size:1rem;">
+        <button class="btn btn-secondary" id="btnGenerateNew" style="flex:1;padding:12px 24px;font-size:1rem;">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
           สร้างใหม่
+        </button>
+        <button class="btn btn-save" onclick="saveImage()" style="flex:1;padding:12px 24px;font-size:1rem;">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          บันทึกรูป
         </button>
       </div>
     </div>
@@ -493,7 +500,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
 
   <!-- ปุ่ม Clear — แสดงหลังสร้างรายงาน -->
   <div id="clearBtnArea" style="display:none;margin-top:-8px;text-align:center;">
-    <button class="btn" id="btnClearWeight" style="background:#DC2626;color:white;padding:12px 24px;font-size:1rem;border-radius:10px;touch-action:manipulation;">
+    <button class="btn btn-danger" id="btnClearWeight" style="padding:12px 24px;font-size:1rem;touch-action:manipulation;">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
       Clear
     </button>
@@ -572,7 +579,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
 
     <!-- ปุ่ม Clear -->
     <div id="teamClearBtnArea" style="display:none;text-align:center;">
-      <button class="btn" id="btnClearTeam" style="background:#DC2626;color:white;padding:12px 24px;font-size:1rem;border-radius:10px;touch-action:manipulation;">
+      <button class="btn btn-danger" id="btnClearTeam" style="padding:12px 24px;font-size:1rem;touch-action:manipulation;">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
         Clear — ล้างข้อมูลทั้งหมด
       </button>
