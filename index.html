@@ -558,13 +558,14 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
       <div class="step-body" style="padding:0;">
         <div id="teamChatWrap" style="background:#F5F5F5;padding:20px;min-height:200px;">
           <div style="display:flex;justify-content:center;">
-            <div id="teamChatBubble" style="
+            <textarea id="teamChatBubble" oninput="autoGrowTeam()" spellcheck="false" style="
               background:white;border-radius:18px 18px 18px 4px;
-              padding:18px 22px;max-width:640px;width:100%;
+              padding:18px 22px;flex:1 1 100%;max-width:640px;min-width:0;box-sizing:border-box;
               box-shadow:0 2px 12px rgba(0,0,0,0.08);border:1px solid var(--gray-200);
               font-size:15px;line-height:1.85;color:var(--gray-800);
-              white-space:pre-wrap;word-break:break-word;
-            "></div>
+              font-family:inherit;resize:none;outline:none;overflow:hidden;
+              min-height:120px;display:block;
+            "></textarea>
           </div>
           <!-- ปุ่มคัดลอก — ใต้ข้อความ -->
           <div style="display:flex;justify-content:center;margin-top:16px;">
@@ -1478,7 +1479,8 @@ async function runReadTeam(isFinal=false){
     if(!resp.ok){const t=await resp.text();throw new Error(`${resp.status}: ${t.slice(0,100)}`);}
     const result=await resp.json();
     if(!result.success) throw new Error(result.error||'เกิดข้อผิดพลาด');
-    document.getElementById('teamChatBubble').textContent=result.text;
+    document.getElementById('teamChatBubble').value=result.text;
+    autoGrowTeam();
     if(result.warnings&&result.warnings.length>0){
       document.getElementById('teamWarningBox').style.display='block';
       document.getElementById('teamWarningList').innerHTML=result.warnings.map(w=>`• ${w}`).join('<br>');
@@ -1532,8 +1534,14 @@ async function readTeamImages(){
   await readTeamWithRetry();
 }
 
+function autoGrowTeam(){
+  const el=document.getElementById('teamChatBubble');
+  el.style.height='auto';
+  el.style.height=el.scrollHeight+'px';
+}
+
 function copyTeamReport(){
-  const text=document.getElementById('teamChatBubble').textContent;
+  const text=document.getElementById('teamChatBubble').value;
   if(!text){showToast('ยังไม่มีข้อความ','error');return;}
   navigator.clipboard.writeText(text).then(()=>showToast('คัดลอกแล้ว ✓','success')).catch(()=>{
     const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('คัดลอกแล้ว ✓','success');
@@ -1544,7 +1552,8 @@ function clearTeamAll(){
   teamFiles=[];document.getElementById('teamFileInput').value='';renderTeamPreview();updateTeamReadBtn();
   document.getElementById('teamResultCard').style.display='none';
   document.getElementById('teamClearBtnArea').style.display='none';
-  document.getElementById('teamChatBubble').textContent='';
+  document.getElementById('teamChatBubble').value='';
+  document.getElementById('teamChatBubble').style.height='';
   document.getElementById('teamWarningBox').style.display='none';
   document.getElementById('teamWarningList').innerHTML='';
   window.scrollTo({top:0,behavior:'smooth'});
