@@ -546,7 +546,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
     <div class="step-card" id="teamResultCard" style="display:none;">
       <!-- คำเตือนข้อมูลขาด -->
       <div id="teamWarningBox" style="display:none;background:#FFF8E1;border-bottom:1px solid #FFD54F;padding:12px 18px;">
-        <div style="font-size:13px;font-weight:700;color:#E65100;margin-bottom:6px;">⚠️ พบข้อมูลไม่ครบในบางใบขน</div>
+        <div style="font-size:13px;font-weight:700;color:#E65100;margin-bottom:6px;">⚠️ ข้อมูลไม่ครบในบางใบขนสินค้า</div>
         <div id="teamWarningList" style="font-size:13px;color:#BF360C;line-height:1.8;"></div>
       </div>
       <div class="step-body" style="padding:0;">
@@ -1483,7 +1483,11 @@ async function runReadTeam(isFinal=false){
     document.getElementById('teamResultCard').style.display='block';
     document.getElementById('teamClearBtnArea').style.display='block';
     autoGrowTeam();
-    scrollBelowHeader(document.getElementById('teamResultCard'));
+    setTimeout(()=>{
+      const warn=document.getElementById('teamWarningBox');
+      const target=(warn.style.display!=='none')?warn:document.getElementById('teamResultCard');
+      scrollBelowHeader(target);
+    },60);
     showToast('สร้างรายงานสำเร็จ ✓','success');
     return true;
   }catch(err){
