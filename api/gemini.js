@@ -127,7 +127,7 @@ module.exports = async function handler(req, res) {
       const count = decls.length;
 
       // ตรวจหาข้อมูลขาด
-      const REQUIRED = { goods:'สินค้า', origin:'เมืองกำเนิด', qty:'จำนวน', weight:'น้ำหนัก' };
+      const REQUIRED = { no:'เลขที่ใบขนสินค้า', goods:'สินค้า', origin:'เมืองกำเนิด', qty:'จำนวน', weight:'น้ำหนัก' };
       const warnings = [];
       decls.forEach((d, i) => {
         const missing = Object.entries(REQUIRED)

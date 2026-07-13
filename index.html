@@ -544,12 +544,6 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
 
     <!-- ผลลัพธ์ — กล่องแชท -->
     <div class="step-card" id="teamResultCard" style="display:none;">
-      <div class="step-header" style="justify-content:center;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div class="step-num done" style="background:var(--orange);">✓</div>
-          <span style="font-size:15px;font-weight:600;">ข้อความรายงาน</span>
-        </div>
-      </div>
       <!-- คำเตือนข้อมูลขาด -->
       <div id="teamWarningBox" style="display:none;background:#FFF8E1;border-bottom:1px solid #FFD54F;padding:12px 18px;">
         <div style="font-size:13px;font-weight:700;color:#E65100;margin-bottom:6px;">⚠️ พบข้อมูลไม่ครบในบางใบขน</div>
@@ -559,7 +553,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
         <div id="teamChatWrap" style="background:#F5F5F5;padding:20px;min-height:200px;">
           <div style="display:flex;justify-content:center;">
             <textarea id="teamChatBubble" oninput="autoGrowTeam()" spellcheck="false" style="
-              background:white;border-radius:18px 18px 18px 4px;
+              background:white;border-radius:18px;
               padding:18px 22px;flex:1 1 100%;max-width:640px;min-width:0;box-sizing:border-box;
               box-shadow:0 2px 12px rgba(0,0,0,0.08);border:1px solid var(--gray-200);
               font-size:15px;line-height:1.85;color:var(--gray-800);
@@ -1480,7 +1474,6 @@ async function runReadTeam(isFinal=false){
     const result=await resp.json();
     if(!result.success) throw new Error(result.error||'เกิดข้อผิดพลาด');
     document.getElementById('teamChatBubble').value=result.text;
-    autoGrowTeam();
     if(result.warnings&&result.warnings.length>0){
       document.getElementById('teamWarningBox').style.display='block';
       document.getElementById('teamWarningList').innerHTML=result.warnings.map(w=>`• ${w}`).join('<br>');
@@ -1489,6 +1482,7 @@ async function runReadTeam(isFinal=false){
     }
     document.getElementById('teamResultCard').style.display='block';
     document.getElementById('teamClearBtnArea').style.display='block';
+    autoGrowTeam();
     scrollBelowHeader(document.getElementById('teamResultCard'));
     showToast('สร้างรายงานสำเร็จ ✓','success');
     return true;
