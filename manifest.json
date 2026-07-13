@@ -4,7 +4,7 @@
   "description": "ระบบอ่านใบชั่งน้ำหนักและรายงานตรวจทีม ด่านปาดังเบซาร์",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F2EDE6",
+  "background_color": "#E8691A",
   "theme_color": "#E8691A",
   "orientation": "portrait",
   "icons": [
