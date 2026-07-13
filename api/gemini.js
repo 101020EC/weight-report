@@ -123,12 +123,26 @@ module.exports = async function handler(req, res) {
       const parsed = extractJSON(raw);
 
       const date  = parsed.date || '';
-      const decls = parsed.declarations || [];
+      const rawDecls = parsed.declarations || [];
+
+      // ตัดใบขนที่เลขซ้ำออก (เก็บใบแรก) + เก็บเลขที่ซ้ำไว้แจ้งเตือน
+      const warnings = [];
+      const seenNo = new Set();
+      const dupNos = new Set();
+      const decls = [];
+      rawDecls.forEach(d => {
+        const key = (d.no || '').trim();
+        if (key !== '') {
+          if (seenNo.has(key)) { dupNos.add(key); return; }
+          seenNo.add(key);
+        }
+        decls.push(d);
+      });
       const count = decls.length;
+      dupNos.forEach(no => warnings.push(`เลขใบขน ${no} ซ้ำ — แสดงครั้งเดียว`));
 
       // ตรวจหาข้อมูลขาด
       const REQUIRED = { no:'เลขที่ใบขนสินค้า', goods:'สินค้า', origin:'เมืองกำเนิด', qty:'จำนวน', weight:'น้ำหนัก' };
-      const warnings = [];
       decls.forEach((d, i) => {
         const missing = Object.entries(REQUIRED)
           .filter(([k]) => !d[k] || d[k].trim() === '')
