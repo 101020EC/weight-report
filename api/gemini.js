@@ -146,11 +146,12 @@ module.exports = async function handler(req, res) {
 
       // ส่ง Telegram แจ้งเตือนสำเร็จ
       const tgMsg = `📊 <b>[อ่านใบชั่งน้ำหนักสำเร็จ]</b>\n` +
-                    `• เลขที่ใบขน: <code>${parsed.declaration_no || '-'}</code>\n` +
+                    `• วันที่: ${parsed.date || '-'}\n` +
                     `• ผู้นำเข้า: ${parsed.importer || '-'}\n` +
-                    `• น้ำหนักหน้าใบขน: ${parsed.declared_weight ? Number(parsed.declared_weight).toLocaleString() + ' KG' : '-'}\n` +
+                    `• เลขที่ใบขน: <code>${parsed.declaration_no || '-'}</code>\n` +
                     `• จำนวนรถ: ${parsed.vehicles?.length || 0} คัน\n` +
-                    `⏱ ประมวลผล: ${(duration / 1000).toFixed(2)}s`;
+                    `• น้ำหนักหน้าใบขน (${parsed.goods_type || 'สินค้า'}): ${parsed.declared_weight ? Number(parsed.declared_weight).toLocaleString('en-US') + ' KG' : '-'}\n` +
+                    `⏱ เวลาประมวลผล: ${(duration / 1000).toFixed(2)}s`;
       sendTelegramNotification(tgMsg);
 
       return res.status(200).json({ success: true, data: parsed });
@@ -188,6 +189,20 @@ module.exports = async function handler(req, res) {
         }
       });
 
+      // รวมน้ำหนักหน้าใบขนแยกตามประเภทสินค้า
+      const weightByGoods = {};
+      decls.forEach(d => {
+        const g = (d.goods || 'ไม่ระบุ').trim();
+        const w = parseFloat((d.weight || '0').replace(/,/g, '')) || 0;
+        weightByGoods[g] = (weightByGoods[g] || 0) + w;
+      });
+
+      const goodsSummaryLines = Object.entries(weightByGoods)
+        .map(([g, w]) => `  • ${g}: ${w > 0 ? w.toLocaleString('en-US') + ' KG' : '-'}`)
+        .join('\n');
+
+      const declNosList = decls.map(d => d.no).filter(Boolean).map(no => `<code>${no}</code>`).join(', ');
+
       // สร้างข้อความรายงาน
       let text = `${date}\n`;
       text += `เจ้าหน้าที่งานพิธีการ ร่วมกับเจ้าหน้าที่งานสืบสวนและปราบปราม เปิดตรวจสินค้าเป็นทีม สินค้าเกษตร ใบขนสินค้าขาเข้าจำนวน ${count} ใบขน ดังนี้`;
@@ -204,8 +219,10 @@ module.exports = async function handler(req, res) {
       // ส่ง Telegram แจ้งเตือนสำเร็จ
       const tgMsg = `📋 <b>[สร้างรายงานตรวจทีมสำเร็จ]</b>\n` +
                     `• วันที่: ${date || '-'}\n` +
-                    `• จำนวน: ${count} ใบขน\n` +
-                    `⏱ ประมวลผล: ${(duration / 1000).toFixed(2)}s`;
+                    `• จำนวนใบขน: ${count} ใบขน\n` +
+                    `• เลขที่ใบขน: ${declNosList || '-'}\n` +
+                    `• น้ำหนักหน้าใบขนรวมแยกตามสินค้า:\n${goodsSummaryLines || '  • -'}\n` +
+                    `⏱ เวลาประมวลผล: ${(duration / 1000).toFixed(2)}s`;
       sendTelegramNotification(tgMsg);
 
       return res.status(200).json({ success: true, text: text.trim(), warnings });
