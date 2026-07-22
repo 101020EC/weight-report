@@ -1280,6 +1280,23 @@ function generateImage(){
   },200);
   lastFilename=`weight_report_${(dn||'unknown').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.png`;
   showToast('สร้างรายงานสำเร็จ ✓','success');
+
+  // ส่ง Telegram แจ้งเตือนเมื่อกดสร้างรายงานสำเร็จ
+  fetch('/api/notify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'report_created',
+      declaration_no: dn,
+      importer: imp,
+      date: dt,
+      goods_type: gt,
+      total_net: tN,
+      declared_weight: decl,
+      diff_text: dfSub ? `${dfStr} ${dfSub}` : dfStr,
+      vehicle_count: rows.length
+    })
+  }).catch(e => console.error('Telegram Notify Error:', e));
 }
 
 // ── SAVE — รองรับ iPhone Save to Photos ─────────────────
