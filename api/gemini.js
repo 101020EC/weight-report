@@ -195,8 +195,8 @@ module.exports = async function handler(req, res) {
                       `• วันที่: ${dateStr}\n` +
                       `• ผู้นำเข้า: ${importerStr}\n` +
                       `• เลขที่ใบขน: <code>${declNoStr}</code>\n` +
+                      `• ประเภทสินค้า: ${goodsTypeStr}\n` +
                       `• จำนวนรถ: ${vehCount} คัน\n` +
-                      `• น้ำหนักหน้าใบขน (${goodsTypeStr}): ${declWeightStr}\n` +
                       `⏱ เวลาประมวลผล: ${(duration / 1000).toFixed(2)}s`;
         await sendTelegramNotification(tgMsg);
       } catch (tgErr) {
