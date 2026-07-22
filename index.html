@@ -148,11 +148,11 @@ table.dt tbody td{padding:8px 6px;border-bottom:1px solid var(--gray-100);text-a
 table.dt tbody td input{width:100%;padding:6px 4px;border:1.5px solid transparent;border-radius:5px;font-size:16px!important;text-align:center;font-family:inherit;background:transparent;transition:border-color 0.15s,background 0.15s;}
 table.dt tbody td input:focus{border-color:var(--orange);background:white;outline:none;}
 table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF8;}
-.btn-add-row{margin-top:8px;padding:8px 14px;background:#fff;border:1px dashed #D8CCBE;border-radius:0.75rem;font-size:14px;font-weight:600;color:var(--orange);cursor:pointer;font-family:inherit;}
+.btn-add-row{margin-top:16px;padding:8px 14px;background:#fff;border:1px dashed #D8CCBE;border-radius:0.75rem;font-size:14px;font-weight:600;color:var(--orange);cursor:pointer;font-family:inherit;}
 .btn-add-row:hover{background:var(--orange-light);color:var(--orange-deep);border-color:var(--orange);}
 .btn-del{background:none;border:none;color:#CC3333;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:14px;}
 .btn-del:hover{background:#FFF0F0;}
-.summary-box{margin-top:18px;background:transparent;border:none;padding:10px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.summary-box{margin-top:4px;background:transparent;border:none;padding:4px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
 .sum-item{background:#ffffff;border:1px solid #E5E0D8;border-radius:10px;padding:10px 16px;text-align:center;flex:1;min-width:140px;}
 .sum-item .sl{font-size:13px;color:var(--gray-600);margin-bottom:3px;}
 .sum-item .sv{font-size:16px;font-weight:700;color:#222222;}
@@ -263,7 +263,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
   .sum-item{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#ffffff;border:1px solid #E5E0D8;border-radius:10px;}
   .sum-item .sl{font-size:0.85rem;}
   .sum-item .sv{font-size:15px!important;font-weight:700;color:#222222;}
-  #f_declared_weight{font-size:15px!important;}
+  #f_declared_weight{font-size:16px!important;}
   .diff-box{min-width:unset;width:100%;padding:10px 12px;font-size:0.88rem;display:flex;align-items:center;justify-content:space-between;gap:6px;}
   .diff-box-right{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;}
   .diff-box .dl{font-size:0.85rem;}
@@ -447,7 +447,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
       <div class="form-grid" style="grid-template-columns:1.95fr 1fr;gap:12px;">
         <div class="form-group">
           <label>น้ำหนักหน้าใบขน (KG) <span class="req">*</span></label>
-          <input type="text" inputmode="numeric" id="f_declared_weight" placeholder="เช่น 15000" oninput="onlyDigits(this);markChanged(this);calcSummary()" onblur="resetZoom()" />
+          <input type="text" inputmode="numeric" id="f_declared_weight" placeholder="เช่น 15,000" oninput="fmtNumberWithComma(this);markChanged(this);calcSummary()" onblur="resetZoom()" style="font-size:16px!important;" />
         </div>
         <div class="form-group">
           <label>ชุดที่</label>
@@ -824,7 +824,8 @@ function populateForm(data){
   selectImporter(matchImporter(data.importer)||data.importer||'');
 
   setF('f_declaration',formatDeclarationStr(data.declaration_no));
-  setF('f_declared_weight',(data.declared_weight!=null?String(data.declared_weight).replace(/[^0-9]/g,''):''));
+  const rawDW=(data.declared_weight!=null?String(data.declared_weight).replace(/[^0-9]/g,''):'');
+  setF('f_declared_weight',rawDW?Number(rawDW).toLocaleString('en-US'):'');
   // วันที่: วัน = จาก Gemini, เดือน+ปี = ของวันที่รัน
   applyGeminiDate(data.date||'');
 
@@ -953,6 +954,11 @@ function selectOrigin(val){
 }
 
 function onlyDigits(el){el.value=el.value.replace(/[^0-9]/g,'');}
+function fmtNumberWithComma(el){
+  let v=el.value.replace(/[^0-9]/g,'');
+  if(!v){el.value='';return;}
+  el.value=Number(v).toLocaleString('en-US');
+}
 
 // ── DATE (3 select, พ.ศ., เดือนเต็ม) ────────────────────────
 const THAI_MONTHS_FULL=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
