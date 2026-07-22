@@ -287,8 +287,8 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
   .upload-zone p{font-size:0.9rem;}
   .upload-hint{font-size:0.78rem!important;}
 }
-/* ── BOTTOM NAV (ความสูงรวม 60px ติดขอบล่าง) ────────────────────────────────────────── */
-.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:200;width:100%;height:60px;box-sizing:border-box;background:#ffffff;border-top:1px solid var(--gray-200);box-shadow:0 -4px 16px rgba(0,0,0,0.06);padding:0 12px calc(env(safe-area-inset-bottom) / 2);display:flex;align-items:center;justify-content:center;}
+/* ── BOTTOM NAV (ความสูงรวม 70px ติดขอบล่าง) ────────────────────────────────────────── */
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:200;width:100%;height:70px;box-sizing:border-box;background:#ffffff;border-top:1px solid var(--gray-200);box-shadow:0 -4px 16px rgba(0,0,0,0.06);padding:0 12px calc(env(safe-area-inset-bottom) / 2);display:flex;align-items:center;justify-content:center;}
 .bottom-nav-card{width:100%;max-width:480px;height:100%;background:transparent;border:none;box-shadow:none;padding:0;display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .nav-item{flex:1;height:44px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;padding:0 16px;border-radius:10px;border:none;background:none;font-family:inherit;font-size:0.9rem;font-weight:600;color:var(--gray-600);transition:all 0.2s;}
 .nav-item .mi{width:18px;height:18px;flex-shrink:0;}
@@ -488,7 +488,6 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
         <div class="step-num done">✓</div>
         <span style="font-size:15px;font-weight:600;">รายงานพร้อมแล้ว</span>
       </div>
-      <button class="btn btn-secondary" onclick="document.getElementById('card-result').style.display='none'" style="padding:6px 14px;font-size:13px;">ปิด</button>
     </div>
     <div class="result-img-wrap">
       <img id="resultImg" src="" alt="รายงานน้ำหนัก" />
