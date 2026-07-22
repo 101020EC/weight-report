@@ -287,12 +287,30 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
   .upload-zone p{font-size:0.9rem;}
   .upload-hint{font-size:0.78rem!important;}
 }
-/* ── BOTTOM NAV (เต็มทั้งแถบ ความสูงรวม 60px ปุ่มขยาย 100% ไร้ขอบข้าง/ขอบบน) ────────────────────────────────────────── */
-.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:200;width:100%;height:60px;box-sizing:border-box;background:#ffffff;border-top:1px solid var(--gray-200);box-shadow:0 -4px 16px rgba(0,0,0,0.06);padding:0;display:flex;align-items:stretch;justify-content:center;}
+/* ── BOTTOM NAV (โทนพาสเทลอุ่น เข้ากับธีมเว็บ) ────────────────────────────────────────── */
+.bottom-nav{
+  position:fixed;left:0;right:0;bottom:0;z-index:200;width:100%;height:60px;box-sizing:border-box;
+  background:rgba(253, 250, 246, 0.96);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-top:1px solid rgba(232, 105, 26, 0.16);
+  box-shadow:0 -4px 20px rgba(140, 70, 10, 0.05);
+  padding:0;display:flex;align-items:stretch;justify-content:center;
+}
 .bottom-nav-card{width:100%;height:100%;background:transparent;border:none;box-shadow:none;padding:0;margin:0;display:flex;align-items:stretch;justify-content:center;gap:0;}
-.nav-item{flex:1;height:100%;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;padding:0 12px;border-radius:0;border:none;background:none;font-family:inherit;font-size:1rem;font-weight:600;color:var(--gray-600);transition:all 0.15s;cursor:pointer;touch-action:manipulation;}
-.nav-item .mi{width:20px;height:20px;flex-shrink:0;}
-.nav-item.active{background:var(--orange);color:white;box-shadow:none;}
+.nav-item{
+  flex:1;height:100%;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;padding:0 12px;
+  border-radius:0;border:none;background:transparent;font-family:inherit;font-size:0.95rem;font-weight:600;
+  color:#8C7E72;transition:all 0.2s ease;cursor:pointer;touch-action:manipulation;
+}
+.nav-item .mi{width:20px;height:20px;flex-shrink:0;transition:transform 0.2s;}
+.nav-item:hover{background:rgba(248, 235, 222, 0.5);color:#B8520E;}
+.nav-item.active{
+  background:linear-gradient(135deg, #FFEBDC 0%, #FDD7BD 100%);
+  color:#9A3E00;font-weight:700;
+  border-top:3px solid var(--orange-mid);
+  box-shadow:inset 0 2px 6px rgba(232, 105, 26, 0.08);
+}
+.nav-item.active .mi{transform:scale(1.05);}
 .page{display:none;}.page.active{display:block;}
 </style>
 </head>
