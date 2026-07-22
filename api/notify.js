@@ -76,7 +76,7 @@ module.exports = async function handler(req, res) {
       const platesStr = escapeHtml(plates || '-');
       const diffTextStr = escapeHtml(diff_text || '-');
 
-      const tgMsg = `📋 <b>[สร้างรายงานชั่งน้ำหนักสำเร็จ]</b>\n` +
+      const tgMsg = `🖼️ <b>[สร้างรายงานชั่งน้ำหนักสำเร็จ]</b>\n` +
                     `• วันที่: ${dateStr}\n` +
                     `• ผู้นำเข้า: ${importerStr}\n` +
                     `• เลขที่ใบขน: <code>${declNoStr}</code>\n` +

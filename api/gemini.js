@@ -191,7 +191,7 @@ module.exports = async function handler(req, res) {
         const declWeightStr = !isNaN(numWeight) && numWeight > 0 ? numWeight.toLocaleString('en-US') + ' KG' : '-';
         const vehCount = Array.isArray(parsed.vehicles) ? parsed.vehicles.length : 0;
 
-        const tgMsg = `📊 <b>[อ่านใบชั่งน้ำหนักสำเร็จ]</b>\n` +
+        const tgMsg = `⚖️ <b>[อ่านใบชั่งน้ำหนักสำเร็จ]</b>\n` +
                       `• วันที่: ${dateStr}\n` +
                       `• ผู้นำเข้า: ${importerStr}\n` +
                       `• เลขที่ใบขน: <code>${declNoStr}</code>\n` +
@@ -256,7 +256,7 @@ module.exports = async function handler(req, res) {
 
         const declNosList = decls.map(d => escapeHtml(d.no)).filter(Boolean).map(no => `<code>${no}</code>`).join(', ');
 
-        const tgMsg = `📋 <b>[อ่านใบขนรายงานตรวจทีมสำเร็จ]</b>\n` +
+        const tgMsg = `👥 <b>[อ่านใบขนรายงานตรวจทีมสำเร็จ]</b>\n` +
                       `• วันที่: ${escapeHtml(date) || '-'}\n` +
                       `• จำนวนใบขน: ${count} ใบขน\n` +
                       `• เลขที่ใบขน: ${declNosList || '-'}\n` +
