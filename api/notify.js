@@ -66,13 +66,14 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
 
   try {
-    const { action, declaration_no, importer, date, goods_type, total_net, declared_weight, diff_text, vehicle_count } = req.body;
+    const { action, declaration_no, importer, date, goods_type, plates, diff_text } = req.body;
 
     if (action === 'report_created') {
       const dateStr = escapeHtml(date || '-');
       const importerStr = escapeHtml(importer || '-');
       const declNoStr = escapeHtml(declaration_no || '-');
       const goodsTypeStr = escapeHtml(goods_type || '-');
+      const platesStr = escapeHtml(plates || '-');
       const diffTextStr = escapeHtml(diff_text || '-');
 
       const tgMsg = `📋 <b>[สร้างรายงานชั่งน้ำหนักสำเร็จ]</b>\n` +
@@ -80,9 +81,7 @@ module.exports = async function handler(req, res) {
                     `• ผู้นำเข้า: ${importerStr}\n` +
                     `• เลขที่ใบขน: <code>${declNoStr}</code>\n` +
                     `• ประเภทสินค้า: ${goodsTypeStr}\n` +
-                    `• จำนวนรถ: ${vehicle_count || 0} คัน\n` +
-                    `• น้ำหนักสุทธิรวม: ${Number(total_net || 0).toLocaleString('en-US')} KG\n` +
-                    `• น้ำหนักหน้าใบขน: ${declared_weight ? Number(declared_weight).toLocaleString('en-US') + ' KG' : '-'}\n` +
+                    `• ทะเบียนรถ: ${platesStr}\n` +
                     `• ผลต่างน้ำหนัก: ${diffTextStr}`;
 
       await sendTelegramNotification(tgMsg);

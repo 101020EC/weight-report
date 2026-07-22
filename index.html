@@ -1281,6 +1281,8 @@ function generateImage(){
   lastFilename=`weight_report_${(dn||'unknown').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.png`;
   showToast('สร้างรายงานสำเร็จ ✓','success');
 
+  const platesStr = vrows.map(r => r.plate).filter(Boolean).join(', ') || '-';
+
   // ส่ง Telegram แจ้งเตือนเมื่อกดสร้างรายงานสำเร็จ
   fetch('/api/notify', {
     method: 'POST',
@@ -1291,10 +1293,8 @@ function generateImage(){
       importer: imp,
       date: dt,
       goods_type: gt,
-      total_net: tN,
-      declared_weight: decl,
-      diff_text: dfSub ? `${dfStr} ${dfSub}` : dfStr,
-      vehicle_count: rows.length
+      plates: platesStr,
+      diff_text: dfSub ? `${dfStr} ${dfSub}` : dfStr
     })
   }).catch(e => console.error('Telegram Notify Error:', e));
 }
