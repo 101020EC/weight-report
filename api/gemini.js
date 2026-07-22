@@ -59,18 +59,27 @@ async function callGeminiWithRotation(parts) {
   throw lastError || new Error('API Key ทุกตัว quota หมดแล้ว กรุณาลองใหม่พรุ่งนี้');
 }
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 // ── Telegram Notification Helper ────────────────────────────
 async function sendTelegramNotification(message) {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId   = process.env.TELEGRAM_CHAT_ID;
+  const botToken = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
+  const chatId   = (process.env.TELEGRAM_CHAT_ID || '').trim();
+
   if (!botToken || !chatId) {
-    console.warn('[TELEGRAM LOG WARNING] Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in Vercel Environment Variables');
-    return;
+    console.warn(`[TELEGRAM LOG WARNING] Missing env vars. BOT_TOKEN exists: ${!!botToken}, CHAT_ID exists: ${!!chatId}`);
+    return { success: false, error: 'Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID' };
   }
 
   try {
     const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    const resp = await fetch(url, {
+    let resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -82,12 +91,30 @@ async function sendTelegramNotification(message) {
 
     if (!resp.ok) {
       const errRes = await resp.text();
+      console.warn(`[TELEGRAM HTML ERROR] HTTP ${resp.status}: ${errRes} — Attempting Plaintext Fallback...`);
+      // ถ้า HTML parse error ให้ส่งแบบ Plaintext ไม่ใส่ parse_mode
+      const plainText = message.replace(/<[^>]*>/g, '');
+      resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: plainText
+        })
+      });
+    }
+
+    if (!resp.ok) {
+      const errRes = await resp.text();
       console.error(`[TELEGRAM API ERROR] HTTP ${resp.status}: ${errRes}`);
+      return { success: false, error: errRes };
     } else {
       console.log('[TELEGRAM LOG SUCCESS] Message sent to Telegram successfully');
+      return { success: true };
     }
   } catch (err) {
     console.error('[TELEGRAM LOG ERROR]', err.message);
+    return { success: false, error: err.message };
   }
 }
 
@@ -155,12 +182,18 @@ module.exports = async function handler(req, res) {
       console.log(`[SUCCESS weight] IP: ${clientIp} | Duration: ${duration}ms | Declaration: ${parsed.declaration_no || '-'} | Importer: ${parsed.importer || '-'}`);
 
       // ส่ง Telegram แจ้งเตือนสำเร็จ
+      const dateStr = escapeHtml(parsed.date || '-');
+      const importerStr = escapeHtml(parsed.importer || '-');
+      const declNoStr = escapeHtml(parsed.declaration_no || '-');
+      const goodsTypeStr = escapeHtml(parsed.goods_type || 'สินค้า');
+      const declWeightStr = parsed.declared_weight ? Number(parsed.declared_weight).toLocaleString('en-US') + ' KG' : '-';
+
       const tgMsg = `📊 <b>[อ่านใบชั่งน้ำหนักสำเร็จ]</b>\n` +
-                    `• วันที่: ${parsed.date || '-'}\n` +
-                    `• ผู้นำเข้า: ${parsed.importer || '-'}\n` +
-                    `• เลขที่ใบขน: <code>${parsed.declaration_no || '-'}</code>\n` +
+                    `• วันที่: ${dateStr}\n` +
+                    `• ผู้นำเข้า: ${importerStr}\n` +
+                    `• เลขที่ใบขน: <code>${declNoStr}</code>\n` +
                     `• จำนวนรถ: ${parsed.vehicles?.length || 0} คัน\n` +
-                    `• น้ำหนักหน้าใบขน (${parsed.goods_type || 'สินค้า'}): ${parsed.declared_weight ? Number(parsed.declared_weight).toLocaleString('en-US') + ' KG' : '-'}\n` +
+                    `• น้ำหนักหน้าใบขน (${goodsTypeStr}): ${declWeightStr}\n` +
                     `⏱ เวลาประมวลผล: ${(duration / 1000).toFixed(2)}s`;
       await sendTelegramNotification(tgMsg);
 
@@ -208,10 +241,10 @@ module.exports = async function handler(req, res) {
       });
 
       const goodsSummaryLines = Object.entries(weightByGoods)
-        .map(([g, w]) => `  • ${g}: ${w > 0 ? w.toLocaleString('en-US') + ' KG' : '-'}`)
+        .map(([g, w]) => `  • ${escapeHtml(g)}: ${w > 0 ? w.toLocaleString('en-US') + ' KG' : '-'}`)
         .join('\n');
 
-      const declNosList = decls.map(d => d.no).filter(Boolean).map(no => `<code>${no}</code>`).join(', ');
+      const declNosList = decls.map(d => escapeHtml(d.no)).filter(Boolean).map(no => `<code>${no}</code>`).join(', ');
 
       // สร้างข้อความรายงาน
       let text = `${date}\n`;
@@ -228,7 +261,7 @@ module.exports = async function handler(req, res) {
 
       // ส่ง Telegram แจ้งเตือนสำเร็จ
       const tgMsg = `📋 <b>[สร้างรายงานตรวจทีมสำเร็จ]</b>\n` +
-                    `• วันที่: ${date || '-'}\n` +
+                    `• วันที่: ${escapeHtml(date) || '-'}\n` +
                     `• จำนวนใบขน: ${count} ใบขน\n` +
                     `• เลขที่ใบขน: ${declNosList || '-'}\n` +
                     `• น้ำหนักหน้าใบขนรวมแยกตามสินค้า:\n${goodsSummaryLines || '  • -'}\n` +
@@ -243,7 +276,7 @@ module.exports = async function handler(req, res) {
     console.error(`[ERROR] IP: ${clientIp} | Duration: ${duration}ms | Msg: ${err.message}`);
 
     const tgMsg = `🚨 <b>[API ERROR]</b>\n` +
-                  `• Error: ${err.message || 'เกิดข้อผิดพลาด'}\n` +
+                  `• Error: ${escapeHtml(err.message || 'เกิดข้อผิดพลาด')}\n` +
                   `⏱ เวลาใช้ไป: ${(duration / 1000).toFixed(2)}s`;
     await sendTelegramNotification(tgMsg);
 
