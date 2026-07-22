@@ -677,14 +677,60 @@ function handleFiles(files){
   }
 }
 
+let totalFailedAttempts = 0;
+
 async function readImagesWithRetry(){
-  const success = await runReadImages();
-  if(!success){
-    // retry ครั้งที่ 2
-    showToast('ลองใหม่อีกครั้ง...','warn');
-    await new Promise(r=>setTimeout(r,1500));
-    await runReadImages(true);
+  if(totalFailedAttempts >= 6){
+    showQuotaLimitModal();
+    return;
   }
+
+  // รอบที่ 1 (Initial)
+  const success1 = await runReadImages(false);
+  if(success1){
+    totalFailedAttempts = 0;
+    return;
+  }
+  totalFailedAttempts++;
+
+  // auto-retry รอบที่ 1 (Attempt 2)
+  showToast('ลองใหม่อีกครั้ง... (รอบที่ 1/2)','warn');
+  await new Promise(r=>setTimeout(r,1500));
+  const success2 = await runReadImages(false);
+  if(success2){
+    totalFailedAttempts = 0;
+    return;
+  }
+  totalFailedAttempts++;
+
+  // auto-retry รอบที่ 2 (Attempt 3)
+  showToast('ลองใหม่อีกครั้ง... (รอบที่ 2/2)','warn');
+  await new Promise(r=>setTimeout(r,1500));
+  const success3 = await runReadImages(true);
+  if(success3){
+    totalFailedAttempts = 0;
+    return;
+  }
+  totalFailedAttempts++;
+
+  if(totalFailedAttempts >= 6){
+    showQuotaLimitModal();
+  }
+}
+
+function showQuotaLimitModal(){
+  const m = document.getElementById('quotaLimitModal');
+  if(m) m.style.display = 'flex';
+}
+
+function closeQuotaModal(){
+  const m = document.getElementById('quotaLimitModal');
+  if(m) m.style.display = 'none';
+}
+
+function closeQuotaModalAndManual(){
+  closeQuotaModal();
+  manualEntry();
 }
 
 async function runReadImages(isFinal=false){
@@ -1792,6 +1838,22 @@ window.addEventListener('DOMContentLoaded',()=>{
     <div style="display:flex;gap:10px;">
       <button type="button" class="btn" onclick="closeDateModalAndEdit()" style="flex:1;background:#F3F4F6;color:#374151;border:1px solid #D1D5DB;padding:10px;font-weight:600;">แก้ไข</button>
       <button type="button" class="btn btn-primary" onclick="confirmDateAndGenerate()" style="flex:1;padding:10px;font-weight:700;">ตกลง</button>
+    </div>
+  </div>
+<!-- POPUP MODAL: Quota Limit Exceeded (Sad Sloth) -->
+<div id="quotaLimitModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:white;border-radius:22px;max-width:380px;width:100%;padding:28px 24px;box-shadow:0 20px 50px rgba(0,0,0,0.3);text-align:center;">
+    <img src="sad_sloth.jpg" style="width:130px;height:130px;border-radius:50%;object-fit:cover;margin:0 auto 14px;display:block;box-shadow:0 8px 24px rgba(0,0,0,0.12);border:3px solid #FFF;" alt="Sad Sloth" />
+    <h3 style="margin:0 0 10px;font-size:1.2rem;font-weight:700;color:var(--gray-900);">Free API Quota Limit Reached 🦥</h3>
+    <p style="margin:0 0 8px;font-size:0.95rem;color:var(--gray-700);line-height:1.5;font-weight:600;">
+      Sorry, the free Gemini AI daily quota limit has been exhausted. Please try again tomorrow!
+    </p>
+    <p style="margin:0 0 20px;font-size:0.85rem;color:var(--gray-500);line-height:1.4;">
+      (โควต้าใช้งานฟรีประจำวันหมดแล้ว สามารถกด Manual เพื่อกรอกข้อมูลเองได้เลยครับ)
+    </p>
+    <div style="display:flex;gap:10px;">
+      <button type="button" class="btn" onclick="closeQuotaModal()" style="flex:1;background:#F3F4F6;color:#4B5563;border:1px solid #D1D5DB;padding:10px;font-weight:600;">ปิด</button>
+      <button type="button" class="btn btn-primary" onclick="closeQuotaModalAndManual()" style="flex:1;padding:10px;font-weight:700;">Manual</button>
     </div>
   </div>
 </div>
