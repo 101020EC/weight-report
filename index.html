@@ -1143,7 +1143,26 @@ function calcSummary(){
   else{db.classList.add('zero');dv.textContent='0 KG';dp.textContent='(ตรงกัน 100%)';}
 }
 
-// ── GENERATE IMAGE ────────────────────────────────────────
+// ── DATE DIFF CHECK & CONFIRM MODAL ─────────────────────────
+function getDaysDiffFromToday(dateStr){
+  if(!dateStr) return 0;
+  const m=String(dateStr).trim().match(/^(\d{1,2})\s+(\S+)\s+(\d{4})$/);
+  if(!m) return 0;
+  const d=parseInt(m[1],10);
+  const monthName=m[2];
+  const thaiYear=parseInt(m[3],10);
+  const monthNum=THAI_MONTHS_MAP[monthName];
+  if(!monthNum) return 0;
+  const adYear=thaiYear-543;
+  const docDate=new Date(adYear, monthNum-1, d);
+  const today=new Date();
+  today.setHours(0,0,0,0);
+  docDate.setHours(0,0,0,0);
+  return Math.abs(Math.round((docDate-today)/(1000*60*60*24)));
+}
+
+let dateConfirmedForCurrent=false;
+
 function generateImage(){
   // validate required fields
   const missing=validateForm();
@@ -1152,6 +1171,36 @@ function generateImage(){
     return;
   }
 
+  const dt = document.getElementById('f_date').value||'-';
+  const diffDays = getDaysDiffFromToday(dt);
+
+  if(diffDays > 10 && !dateConfirmedForCurrent){
+    document.getElementById('dateModalText').textContent = dt;
+    document.getElementById('dateConfirmModal').style.display = 'flex';
+    return;
+  }
+
+  dateConfirmedForCurrent = false;
+  doGenerateImage();
+}
+
+function closeDateModalAndEdit(){
+  document.getElementById('dateConfirmModal').style.display = 'none';
+  dateConfirmedForCurrent = false;
+  const fDate = document.getElementById('f_date_d');
+  if(fDate){
+    scrollBelowHeader(document.getElementById('card-edit'));
+    setTimeout(()=> fDate.focus(), 200);
+  }
+}
+
+function confirmDateAndGenerate(){
+  document.getElementById('dateConfirmModal').style.display = 'none';
+  dateConfirmedForCurrent = true;
+  doGenerateImage();
+}
+
+function doGenerateImage(){
   const im  = document.getElementById('f_importer').value||'-';
   const dn  = document.getElementById('f_declaration').value||'-';
   const dw  = (document.getElementById('f_declared_weight').value||'0').replace(/,/g,'');
@@ -1177,7 +1226,7 @@ function generateImage(){
   const W=1200, M=48, rowH=56;
   const infoH= og ? 168 : 140;
   const bh=125;
-  const totalH=10+110+infoH+24+48+rowH*(vrows.length+2)+28+44+bh+28+50;
+  const totalH=10+110+infoH+24+48+rowH*(vrows.length+2)+28+44+bh+24;
   const canvas=document.getElementById('reportCanvas');
   canvas.width=W; canvas.height=totalH;
   const c=canvas.getContext('2d');
@@ -1360,11 +1409,6 @@ function generateImage(){
   const dfTc=diff>0?RT:diff<0?GT:G6;
   drawBox(bx[2],'ผลต่างน้ำหนัก',dfStr,dfSub,dfFill,dfBrd,dfTc,dfTc);
   y+=bh+22;
-
-  // Footer — ลบวันที่ฝั่งขวาออก
-  c.strokeStyle='#E0E0E0';c.lineWidth=1;
-  c.beginPath();c.moveTo(M,y);c.lineTo(W-M,y);c.stroke();y+=16;
-  txt('ระบบอ่านใบชั่งน้ำหนัก | Gemini Vision',M,y+16,'16px Sarabun,sans-serif','#BBB');
 
   const imgData=canvas.toDataURL('image/png');
   document.getElementById('resultImg').src=imgData;
@@ -1733,5 +1777,20 @@ window.addEventListener('DOMContentLoaded',()=>{
   safeTap('btnClearTeam', clearTeamAll);
 });
 </script>
+<!-- POPUP MODAL: แจ้งเตือนวันที่ห่างเกิน 10 วัน -->
+<div id="dateConfirmModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:white;border-radius:18px;max-width:360px;width:100%;padding:24px;box-shadow:0 20px 40px rgba(0,0,0,0.25);text-align:center;">
+    <div style="font-size:38px;margin-bottom:10px;">⚠️</div>
+    <h3 style="margin:0 0 10px;font-size:1.15rem;font-weight:700;color:var(--gray-900);">ยืนยันวันที่เอกสาร</h3>
+    <p style="margin:0 0 20px;font-size:0.95rem;color:var(--gray-600);line-height:1.5;">
+      ยืนยัน วันที่ <strong id="dateModalText" style="color:var(--orange-deep);font-weight:700;">-</strong><br>
+      <span style="font-size:0.85rem;color:#777;">(วันที่ที่เลือกห่างจากปัจจุบันเกิน 10 วัน)</span>
+    </p>
+    <div style="display:flex;gap:10px;">
+      <button type="button" class="btn" onclick="closeDateModalAndEdit()" style="flex:1;background:#F3F4F6;color:#374151;border:1px solid #D1D5DB;padding:10px;font-weight:600;">แก้ไข</button>
+      <button type="button" class="btn btn-primary" onclick="confirmDateAndGenerate()" style="flex:1;padding:10px;font-weight:700;">ตกลง</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
