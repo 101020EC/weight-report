@@ -87,20 +87,20 @@ body{
   background:radial-gradient(1200px 400px at 50% -160px,rgba(232,105,26,0.10),transparent),#F4EFE8;
   -webkit-tap-highlight-color:transparent;
 }
-.topbar{background:var(--orange);height:5px;}
-.header{background:rgba(255,255,255,0.96);backdrop-filter:blur(8px);border-bottom:1px solid rgba(232,105,26,0.15);padding:16px 32px;display:flex;align-items:center;justify-content:center;gap:16px;position:sticky;top:0;z-index:100;}
-.header-title{font-size:22px;font-weight:700;color:var(--gray-800);display:flex;align-items:center;gap:10px;}
-.header-badge{width:34px;height:34px;border-radius:11px;background:linear-gradient(135deg,var(--orange-mid),var(--orange-dark));color:white;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 6px 16px -6px rgba(232,105,26,0.6);flex-shrink:0;}
+.topbar{background:var(--orange);height:4px;}
+.header{background:rgba(255,255,255,0.96);backdrop-filter:blur(8px);border-bottom:1px solid rgba(232,105,26,0.15);padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:10px;position:sticky;top:0;z-index:100;}
+.header-title{font-size:20px;font-weight:700;color:var(--gray-800);display:flex;align-items:center;gap:8px;}
+.header-badge{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--orange-mid),var(--orange-dark));color:white;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 4px 12px -4px rgba(232,105,26,0.6);flex-shrink:0;}
 .header-badge svg{width:18px;height:18px;}
-.main{padding:28px 32px 120px;max-width:960px;margin:0 auto;}
-.step-card{background:#fff;border-radius:1rem;box-shadow:var(--shadow);margin-bottom:28px;overflow:hidden;border:1px solid var(--line);}
-.step-header{background:white;border-bottom:1px solid var(--line);padding:20px 24px;display:flex;align-items:center;justify-content:center;gap:12px;}
-.step-num{width:38px;height:38px;background:var(--orange-light);color:var(--orange);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;}
-.step-num svg{width:19px;height:19px;}
+.main{padding:20px 24px 120px;max-width:960px;margin:0 auto;}
+.step-card{background:#fff;border-radius:1rem;box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden;border:1px solid var(--line);}
+.step-header{background:white;border-bottom:1px solid var(--line);padding:16px 20px;display:flex;align-items:center;justify-content:center;gap:12px;}
+.step-num{width:36px;height:36px;background:var(--orange-light);color:var(--orange);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;}
+.step-num svg{width:18px;height:18px;}
 .step-num.done{background:var(--green-text);color:white;}
 .step-label{font-size:18px;font-weight:700;text-align:center;}
-.step-body{padding:24px;}
-.upload-zone{border:2px dashed #E2D8CC;border-radius:1rem;padding:36px 24px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;}
+.step-body{padding:20px;}
+.upload-zone{border:2px dashed #E2D8CC;border-radius:1rem;padding:28px 20px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;}
 .upload-zone:hover,.upload-zone.drag-over{border-color:var(--orange);background:var(--orange-light);}
 .upload-zone input{display:none;}
 .upload-zone p{color:var(--gray-600);font-size:16px;line-height:1.7;}
@@ -109,14 +109,14 @@ body{
 .preview-item{position:relative;width:90px;height:90px;border-radius:8px;overflow:hidden;border:2px solid var(--gray-200);}
 .preview-item img{width:100%;height:100%;object-fit:cover;}
 .preview-remove{position:absolute;top:3px;right:3px;width:18px;height:18px;background:rgba(0,0,0,0.65);color:white;border:none;border-radius:50%;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;}
-.btn{padding:0.72rem 1.1rem;border-radius:0.875rem;border:none;font-size:16px;font-weight:600;cursor:pointer;transition:opacity 0.15s,transform 0.05s,box-shadow 0.15s;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;}
+.btn{padding:10px 18px;border-radius:0.875rem;border:none;font-size:16px;font-weight:600;cursor:pointer;transition:opacity 0.15s,transform 0.05s,box-shadow 0.15s;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;}
 .btn:hover{opacity:0.92;}.btn:active{transform:translateY(1px);}.btn:disabled{opacity:0.45;cursor:not-allowed;}
 .btn-primary{background-image:linear-gradient(135deg,var(--orange-mid),var(--orange-deep));color:white;box-shadow:var(--shadow-btn);}
 .btn-secondary{background:white;color:var(--ink);border:1px solid var(--line);}
 .btn-secondary:hover{background:#FBF8F4;border-color:var(--orange-mid);}
 .btn-gen{background-image:linear-gradient(135deg,var(--orange-mid),var(--orange-deep));color:white;box-shadow:var(--shadow-btn);}
 .btn-gen:hover{opacity:0.92;}
-.btn-save{background-image:linear-gradient(135deg,#22A34A,#158038);color:white;border:none;padding:0.8rem 1.6rem;font-size:16px;box-shadow:0 10px 24px -10px rgba(21,128,56,0.55);}
+.btn-save{background-image:linear-gradient(135deg,#22A34A,#158038);color:white;border:none;padding:10px 22px;font-size:16px;box-shadow:0 10px 24px -10px rgba(21,128,56,0.55);}
 .btn-danger{background-image:linear-gradient(135deg,#EF4444,#DC2626);color:white;border:none;box-shadow:0 10px 24px -10px rgba(220,38,38,0.55);}
 .btn-danger:hover{opacity:0.92;}
 .loading-bar{height:4px;background:var(--gray-100);border-radius:2px;overflow:hidden;margin:12px 0;}
@@ -130,11 +130,11 @@ body{
 .form-group label{font-size:14px;color:var(--orange);font-weight:700;letter-spacing:0.01em;}
 .form-group label .req{color:#CC2222;}
 .form-group input,.form-group select{
-  padding:12px 14px;border:1px solid var(--line);border-radius:0.75rem;
-  font-size:1rem;font-family:inherit;color:var(--ink);background:white;
+  padding:10px 14px;border:1px solid var(--line);border-radius:0.75rem;
+  font-size:16px;font-family:inherit;color:var(--ink);background:white;
   transition:border-color 0.15s,box-shadow 0.15s;
-  min-height:3em;
-  height:3em;
+  min-height:2.8em;
+  height:2.8em;
 }
 .form-group input:focus,.form-group select:focus{outline:none;border-color:var(--orange-mid);box-shadow:0 0 0 3px rgba(232,105,26,0.16);}
 .form-group input.changed,.form-group select.changed{border-color:var(--orange-mid);background:#FFFDF8;}
@@ -143,39 +143,39 @@ body{
 .table-wrap{overflow-x:auto;}
 table.dt{width:100%;border-collapse:collapse;font-size:15px;}
 table.dt thead tr{background:var(--orange);color:white;}
-table.dt thead th{padding:12px;text-align:center;font-weight:700;white-space:nowrap;font-size:15px;}
+table.dt thead th{padding:10px;text-align:center;font-weight:700;white-space:nowrap;font-size:15px;}
 table.dt tbody tr:nth-child(even){background:var(--gray-50);}
-table.dt tbody td{padding:9px 8px;border-bottom:1px solid var(--gray-100);text-align:center;}
-table.dt tbody td input{width:100%;padding:7px;border:1.5px solid transparent;border-radius:5px;font-size:16px;text-align:center;font-family:inherit;background:transparent;transition:border-color 0.15s,background 0.15s;}
+table.dt tbody td{padding:8px 6px;border-bottom:1px solid var(--gray-100);text-align:center;}
+table.dt tbody td input{width:100%;padding:6px 4px;border:1.5px solid transparent;border-radius:5px;font-size:16px!important;text-align:center;font-family:inherit;background:transparent;transition:border-color 0.15s,background 0.15s;}
 table.dt tbody td input:focus{border-color:var(--orange);background:white;outline:none;}
 table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF8;}
-.btn-add-row{margin-top:8px;padding:9px 16px;background:#fff;border:1px dashed #D8CCBE;border-radius:0.75rem;font-size:14px;font-weight:600;color:var(--orange);cursor:pointer;font-family:inherit;}
+.btn-add-row{margin-top:8px;padding:8px 14px;background:#fff;border:1px dashed #D8CCBE;border-radius:0.75rem;font-size:14px;font-weight:600;color:var(--orange);cursor:pointer;font-family:inherit;}
 .btn-add-row:hover{background:var(--orange-light);color:var(--orange-deep);border-color:var(--orange);}
 .btn-del{background:none;border:none;color:#CC3333;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:14px;}
 .btn-del:hover{background:#FFF0F0;}
-.summary-box{margin-top:18px;background:var(--orange-light);border:1px solid #F5C89A;border-radius:var(--radius);padding:16px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.summary-box{margin-top:18px;background:var(--orange-light);border:1px solid #F5C89A;border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
 .sum-item{text-align:center;}
 .sum-item .sl{font-size:13px;color:var(--gray-600);margin-bottom:3px;}
 .sum-item .sv{font-size:22px;font-weight:700;color:var(--orange-dark);}
-.diff-box{border-radius:8px;padding:12px 18px;text-align:center;min-width:160px;}
+.diff-box{border-radius:10px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;width:100%;min-width:0;}
 /* บวก=แดง, ลบ=เขียว */
 .diff-box.pos{background:var(--red-bg);border:1px solid var(--red-border);}
 .diff-box.neg{background:var(--green-bg);border:1px solid var(--green-border);}
 .diff-box.zero{background:var(--gray-100);border:1px solid var(--gray-200);}
-.diff-box .dl{font-size:13px;margin-bottom:3px;}
+.diff-box .dl{font-size:14px;font-weight:600;margin-bottom:0;}
 .diff-box.pos .dl{color:var(--red-text);}
 .diff-box.neg .dl{color:var(--green-text);}
 .diff-box .dv{font-size:18px;font-weight:700;}
 .diff-box.pos .dv{color:var(--red-text);}
 .diff-box.neg .dv{color:var(--green-text);}
 .diff-box.zero .dl,.diff-box.zero .dv{color:var(--gray-600);}
-.diff-box .dp{font-size:12px;margin-top:2px;}
+.diff-box .dp{font-size:14px;font-weight:600;margin-top:0;}
 .diff-box.pos .dp{color:#E05555;}
 .diff-box.neg .dp{color:#2E8A50;}
 .action-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:18px;}
 .action-row .sp{flex:1;}
 .result-card{background:rgba(255,255,255,0.97);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden;border:1px solid rgba(232,105,26,0.08);}
-.result-header{background:white;border-bottom:1px solid var(--gray-100);padding:16px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.result-header{background:white;border-bottom:1px solid var(--gray-100);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .result-img-wrap{padding:20px;background:#F8F8F8;display:flex;flex-direction:column;align-items:center;gap:16px;}
 .result-img-wrap img{max-width:100%;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.12);border:1px solid var(--gray-200);}
 .save-area{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;}
@@ -209,11 +209,11 @@ table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF
 .toast.success{background:#1A7A3A;}
 .toast.error{background:#AA2222;}
 .toast.warn{background:#B87800;}
-.alert{border-radius:0.75rem;padding:12px 16px;font-size:14px;margin-bottom:14px;}
+.alert{border-radius:0.75rem;padding:10px 14px;font-size:14px;margin-bottom:12px;}
 .alert-info{background:#F0F6FF;border:1px solid #B8D4F8;color:#1A4A8A;}
 /* Chip selectors (ผู้นำเข้า / ประเภทสินค้า) — สไตล์ Referback */
 .chip-row{display:flex;flex-wrap:wrap;gap:8px;}
-.chip{padding:0.5rem 0.95rem;border-radius:0.75rem;font-size:0.95rem;font-weight:600;font-family:inherit;
+.chip{padding:0.45rem 0.9rem;border-radius:0.75rem;font-size:0.95rem;font-weight:600;font-family:inherit;
   border:1px solid var(--line);background:#fff;color:var(--ink-soft);cursor:pointer;transition:all 0.15s;line-height:1.2;}
 .chip:hover{border-color:#D8CCBE;}
 .chip.active{color:#fff;border-color:transparent;box-shadow:0 8px 18px -10px rgba(0,0,0,0.4);}
@@ -239,9 +239,9 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
   /* ลดขนาด 20% จาก base 20px → 16px */
   html{ font-size: 16px !important; }
   .main{padding:10px 10px 120px;}.step-body{padding:14px;}
-  .header{padding:12px 14px;gap:10px;}
-  .header-title{font-size:1.1rem;}
-  .step-header{padding:14px 16px;}
+  .header{padding:8px 12px;gap:8px;}
+  .header-title{font-size:1.05rem;}
+  .step-header{padding:12px 14px;}
   .step-label{font-size:1rem;}
   .step-num{width:2rem;height:2rem;font-size:0.85rem;}
   .step-num svg{width:1rem;height:1rem;}
@@ -249,32 +249,32 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
   .form-group{gap:4px;}
   .form-group label{font-size:0.9rem;}
   .form-group input,.form-group select{
-    font-size:1rem;min-height:2.8em;height:2.8em;padding:0.4em 0.7em;
+    font-size:16px!important;min-height:2.6em;height:2.6em;padding:0.4em 0.7em;
   }
   .table-label{font-size:0.95rem;}
   table.dt{font-size:0.85rem;}
   table.dt thead th{padding:8px 4px;font-size:0.85rem;}
   table.dt tbody td{padding:6px 4px;}
-  table.dt tbody td input{font-size:0.85rem;padding:5px 3px;}
-  .btn{font-size:1rem;padding:0.7em 1em;}
+  table.dt tbody td input{font-size:16px!important;padding:5px 3px;}
+  .btn{font-size:1rem;padding:10px 14px;}
   .btn-add-row{font-size:0.9rem;padding:6px 12px;}
   .btn-del{font-size:0.9rem;}
   .summary-box{flex-direction:column;align-items:stretch;padding:12px;}
   .sum-item{display:flex;justify-content:space-between;align-items:center;}
   .sum-item .sl{font-size:0.85rem;}
   .sum-item .sv{font-size:1.1rem;}
-  .diff-box{min-width:unset;width:100%;padding:10px 12px;}
+  .diff-box{min-width:unset;width:100%;padding:8px 12px;font-size:0.88rem;}
   .diff-box .dl{font-size:0.85rem;}
   .diff-box .dv{font-size:1rem;}
-  .diff-box .dp{font-size:0.8rem;}
+  .diff-box .dp{font-size:0.82rem;}
   .action-row{flex-direction:column;}.action-row .sp{display:none;}
   .action-row .btn{
-    width:100%;justify-content:center;padding:0.8em;font-size:1rem;
+    width:100%;justify-content:center;padding:10px;font-size:1rem;
   }
   /* บันทึกรูป + สร้างใหม่ อยู่บรรทัดเดียว กว้างเท่ากัน */
   .save-area{flex-wrap:nowrap;align-items:stretch;}
-  .save-area .btn{flex:1;justify-content:center;padding:0.8em 0.4em;font-size:0.95rem;min-width:0;white-space:nowrap;}
-  .alert{font-size:0.88rem;padding:10px 12px;}
+  .save-area .btn{flex:1;justify-content:center;padding:10px 4px;font-size:0.95rem;min-width:0;white-space:nowrap;}
+  .alert{font-size:0.88rem;padding:8px 10px;}
   .loading-text{font-size:0.9rem;}
   .toast{left:10px;right:10px;bottom:12px;text-align:center;font-size:0.9rem;}
   .result-header span{font-size:0.9rem;}
@@ -301,7 +301,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
     <svg id="badge-weight" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><path d="M6.5 8a2 2 0 0 0-1.905 1.46L2.1 18.5A2 2 0 0 0 4 21h16a2 2 0 0 0 1.925-2.54L19.4 9.5A2 2 0 0 0 17.48 8Z"/></svg>
     <svg id="badge-team" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
   </span>
-  <div class="header-title" id="headerTitle">อ่านใบชั่งน้ำหนัก</div>
+  <div class="header-title" id="headerTitle">ชั่งน้ำหนัก</div>
 </div>
 
 <nav class="bottom-nav">
@@ -339,17 +339,17 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
         </label>
         <div id="uploadPreviewBig" style="display:none;width:100%;"></div>
       </div>
-      <div style="margin-top:14px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="readImages()" id="readBtn" disabled>
+      <div style="margin-top:14px;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:nowrap;">
+        <button class="btn btn-primary" onclick="readImages()" id="readBtn" disabled style="padding:10px 16px;flex:1;">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
           อ่านข้อมูลด้วย Gemini
         </button>
-        <button class="btn btn-secondary" id="manualBtn" onclick="manualEntry()">
+        <button class="btn btn-secondary" id="manualBtn" onclick="manualEntry()" style="padding:10px 16px;">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
           Manual
         </button>
-        <button class="btn btn-secondary" id="clearBtn" onclick="clearFiles()" style="display:none;padding:10px 14px;">
-          ✕ ล้างรูป
+        <button class="btn btn-secondary" id="clearBtn" onclick="clearFiles()" style="display:none;padding:10px 14px;font-weight:700;" title="ล้างรูป">
+          ✕
         </button>
       </div>
       <div id="loadingArea" style="display:none;margin-top:14px;">
@@ -359,15 +359,13 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
     </div>
   </div>
 
-  <!-- STEP 2 -->
+  <!-- STEP 2: ข้อมูลทั่วไป -->
   <div class="step-card" id="card-edit" style="display:none;">
     <div class="step-header">
       <div class="step-num" id="num-2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></div>
-      <div class="step-label">ตรวจสอบและแก้ไขข้อมูล</div>
+      <div class="step-label">ข้อมูลทั่วไป</div>
     </div>
     <div class="step-body">
-      <div class="alert alert-info" id="editAlert">ตรวจสอบความถูกต้อง และกรอกช่อง * ให้ครบ</div>
-      <div class="table-label">ข้อมูลทั่วไป</div>
       <!-- บรรทัด 1: เลขที่ใบขน — เต็มแถว กึ่งกลาง -->
       <div class="form-group" style="margin-bottom:14px;">
         <label style="text-align:center;display:block;">เลขที่ใบขนสินค้า <span class="req">*</span></label>
@@ -423,33 +421,39 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
           <input type="text" id="f_period" placeholder="เช่น ชุดที่ 1" oninput="markChanged(this)" onblur="resetZoom()" />
         </div>
       </div>
+    </div>
+  </div>
 
-      <div style="margin-top:22px;">
-        <div class="table-label">รายละเอียดการชั่งน้ำหนักรถและสินค้า</div>
-        <div class="table-wrap" style="overflow-x:hidden;">
-          <table class="dt" style="table-layout:fixed;width:100%;">
-            <colgroup>
-              <col style="width:28px;">
-              <col style="width:29%;">
-              <col style="width:22%;">
-              <col style="width:22%;">
-              <col style="width:22%;">
-              <col style="width:28px;">
-            </colgroup>
-            <thead><tr>
-              <th>#</th>
-              <th>ทะเบียนรถ</th>
-              <th>น้ำหนักรถ<br>เปล่า (KG)</th>
-              <th>น้ำหนักชั่งได้<br><span style="font-weight:700;font-size:0.85em;">(KG)</span></th>
-              <th>น้ำหนักสุทธิ<br><span style="font-weight:700;font-size:0.85em;">(KG)</span></th>
-              <th></th>
-            </tr></thead>
-            <tbody id="vehicleBody"></tbody>
-          </table>
-        </div>
-        <button class="btn-add-row" onclick="addRow()">+ เพิ่มแถว</button>
-        <span style="font-size:0.78rem;color:var(--orange);margin-left:10px;">กดที่ช่องที่ต้องการแก้ไข</span>
+  <!-- STEP 3: รายละเอียดการชั่งน้ำหนักรถและสินค้า -->
+  <div class="step-card" id="card-table-section" style="display:none;">
+    <div class="step-header">
+      <div class="step-num" id="num-3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+      <div class="step-label">รายละเอียดการชั่งน้ำหนักรถและสินค้า</div>
+    </div>
+    <div class="step-body">
+      <div class="table-wrap" style="overflow-x:hidden;">
+        <table class="dt" style="table-layout:fixed;width:100%;">
+          <colgroup>
+            <col style="width:28px;">
+            <col style="width:29%;">
+            <col style="width:22%;">
+            <col style="width:22%;">
+            <col style="width:22%;">
+            <col style="width:28px;">
+          </colgroup>
+          <thead><tr>
+            <th>#</th>
+            <th>ทะเบียนรถ</th>
+            <th>น้ำหนักรถ<br>เปล่า (KG)</th>
+            <th>น้ำหนักชั่งได้<br><span style="font-weight:700;font-size:0.85em;">(KG)</span></th>
+            <th>น้ำหนักสุทธิ<br><span style="font-weight:700;font-size:0.85em;">(KG)</span></th>
+            <th></th>
+          </tr></thead>
+          <tbody id="vehicleBody"></tbody>
+        </table>
       </div>
+      <button class="btn-add-row" onclick="addRow()">+ เพิ่มแถว</button>
+      <span style="font-size:0.78rem;color:var(--orange);margin-left:10px;">กดที่ช่องที่ต้องการแก้ไข</span>
 
       <div class="summary-box">
         <div class="sum-item"><div class="sl">น้ำหนักสินค้าสุทธิทั้งหมด</div><div class="sv" id="sum_net">0 KG</div></div>
@@ -462,11 +466,11 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
       </div>
 
       <div style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:18px;">
-        <button class="btn btn-danger" id="btnClearBefore" style="padding:12px 24px;font-size:1rem;touch-action:manipulation;">
+        <button class="btn btn-danger" id="btnClearBefore" style="padding:10px 24px;font-size:1rem;touch-action:manipulation;">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           Clear
         </button>
-        <button class="btn btn-gen" id="btnGenerate" style="padding:12px 24px;font-size:1rem;">
+        <button class="btn btn-gen" id="btnGenerate" style="padding:10px 24px;font-size:1rem;">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
           สร้างรายงาน
         </button>
@@ -474,7 +478,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
     </div>
   </div>
 
-  <!-- STEP 3 -->
+  <!-- STEP 4: ผลลัพธ์รายงาน -->
   <div class="result-card" id="card-result" style="display:none;">
     <div class="result-header">
       <div style="display:flex;align-items:center;gap:10px;">
@@ -486,11 +490,11 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
     <div class="result-img-wrap">
       <img id="resultImg" src="" alt="รายงานน้ำหนัก" />
       <div class="save-area">
-        <button class="btn btn-secondary" id="btnGenerateNew" style="flex:1;padding:12px 24px;font-size:1rem;">
+        <button class="btn btn-secondary" id="btnGenerateNew" style="flex:1;padding:10px 24px;font-size:1rem;">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
           สร้างใหม่
         </button>
-        <button class="btn btn-save" onclick="saveImage()" style="flex:1;padding:12px 24px;font-size:1rem;">
+        <button class="btn btn-save" onclick="saveImage()" style="flex:1;padding:10px 22px;font-size:1rem;">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           บันทึกรูป
         </button>
@@ -500,7 +504,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
 
   <!-- ปุ่ม Clear — แสดงหลังสร้างรายงาน -->
   <div id="clearBtnArea" style="display:none;margin-top:-8px;text-align:center;">
-    <button class="btn btn-danger" id="btnClearWeight" style="padding:12px 24px;font-size:1rem;touch-action:manipulation;">
+    <button class="btn btn-danger" id="btnClearWeight" style="padding:10px 24px;font-size:1rem;touch-action:manipulation;">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
       Clear
     </button>
@@ -671,6 +675,7 @@ async function runReadImages(isFinal=false){
     if(!result.success) throw new Error(result.error||'เกิดข้อผิดพลาด');
     populateForm(result.data);
     document.getElementById('card-edit').style.display='block';
+    if(document.getElementById('card-table-section')) document.getElementById('card-table-section').style.display='block';
     setTimeout(()=>{
       scrollBelowHeader(document.getElementById('card-edit'));
     },100);
@@ -770,6 +775,7 @@ async function readImages(){
 function manualEntry(){
   // ข้ามการอ่านด้วย Gemini — ไปหน้าตรวจสอบและแก้ไขข้อมูลโดยตรง
   document.getElementById('card-edit').style.display='block';
+  if(document.getElementById('card-table-section')) document.getElementById('card-table-section').style.display='block';
   setTimeout(()=>{
     scrollBelowHeader(document.getElementById('card-edit'));
   },100);
@@ -1010,10 +1016,10 @@ function addRow(data={}){
   const tr=document.createElement('tr');tr.id='row-'+i;
   tr.innerHTML=`
     <td style="color:#aaa;font-size:0.8rem;">${tbody.children.length+1}</td>
-    <td><input type="text" id="plate_${i}" value="${data.plate||''}" placeholder="ทะเบียน" oninput="markChanged(this)" style="font-size:0.85rem;"/></td>
-    <td><input type="text" id="empty_${i}" value="${emV?Number(emV).toLocaleString('en-US'):''}" placeholder="0" oninput="markChanged(this);autoNet(${i})" style="font-size:0.85rem;"/></td>
-    <td><input type="text" id="gross_${i}" value="${grV?Number(grV).toLocaleString('en-US'):''}" placeholder="0" oninput="markChanged(this);autoNet(${i})" style="font-size:0.85rem;"/></td>
-    <td><input type="text" id="net_${i}" value="${netDisplay}" readonly style="background:#F0F0F0;color:#555;font-size:0.85rem;cursor:default;"/></td>
+    <td><input type="text" id="plate_${i}" value="${data.plate||''}" placeholder="ทะเบียน" oninput="markChanged(this)" style="font-size:16px!important;"/></td>
+    <td><input type="text" id="empty_${i}" value="${emV?Number(emV).toLocaleString('en-US'):''}" placeholder="0" oninput="markChanged(this);autoNet(${i})" style="font-size:16px!important;"/></td>
+    <td><input type="text" id="gross_${i}" value="${grV?Number(grV).toLocaleString('en-US'):''}" placeholder="0" oninput="markChanged(this);autoNet(${i})" style="font-size:16px!important;"/></td>
+    <td><input type="text" id="net_${i}" value="${netDisplay}" readonly style="background:#F0F0F0;color:#555;font-size:16px!important;cursor:default;"/></td>
     <td><button class="btn-del" onclick="removeRow('row-${i}')">✕</button></td>`;
   tbody.appendChild(tr);reNumberRows();
 }
@@ -1041,9 +1047,9 @@ function calcSummary(){
   const db=document.getElementById('diffBox'),dv=document.getElementById('diff_val'),dp=document.getElementById('diff_pct');
   db.className='diff-box';
   if(decl===0){db.classList.add('zero');dv.textContent='-';dp.textContent='';}
-  else if(diff>0){db.classList.add('pos');dv.textContent='+'+diff.toLocaleString('en-US')+' KG';dp.textContent=`(มากกว่าที่แจ้ง ${Math.abs(pct)}%)`;}
-  else if(diff<0){db.classList.add('neg');dv.textContent=diff.toLocaleString('en-US')+' KG';dp.textContent=`(น้อยกว่าที่แจ้ง ${Math.abs(pct)}%)`;}
-  else{db.classList.add('zero');dv.textContent='0 KG';dp.textContent='ตรงกัน 100%';}
+  else if(diff>0){db.classList.add('pos');dv.textContent='+'+diff.toLocaleString('en-US')+' KG';dp.textContent=`(มากกว่าที่สำแดง ${Math.abs(pct)}%)`;}
+  else if(diff<0){db.classList.add('neg');dv.textContent=diff.toLocaleString('en-US')+' KG';dp.textContent=`(น้อยกว่าที่สำแดง ${Math.abs(pct)}%)`;}
+  else{db.classList.add('zero');dv.textContent='0 KG';dp.textContent='(ตรงกัน 100%)';}
 }
 
 // ── GENERATE IMAGE ────────────────────────────────────────
@@ -1257,7 +1263,7 @@ function generateImage(){
   drawBox(bx[1],'น้ำหนักหน้าใบขนสินค้า',decl>0?decl.toLocaleString('en-US')+' KG':'-','',T.light,T.border,G8,G8);
 
   const dfStr=diff===0?'0 KG':(diff>0?'+':'')+diff.toLocaleString('en-US')+' KG';
-  const dfSub=decl>0?`(${diff>0?'มากกว่า':diff<0?'น้อยกว่า':'ตรงกัน'}ที่แจ้ง ${Math.abs(pct)}%)`:'';
+  const dfSub=decl>0?`(${diff>0?'มากกว่า':diff<0?'น้อยกว่า':'ตรงกัน'}ที่สำแดง ${Math.abs(pct)}%)`:'';
   const dfFill=diff>0?RB:diff<0?GB:'#F4F4F4';
   const dfBrd=diff>0?'#FFCCCC':diff<0?'#B8E8C8':'#E8E8E8';
   const dfTc=diff>0?RT:diff<0?GT:G6;
