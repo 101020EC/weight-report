@@ -1078,8 +1078,9 @@ function generateImage(){
 
   // ── Canvas 1200px ───────────────────────────────────────
   const W=1200, M=48, rowH=56;
-  const infoH= og ? 156 : 130;
-  const totalH=10+110+infoH+24+48+rowH*(vrows.length+2)+28+44+110+28+50;
+  const infoH= og ? 168 : 140;
+  const bh=125;
+  const totalH=10+110+infoH+24+48+rowH*(vrows.length+2)+28+44+bh+28+50;
   const canvas=document.getElementById('reportCanvas');
   canvas.width=W; canvas.height=totalH;
   const c=canvas.getContext('2d');
@@ -1114,35 +1115,35 @@ function generateImage(){
   c.font='bold 38px Sarabun,sans-serif';
   const titleW=c.measureText('รายงานสรุปน้ำหนักหอม กระเทียม').width;
   txt('รายงานสรุปน้ำหนักหอม กระเทียม',M,y+54,'bold 38px Sarabun,sans-serif',G8);
-  txt(dt, M+titleW+22, y+54, '22px Sarabun,sans-serif','#AAA');
+  txt(dt, M+titleW+22, y+54, '24px Sarabun,sans-serif','#AAA');
   c.strokeStyle=T.primary;c.lineWidth=3;
   c.beginPath();c.moveTo(M,y+72);c.lineTo(W-M,y+72);c.stroke();
   y+=headerH;
 
   // Info box
   rr(M,y+12,W-M*2,infoH,10,T.light,T.border,1.5);
-  const col1=M+24,col2=W/2+24,lh=38;
-  const lbl=(t,x,yy)=>txt(t,x,yy,'bold 18px Sarabun,sans-serif',T.infoLbl);
-  const val=(t,x,yy,mw=350)=>txt(t,x,yy,'18px Sarabun,sans-serif',G8,'left',mw);
-  lbl('ผู้นำเข้า:',col1,y+46);          val(im,col1+102,y+46);
-  lbl('เลขที่ใบขนสินค้า:',col2,y+46);   val(dn,col2+162,y+46);
-  lbl('น้ำหนักหน้าใบขน:',col1,y+46+lh); val(decl>0?decl.toLocaleString('en-US')+' KG':'-',col1+162,y+46+lh);
-  lbl('ชุดที่:',col2,y+46+lh);           val(pd||'-',col2+70,y+46+lh);
-  lbl('ประเภทสินค้า:',col1,y+46+lh*2);  val(gt,col1+130,y+46+lh*2);
+  const col1=M+24,col2=W/2+24,lh=46;
+  const lbl=(t,x,yy)=>txt(t,x,yy,'bold 24px Sarabun,sans-serif',T.infoLbl);
+  const val=(t,x,yy,mw=350)=>txt(t,x,yy,'24px Sarabun,sans-serif',G8,'left',mw);
+  lbl('ผู้นำเข้า:',col1,y+48);          val(im,col1+135,y+48);
+  lbl('เลขที่ใบขนสินค้า:',col2,y+48);   val(dn,col2+210,y+48);
+  lbl('น้ำหนักหน้าใบขน:',col1,y+48+lh); val(decl>0?decl.toLocaleString('en-US')+' KG':'-',col1+210,y+48+lh);
+  lbl('ชุดที่:',col2,y+48+lh);           val(pd||'-',col2+90,y+48+lh);
+  lbl('ประเภทสินค้า:',col1,y+48+lh*2);  val(gt,col1+170,y+48+lh*2);
   if(og){
-    lbl('ประเทศกำเนิด:',col2,y+46+lh*2); val(og,col2+140,y+46+lh*2);
+    lbl('ประเทศกำเนิด:',col2,y+48+lh*2); val(og,col2+185,y+48+lh*2);
   }
   y+=infoH+24;
 
   // Section label — table
   c.fillStyle=T.primary;c.fillRect(M,y,7,30);
-  txt('ตารางรายละเอียดการชั่งน้ำหนักรถและสินค้า',M+16,y+22,'bold 20px Sarabun,sans-serif',G8);
+  txt('ตารางรายละเอียดการชั่งน้ำหนักรถและสินค้า',M+16,y+22,'bold 24px Sarabun,sans-serif',G8);
   y+=44;
 
   // ── วาดตาราง: ใช้ measureText เพื่อ center ภาษาไทยได้แม่นยำ 100%
   const COL_W=[60,240,268,268,268];
   const tableW=W-M*2;
-  const hdrH=80;
+  const hdrH=90;
   const dRowH=rowH;
 
   // คำนวณ x เริ่มของแต่ละ col (absolute)
@@ -1172,7 +1173,7 @@ function generateImage(){
     {lines:['น้ำหนักชั่งได้','(KG)']},
     {lines:['น้ำหนักสินค้าสุทธิ','(KG)']}
   ];
-  const hFont='bold 16px Sarabun,sans-serif';
+  const hFont='bold 24px Sarabun,sans-serif';
   HDR.forEach((col,ci)=>{
     c.font=hFont;
     c.fillStyle='white';
@@ -1187,8 +1188,8 @@ function generateImage(){
       const tw1=c.measureText(col.lines[1]).width;
       const x0=colStart[ci]+Math.floor((COL_W[ci]-tw0)/2);
       const x1=colStart[ci]+Math.floor((COL_W[ci]-tw1)/2);
-      c.fillText(col.lines[0],x0,y+Math.floor(hdrH/2)-14);
-      c.fillText(col.lines[1],x1,y+Math.floor(hdrH/2)+14);
+      c.fillText(col.lines[0],x0,y+Math.floor(hdrH/2)-16);
+      c.fillText(col.lines[1],x1,y+Math.floor(hdrH/2)+16);
     }
   });
   y+=hdrH;
@@ -1206,7 +1207,7 @@ function generateImage(){
       row.net>0?row.net.toLocaleString('en-US'):'-'
     ];
     cells.forEach((cell,ci)=>{
-      const fnt=ci===4?'bold 17px Sarabun,sans-serif':'17px Sarabun,sans-serif';
+      const fnt=ci===4?'bold 22px Sarabun,sans-serif':'22px Sarabun,sans-serif';
       cellText(cell,ci,y,dRowH,fnt,ci===4?T.dark:G8);
     });
     y+=dRowH;
@@ -1220,17 +1221,17 @@ function generateImage(){
     tG>0?tG.toLocaleString('en-US'):'-',
     tN>0?tN.toLocaleString('en-US'):'-'
   ].forEach((cell,ci)=>{
-    cellText(cell,ci,y,dRowH,'bold 17px Sarabun,sans-serif',ci===4?T.totalTxt:G8);
+    cellText(cell,ci,y,dRowH,'bold 22px Sarabun,sans-serif',ci===4?T.totalTxt:G8);
   });
   y+=dRowH+28;
 
   // Section label — summary
   c.fillStyle=T.primary;c.fillRect(M,y,7,30);
-  txt('สรุปผลการเปรียบเทียบน้ำหนัก',M+16,y+22,'bold 20px Sarabun,sans-serif',G8);
+  txt('สรุปผลการเปรียบเทียบน้ำหนัก',M+16,y+22,'bold 24px Sarabun,sans-serif',G8);
   y+=44;
 
   // 3 summary boxes — ใช้ measureText จัดกลางแม่นยำ
-  const bw=Math.floor((W-M*2-24)/3), bh=100;
+  const bw=Math.floor((W-M*2-24)/3);
   const bx=[M, M+bw+12, M+(bw+12)*2];
 
   // วาด text กึ่งกลาง box ด้วย measureText
@@ -1245,15 +1246,15 @@ function generateImage(){
   function drawBox(x, lb, vl, sub, fill, border, tc, vc){
     rr(x,y,bw,bh,10,fill,border,1.5);
     // label บน
-    boxText(lb, x, y+24, '15px Sarabun,sans-serif', tc);
+    boxText(lb, x, y+26, '22px Sarabun,sans-serif', tc);
     // value กลาง
-    boxText(vl, x, y+(sub?58:bh/2+6), 'bold 28px Sarabun,sans-serif', vc);
+    boxText(vl, x, y+(sub?65:bh/2+6), 'bold 28px Sarabun,sans-serif', vc);
     // sub ล่าง
-    if(sub) boxText(sub, x, y+86, '13px Sarabun,sans-serif', tc);
+    if(sub) boxText(sub, x, y+104, '22px Sarabun,sans-serif', tc);
   }
 
-  drawBox(bx[0],'น้ำหนักสินค้าสุทธิทั้งหมด',tN.toLocaleString('en-US')+' KG','',T.light,T.border,'#705020',T.dark);
-  drawBox(bx[1],'น้ำหนักหน้าใบขนสินค้า',decl>0?decl.toLocaleString('en-US')+' KG':'-','',T.light,T.border,'#705020',T.dark);
+  drawBox(bx[0],'น้ำหนักสินค้าสุทธิทั้งหมด',tN.toLocaleString('en-US')+' KG','',T.light,T.border,G8,G8);
+  drawBox(bx[1],'น้ำหนักหน้าใบขนสินค้า',decl>0?decl.toLocaleString('en-US')+' KG':'-','',T.light,T.border,G8,G8);
 
   const dfStr=diff===0?'0 KG':(diff>0?'+':'')+diff.toLocaleString('en-US')+' KG';
   const dfSub=decl>0?`(${diff>0?'มากกว่า':diff<0?'น้อยกว่า':'ตรงกัน'}ที่แจ้ง ${Math.abs(pct)}%)`:'';
