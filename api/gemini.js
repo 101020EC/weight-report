@@ -59,7 +59,32 @@ async function callGeminiWithRotation(parts) {
   throw lastError || new Error('API Key ทุกตัว quota หมดแล้ว กรุณาลองใหม่พรุ่งนี้');
 }
 
+// ── Telegram Notification Helper ────────────────────────────
+async function sendTelegramNotification(message) {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId   = process.env.TELEGRAM_CHAT_ID;
+  if (!botToken || !chatId) return;
+
+  try {
+    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: message,
+        parse_mode: 'HTML'
+      })
+    });
+  } catch (err) {
+    console.error('[TELEGRAM LOG ERROR]', err.message);
+  }
+}
+
 module.exports = async function handler(req, res) {
+  const startTime = Date.now();
+  const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -69,10 +94,16 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
 
   const keys = getApiKeys();
-  if (keys.length === 0) return res.status(500).json({ success: false, error: 'ไม่พบ API Key ใน Environment Variables' });
+  if (keys.length === 0) {
+    const err = 'ไม่พบ API Key ใน Environment Variables';
+    console.error(`[ERROR] IP: ${clientIp} | ${err}`);
+    await sendTelegramNotification(`🚨 <b>[API ERROR]</b>\nError: ${err}`);
+    return res.status(500).json({ success: false, error: err });
+  }
 
   try {
     const { type, images } = req.body;
+    console.log(`[REQUEST] IP: ${clientIp} | Type: ${type} | Images: ${images?.length || 0}`);
 
     if (!images || !Array.isArray(images) || images.length === 0) {
       return res.status(400).json({ success: false, error: 'ไม่พบข้อมูลภาพ' });
@@ -94,29 +125,34 @@ module.exports = async function handler(req, res) {
 
     // เรียก Gemini ด้วย key rotation
     const raw = await callGeminiWithRotation(parts);
+    const duration = Date.now() - startTime;
 
     // ประมวลผลตาม type
     // helper: extract JSON จาก response ที่อาจมี text อื่นปน
-    function extractJSON(raw) {
-      // ลอง parse ตรงๆ ก่อน
-      try {
-        return JSON.parse(raw.trim());
-      } catch(e) {}
-      // ลบ markdown code blocks
-      let clean = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-      try {
-        return JSON.parse(clean);
-      } catch(e) {}
-      // หา JSON object ที่ใหญ่ที่สุดในข้อความ
-      const match = raw.match(/\{[\s\S]*\}/);
+    function extractJSON(rawText) {
+      try { return JSON.parse(rawText.trim()); } catch(e) {}
+      let clean = rawText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      try { return JSON.parse(clean); } catch(e) {}
+      const match = rawText.match(/\{[\s\S]*\}/);
       if (match) {
         try { return JSON.parse(match[0]); } catch(e) {}
       }
-      throw new Error('อ่าน JSON ไม่ได้ raw: ' + raw.slice(0, 200));
+      throw new Error('อ่าน JSON ไม่ได้ raw: ' + rawText.slice(0, 200));
     }
 
     if (type === 'weight') {
       const parsed = extractJSON(raw);
+      console.log(`[SUCCESS weight] IP: ${clientIp} | Duration: ${duration}ms | Declaration: ${parsed.declaration_no || '-'} | Importer: ${parsed.importer || '-'}`);
+
+      // ส่ง Telegram แจ้งเตือนสำเร็จ
+      const tgMsg = `📊 <b>[อ่านใบชั่งน้ำหนักสำเร็จ]</b>\n` +
+                    `• เลขที่ใบขน: <code>${parsed.declaration_no || '-'}</code>\n` +
+                    `• ผู้นำเข้า: ${parsed.importer || '-'}\n` +
+                    `• น้ำหนักหน้าใบขน: ${parsed.declared_weight ? Number(parsed.declared_weight).toLocaleString() + ' KG' : '-'}\n` +
+                    `• จำนวนรถ: ${parsed.vehicles?.length || 0} คัน\n` +
+                    `⏱ ประมวลผล: ${(duration / 1000).toFixed(2)}s`;
+      sendTelegramNotification(tgMsg);
+
       return res.status(200).json({ success: true, data: parsed });
 
     } else if (type === 'team') {
@@ -163,13 +199,28 @@ module.exports = async function handler(req, res) {
         text += `\nน้ำหนัก ${d.weight||''} กิโลกรัม`;
       });
 
+      console.log(`[SUCCESS team] IP: ${clientIp} | Duration: ${duration}ms | Count: ${count} ใบขน`);
+
+      // ส่ง Telegram แจ้งเตือนสำเร็จ
+      const tgMsg = `📋 <b>[สร้างรายงานตรวจทีมสำเร็จ]</b>\n` +
+                    `• วันที่: ${date || '-'}\n` +
+                    `• จำนวน: ${count} ใบขน\n` +
+                    `⏱ ประมวลผล: ${(duration / 1000).toFixed(2)}s`;
+      sendTelegramNotification(tgMsg);
+
       return res.status(200).json({ success: true, text: text.trim(), warnings });
     }
 
   } catch (err) {
-    console.error('Gemini error:', err.message);
-    const msg = err.message || 'เกิดข้อผิดพลาด';
-    return res.status(500).json({ success: false, error: msg });
+    const duration = Date.now() - startTime;
+    console.error(`[ERROR] IP: ${clientIp} | Duration: ${duration}ms | Msg: ${err.message}`);
+
+    const tgMsg = `🚨 <b>[API ERROR]</b>\n` +
+                  `• Error: ${err.message || 'เกิดข้อผิดพลาด'}\n` +
+                  `⏱ เวลาใช้ไป: ${(duration / 1000).toFixed(2)}s`;
+    sendTelegramNotification(tgMsg);
+
+    return res.status(500).json({ success: false, error: err.message || 'เกิดข้อผิดพลาด' });
   }
 }
 
