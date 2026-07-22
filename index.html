@@ -287,13 +287,12 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
   .upload-zone p{font-size:0.9rem;}
   .upload-hint{font-size:0.78rem!important;}
 }
-/* ── BOTTOM NAV ────────────────────────────────────────── */
-.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:200;display:flex;justify-content:center;padding:6px 16px calc(env(safe-area-inset-bottom) + 8px);pointer-events:none;transition:transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;}
-.bottom-nav.nav-hidden{transform:translateY(120%);opacity:0;}
-.bottom-nav-card{pointer-events:auto;width:100%;max-width:320px;background:white;border-radius:1.25rem;box-shadow:0 6px 24px -6px rgba(0,0,0,0.18);border:1px solid var(--gray-100);padding:4px 6px;display:flex;align-items:center;justify-content:space-between;gap:6px;}
-.nav-item{flex:1;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:6px;padding:8px 12px;border-radius:1rem;border:none;background:none;font-family:inherit;font-size:0.88rem;font-weight:600;color:var(--gray-600);transition:all 0.2s;}
+/* ── BOTTOM NAV (เต็มความกว้าง ติดขอบล่าง ไม่ลอย ไม่ซ่อนเมื่อ scroll) ────────────────────────────────────────── */
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:200;width:100%;background:#ffffff;border-top:1px solid var(--gray-200);box-shadow:0 -4px 16px rgba(0,0,0,0.06);padding:6px 12px calc(env(safe-area-inset-bottom) + 6px);display:flex;justify-content:center;}
+.bottom-nav-card{width:100%;max-width:480px;background:transparent;border:none;box-shadow:none;padding:0;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.nav-item{flex:1;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;padding:8px 16px;border-radius:10px;border:none;background:none;font-family:inherit;font-size:0.9rem;font-weight:600;color:var(--gray-600);transition:all 0.2s;}
 .nav-item .mi{width:18px;height:18px;flex-shrink:0;}
-.nav-item.active{background:var(--orange);color:white;box-shadow:0 4px 14px -4px rgba(232,105,26,0.6);}
+.nav-item.active{background:var(--orange);color:white;box-shadow:0 3px 12px -3px rgba(232,105,26,0.5);}
 .page{display:none;}.page.active{display:block;}
 </style>
 </head>
@@ -1433,19 +1432,6 @@ function switchPage(page){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-// ซ่อนแถบเมนูด้านล่างเมื่อเลื่อนลง แสดงเมื่อเลื่อนขึ้น
-let lastScrollY = window.scrollY;
-window.addEventListener('scroll', ()=>{
-  const curY = window.scrollY;
-  const nav = document.querySelector('.bottom-nav');
-  if(!nav) return;
-  if(curY > lastScrollY && curY > 50){
-    nav.classList.add('nav-hidden');
-  } else if(curY < lastScrollY || curY <= 10){
-    nav.classList.remove('nav-hidden');
-  }
-  lastScrollY = curY;
-}, {passive:true});
 
 // ── TEAM REPORT ───────────────────────────────────────────
 let teamFiles=[];
