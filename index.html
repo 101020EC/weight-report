@@ -426,7 +426,15 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
         </div>
         <div class="form-group">
           <label>ประเทศกำเนิด <span class="req">*</span></label>
-          <input type="text" id="f_origin" placeholder="เช่น อินเดีย" oninput="markChanged(this)" onblur="resetZoom()" />
+          <select id="f_origin_select" onchange="onOriginSelectChange(this);markChanged(this)" onblur="resetZoom()">
+            <option value="">-- เลือกประเทศ --</option>
+            <option value="จีน">จีน</option>
+            <option value="อินเดีย">อินเดีย</option>
+            <option value="เนเธอร์แลนด์">เนเธอร์แลนด์</option>
+            <option value="__other__">อื่นๆ</option>
+          </select>
+          <input type="hidden" id="f_origin" />
+          <input type="text" id="f_origin_other" placeholder="ระบุประเทศกำเนิด" oninput="markChanged(this);onOriginOtherInput(this)" onblur="resetZoom()" style="display:none;margin-top:8px;" />
         </div>
       </div>
       <!-- บรรทัด 5: น้ำหนักหน้าใบขน (ตัวเลข) | ชุดที่ -->
@@ -805,7 +813,7 @@ function populateForm(data){
 
   // ประเภทสินค้า → เลือก chip
   selectGoods(matchGoods(data.goods_type)||data.goods_type||'');
-  setF('f_origin',data.origin||'');
+  selectOrigin(data.origin||'');
   setF('f_period',data.period);
   document.getElementById('vehicleBody').innerHTML='';rowIdx=0;
   const vs=data.vehicles||[];
@@ -882,6 +890,49 @@ function selectGoods(val){
     activateChip(row.querySelector('.chip[data-val="__other__"]'));
     other.style.display='block';other.value=val;hid.value=val;
   }
+}
+
+function onOriginSelectChange(sel){
+  const val=sel.value;
+  const hid=document.getElementById('f_origin');
+  const other=document.getElementById('f_origin_other');
+  if(val==='__other__'){
+    other.style.display='block';
+    hid.value=other.value.trim();
+    setTimeout(()=>other.focus(),40);
+  } else {
+    other.style.display='none';
+    hid.value=val;
+  }
+  sel.classList.remove('invalid');
+  hid.classList.remove('invalid');
+}
+function onOriginOtherInput(inp){
+  const hid=document.getElementById('f_origin');
+  hid.value=inp.value.trim();
+  hid.classList.remove('invalid');
+}
+function selectOrigin(val){
+  const sel=document.getElementById('f_origin_select');
+  const other=document.getElementById('f_origin_other');
+  const hid=document.getElementById('f_origin');
+  if(!sel) return;
+  if(!val||val.trim()===''){
+    sel.value='';other.style.display='none';other.value='';hid.value='';return;
+  }
+  const v=val.toLowerCase();
+  let matched='';
+  if(v.includes('จีน')||v.includes('china')) matched='จีน';
+  else if(v.includes('อินเดีย')||v.includes('india')) matched='อินเดีย';
+  else if(v.includes('เนเธอร์แลนด์')||v.includes('netherland')||v.includes('holland')) matched='เนเธอร์แลนด์';
+
+  if(matched){
+    sel.value=matched;other.style.display='none';other.value='';hid.value=matched;
+  } else {
+    sel.value='__other__';other.style.display='block';other.value=val;hid.value=val;
+  }
+  sel.classList.remove('invalid');
+  hid.classList.remove('invalid');
 }
 
 function onlyDigits(el){el.value=el.value.replace(/[^0-9]/g,'');}
