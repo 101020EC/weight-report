@@ -213,10 +213,10 @@ table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF
 .alert-info{background:#F0F6FF;border:1px solid #B8D4F8;color:#1A4A8A;}
 /* Chip selectors (ผู้นำเข้า / ประเภทสินค้า) — สไตล์ Referback */
 .chip-row{display:flex;flex-wrap:wrap;gap:8px;}
-.chip{padding:0.45rem 0.9rem;border-radius:0.75rem;font-size:0.95rem;font-weight:600;font-family:inherit;
+.chip{padding:0.45rem 0.9rem;border-radius:0.75rem;font-size:0.95rem;font-weight:400;font-family:inherit;
   border:1px solid var(--line);background:#fff;color:var(--ink-soft);cursor:pointer;transition:all 0.15s;line-height:1.2;}
 .chip:hover{border-color:#D8CCBE;}
-.chip.active{color:#fff;border-color:transparent;box-shadow:0 8px 18px -10px rgba(0,0,0,0.4);}
+.chip.active{color:#fff;font-weight:700!important;border-color:transparent;box-shadow:0 8px 18px -10px rgba(0,0,0,0.4);}
 .chip.active.c-blue{background-image:linear-gradient(135deg,#3B82F6,#2563EB);box-shadow:0 8px 18px -10px rgba(37,99,235,0.6);}
 .chip.active.c-green{background-image:linear-gradient(135deg,#22C55E,#16A34A);box-shadow:0 8px 18px -10px rgba(22,163,74,0.6);}
 .chip.active.c-orange{background-image:linear-gradient(135deg,var(--orange-mid),var(--orange-deep));box-shadow:0 8px 18px -10px rgba(232,105,26,0.6);}
@@ -806,7 +806,7 @@ function populateForm(data){
   // importer → เลือก chip ตามค่าที่ Gemini อ่านได้
   selectImporter(matchImporter(data.importer)||data.importer||'');
 
-  setF('f_declaration',data.declaration_no);
+  setF('f_declaration',formatDeclarationStr(data.declaration_no));
   setF('f_declared_weight',(data.declared_weight!=null?String(data.declared_weight).replace(/[^0-9]/g,''):''));
   // วันที่: วัน = จาก Gemini, เดือน+ปี = ของวันที่รัน
   applyGeminiDate(data.date||'');
@@ -1019,15 +1019,19 @@ function validateForm(){
   return missing;
 }
 
-// ── DECLARATION FORMAT ────────────────────────────────────
-function fmtDeclaration(el){
-  // รับ input ที่อาจติดกัน เช่น A1234567891234 หรือ A025-06906-07007
-  let v=el.value.replace(/[-\s]/g,'').toUpperCase(); // ลบ - และ space ออกก่อน
+// ── DECLARATION FORMAT (รูปแบบ A000-00000-00000) ──────────────────────────
+function formatDeclarationStr(val){
+  if(!val) return '';
+  let v=String(val).replace(/[^A-Za-z0-9]/g,'').toUpperCase();
   let out='';
   if(v.length>0)  out+=v.slice(0,4);
-  if(v.length>4)  out+=' '+v.slice(4,9);
-  if(v.length>9)  out+=' '+v.slice(9,14);
-  el.value=out;
+  if(v.length>4)  out+='-'+v.slice(4,9);
+  if(v.length>9)  out+='-'+v.slice(9,14);
+  return out;
+}
+
+function fmtDeclaration(el){
+  el.value=formatDeclarationStr(el.value);
   markChanged(el);
 }
 
