@@ -182,20 +182,26 @@ module.exports = async function handler(req, res) {
       console.log(`[SUCCESS weight] IP: ${clientIp} | Duration: ${duration}ms | Declaration: ${parsed.declaration_no || '-'} | Importer: ${parsed.importer || '-'}`);
 
       // ส่ง Telegram แจ้งเตือนสำเร็จ
-      const dateStr = escapeHtml(parsed.date || '-');
-      const importerStr = escapeHtml(parsed.importer || '-');
-      const declNoStr = escapeHtml(parsed.declaration_no || '-');
-      const goodsTypeStr = escapeHtml(parsed.goods_type || 'สินค้า');
-      const declWeightStr = parsed.declared_weight ? Number(parsed.declared_weight).toLocaleString('en-US') + ' KG' : '-';
+      try {
+        const dateStr = escapeHtml(parsed.date || '-');
+        const importerStr = escapeHtml(parsed.importer || '-');
+        const declNoStr = escapeHtml(parsed.declaration_no || '-');
+        const goodsTypeStr = escapeHtml(parsed.goods_type || 'สินค้า');
+        const numWeight = parseFloat(String(parsed.declared_weight || '').replace(/,/g, ''));
+        const declWeightStr = !isNaN(numWeight) && numWeight > 0 ? numWeight.toLocaleString('en-US') + ' KG' : '-';
+        const vehCount = Array.isArray(parsed.vehicles) ? parsed.vehicles.length : 0;
 
-      const tgMsg = `📊 <b>[อ่านใบชั่งน้ำหนักสำเร็จ]</b>\n` +
-                    `• วันที่: ${dateStr}\n` +
-                    `• ผู้นำเข้า: ${importerStr}\n` +
-                    `• เลขที่ใบขน: <code>${declNoStr}</code>\n` +
-                    `• จำนวนรถ: ${parsed.vehicles?.length || 0} คัน\n` +
-                    `• น้ำหนักหน้าใบขน (${goodsTypeStr}): ${declWeightStr}\n` +
-                    `⏱ เวลาประมวลผล: ${(duration / 1000).toFixed(2)}s`;
-      await sendTelegramNotification(tgMsg);
+        const tgMsg = `📊 <b>[อ่านใบชั่งน้ำหนักสำเร็จ]</b>\n` +
+                      `• วันที่: ${dateStr}\n` +
+                      `• ผู้นำเข้า: ${importerStr}\n` +
+                      `• เลขที่ใบขน: <code>${declNoStr}</code>\n` +
+                      `• จำนวนรถ: ${vehCount} คัน\n` +
+                      `• น้ำหนักหน้าใบขน (${goodsTypeStr}): ${declWeightStr}\n` +
+                      `⏱ เวลาประมวลผล: ${(duration / 1000).toFixed(2)}s`;
+        await sendTelegramNotification(tgMsg);
+      } catch (tgErr) {
+        console.error('[TELEGRAM WEIGHT LOG ERROR]', tgErr.message);
+      }
 
       return res.status(200).json({ success: true, data: parsed });
 
@@ -240,11 +246,26 @@ module.exports = async function handler(req, res) {
         weightByGoods[g] = (weightByGoods[g] || 0) + w;
       });
 
-      const goodsSummaryLines = Object.entries(weightByGoods)
-        .map(([g, w]) => `  • ${escapeHtml(g)}: ${w > 0 ? w.toLocaleString('en-US') + ' KG' : '-'}`)
-        .join('\n');
+      console.log(`[SUCCESS team] IP: ${clientIp} | Duration: ${duration}ms | Count: ${count} ใบขน`);
 
-      const declNosList = decls.map(d => escapeHtml(d.no)).filter(Boolean).map(no => `<code>${no}</code>`).join(', ');
+      // ส่ง Telegram แจ้งเตือนสำเร็จ
+      try {
+        const goodsSummaryLines = Object.entries(weightByGoods)
+          .map(([g, w]) => `  • ${escapeHtml(g)}: ${w > 0 ? w.toLocaleString('en-US') + ' KG' : '-'}`)
+          .join('\n');
+
+        const declNosList = decls.map(d => escapeHtml(d.no)).filter(Boolean).map(no => `<code>${no}</code>`).join(', ');
+
+        const tgMsg = `📋 <b>[อ่านใบขนรายงานตรวจทีมสำเร็จ]</b>\n` +
+                      `• วันที่: ${escapeHtml(date) || '-'}\n` +
+                      `• จำนวนใบขน: ${count} ใบขน\n` +
+                      `• เลขที่ใบขน: ${declNosList || '-'}\n` +
+                      `• น้ำหนักหน้าใบขนรวมแยกตามสินค้า:\n${goodsSummaryLines || '  • -'}\n` +
+                      `⏱ เวลาประมวลผล: ${(duration / 1000).toFixed(2)}s`;
+        await sendTelegramNotification(tgMsg);
+      } catch (tgErr) {
+        console.error('[TELEGRAM TEAM LOG ERROR]', tgErr.message);
+      }
 
       // สร้างข้อความรายงาน
       let text = `${date}\n`;
@@ -256,17 +277,6 @@ module.exports = async function handler(req, res) {
         text += `\nจำนวน ${d.qty||''} กระสอบ`;
         text += `\nน้ำหนัก ${d.weight||''} กิโลกรัม`;
       });
-
-      console.log(`[SUCCESS team] IP: ${clientIp} | Duration: ${duration}ms | Count: ${count} ใบขน`);
-
-      // ส่ง Telegram แจ้งเตือนสำเร็จ
-      const tgMsg = `📋 <b>[สร้างรายงานตรวจทีมสำเร็จ]</b>\n` +
-                    `• วันที่: ${escapeHtml(date) || '-'}\n` +
-                    `• จำนวนใบขน: ${count} ใบขน\n` +
-                    `• เลขที่ใบขน: ${declNosList || '-'}\n` +
-                    `• น้ำหนักหน้าใบขนรวมแยกตามสินค้า:\n${goodsSummaryLines || '  • -'}\n` +
-                    `⏱ เวลาประมวลผล: ${(duration / 1000).toFixed(2)}s`;
-      await sendTelegramNotification(tgMsg);
 
       return res.status(200).json({ success: true, text: text.trim(), warnings });
     }
