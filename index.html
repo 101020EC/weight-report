@@ -813,6 +813,7 @@ function manualEntry(){
   document.getElementById('card-edit').style.display='block';
   if(document.getElementById('card-table-section')) document.getElementById('card-table-section').style.display='block';
   if(document.getElementById('card-summary-section')) document.getElementById('card-summary-section').style.display='block';
+  if(document.getElementById('clearBtn')) document.getElementById('clearBtn').style.display='inline-flex';
   setTimeout(()=>{
     scrollBelowHeader(document.getElementById('card-edit'));
   },100);
@@ -1349,8 +1350,8 @@ function generateImage(){
     if(sub) boxText(sub, x, y+104, '22px Sarabun,sans-serif', tc);
   }
 
-  drawBox(bx[0],'น้ำหนักสินค้าสุทธิทั้งหมด',tN.toLocaleString('en-US')+' KG','','#FFFFFF',T.border,G8,G8);
-  drawBox(bx[1],'น้ำหนักหน้าใบขนสินค้า',decl>0?decl.toLocaleString('en-US')+' KG':'-','','#FFFFFF',T.border,G8,G8);
+  drawBox(bx[0],'น้ำหนักสินค้าสุทธิทั้งหมด',tN.toLocaleString('en-US')+' KG','',T.light,T.border,T.infoLbl,G8);
+  drawBox(bx[1],'น้ำหนักหน้าใบขนสินค้า',decl>0?decl.toLocaleString('en-US')+' KG':'-','',T.light,T.border,T.infoLbl,G8);
 
   const dfStr=diff===0?'0 KG':(diff>0?'+':'')+diff.toLocaleString('en-US')+' KG';
   const dfSub=decl>0?`(${diff>0?'มากกว่า':diff<0?'น้อยกว่า':'ตรงกัน'}ใบขน ${Math.abs(pct)}%)`:'';
