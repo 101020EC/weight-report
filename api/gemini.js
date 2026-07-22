@@ -63,11 +63,14 @@ async function callGeminiWithRotation(parts) {
 async function sendTelegramNotification(message) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId   = process.env.TELEGRAM_CHAT_ID;
-  if (!botToken || !chatId) return;
+  if (!botToken || !chatId) {
+    console.warn('[TELEGRAM LOG WARNING] Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in Vercel Environment Variables');
+    return;
+  }
 
   try {
     const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    await fetch(url, {
+    const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -76,6 +79,13 @@ async function sendTelegramNotification(message) {
         parse_mode: 'HTML'
       })
     });
+
+    if (!resp.ok) {
+      const errRes = await resp.text();
+      console.error(`[TELEGRAM API ERROR] HTTP ${resp.status}: ${errRes}`);
+    } else {
+      console.log('[TELEGRAM LOG SUCCESS] Message sent to Telegram successfully');
+    }
   } catch (err) {
     console.error('[TELEGRAM LOG ERROR]', err.message);
   }
@@ -152,7 +162,7 @@ module.exports = async function handler(req, res) {
                     `• จำนวนรถ: ${parsed.vehicles?.length || 0} คัน\n` +
                     `• น้ำหนักหน้าใบขน (${parsed.goods_type || 'สินค้า'}): ${parsed.declared_weight ? Number(parsed.declared_weight).toLocaleString('en-US') + ' KG' : '-'}\n` +
                     `⏱ เวลาประมวลผล: ${(duration / 1000).toFixed(2)}s`;
-      sendTelegramNotification(tgMsg);
+      await sendTelegramNotification(tgMsg);
 
       return res.status(200).json({ success: true, data: parsed });
 
@@ -223,7 +233,7 @@ module.exports = async function handler(req, res) {
                     `• เลขที่ใบขน: ${declNosList || '-'}\n` +
                     `• น้ำหนักหน้าใบขนรวมแยกตามสินค้า:\n${goodsSummaryLines || '  • -'}\n` +
                     `⏱ เวลาประมวลผล: ${(duration / 1000).toFixed(2)}s`;
-      sendTelegramNotification(tgMsg);
+      await sendTelegramNotification(tgMsg);
 
       return res.status(200).json({ success: true, text: text.trim(), warnings });
     }
@@ -235,7 +245,7 @@ module.exports = async function handler(req, res) {
     const tgMsg = `🚨 <b>[API ERROR]</b>\n` +
                   `• Error: ${err.message || 'เกิดข้อผิดพลาด'}\n` +
                   `⏱ เวลาใช้ไป: ${(duration / 1000).toFixed(2)}s`;
-    sendTelegramNotification(tgMsg);
+    await sendTelegramNotification(tgMsg);
 
     return res.status(500).json({ success: false, error: err.message || 'เกิดข้อผิดพลาด' });
   }
