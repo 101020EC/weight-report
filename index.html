@@ -154,10 +154,11 @@ table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF
 .btn-del{background:none;border:none;color:#CC3333;cursor:pointer;padding:4px 8px;border-radius:4px;font-size:14px;}
 .btn-del:hover{background:#FFF0F0;}
 .summary-box{margin-top:18px;background:var(--orange-light);border:1px solid #F5C89A;border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
-.sum-item{text-align:center;}
+.sum-item{background:#ffffff;border:1px solid #E5E0D8;border-radius:10px;padding:10px 16px;text-align:center;flex:1;min-width:140px;}
 .sum-item .sl{font-size:13px;color:var(--gray-600);margin-bottom:3px;}
-.sum-item .sv{font-size:22px;font-weight:700;color:var(--orange-dark);}
+.sum-item .sv{font-size:22px;font-weight:700;color:#222222;}
 .diff-box{border-radius:10px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;width:100%;min-width:0;}
+.diff-box-right{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;}
 /* บวก=แดง, ลบ=เขียว */
 .diff-box.pos{background:var(--red-bg);border:1px solid var(--red-border);}
 .diff-box.neg{background:var(--green-bg);border:1px solid var(--green-border);}
@@ -259,11 +260,12 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
   .btn{font-size:1rem;padding:10px 14px;}
   .btn-add-row{font-size:0.9rem;padding:6px 12px;}
   .btn-del{font-size:0.9rem;}
-  .summary-box{flex-direction:column;align-items:stretch;padding:12px;}
-  .sum-item{display:flex;justify-content:space-between;align-items:center;}
+  .summary-box{flex-direction:column;align-items:stretch;padding:12px;gap:8px;}
+  .sum-item{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#ffffff;border:1px solid #E5E0D8;border-radius:10px;}
   .sum-item .sl{font-size:0.85rem;}
-  .sum-item .sv{font-size:1.1rem;}
-  .diff-box{min-width:unset;width:100%;padding:8px 12px;font-size:0.88rem;}
+  .sum-item .sv{font-size:1.1rem;color:#222222;}
+  .diff-box{min-width:unset;width:100%;padding:10px 12px;font-size:0.88rem;display:flex;align-items:center;justify-content:space-between;gap:6px;}
+  .diff-box-right{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;}
   .diff-box .dl{font-size:0.85rem;}
   .diff-box .dv{font-size:1rem;}
   .diff-box .dp{font-size:0.82rem;}
@@ -346,7 +348,6 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
           อ่านข้อมูลด้วย Gemini
         </button>
         <button class="btn btn-secondary" id="manualBtn" onclick="manualEntry()" style="padding:10px 16px;">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
           Manual
         </button>
         <button class="btn btn-secondary" id="clearBtn" onclick="clearFiles()" style="display:none;padding:10px 14px;font-weight:700;" title="ล้างรูป">
@@ -461,8 +462,10 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
         <div class="sum-item"><div class="sl">น้ำหนักหน้าใบขนสินค้า</div><div class="sv" id="sum_declared">- KG</div></div>
         <div class="diff-box zero" id="diffBox">
           <div class="dl">ผลต่างน้ำหนัก</div>
-          <div class="dv" id="diff_val">-</div>
-          <div class="dp" id="diff_pct"></div>
+          <div class="diff-box-right">
+            <div class="dv" id="diff_val">-</div>
+            <div class="dp" id="diff_pct"></div>
+          </div>
         </div>
       </div>
 
@@ -1048,8 +1051,8 @@ function calcSummary(){
   const db=document.getElementById('diffBox'),dv=document.getElementById('diff_val'),dp=document.getElementById('diff_pct');
   db.className='diff-box';
   if(decl===0){db.classList.add('zero');dv.textContent='-';dp.textContent='';}
-  else if(diff>0){db.classList.add('pos');dv.textContent='+'+diff.toLocaleString('en-US')+' KG';dp.textContent=`(มากกว่าที่สำแดง ${Math.abs(pct)}%)`;}
-  else if(diff<0){db.classList.add('neg');dv.textContent=diff.toLocaleString('en-US')+' KG';dp.textContent=`(น้อยกว่าที่สำแดง ${Math.abs(pct)}%)`;}
+  else if(diff>0){db.classList.add('pos');dv.textContent='+'+diff.toLocaleString('en-US')+' KG';dp.textContent=`(มากกว่าใบขน ${Math.abs(pct)}%)`;}
+  else if(diff<0){db.classList.add('neg');dv.textContent=diff.toLocaleString('en-US')+' KG';dp.textContent=`(น้อยกว่าใบขน ${Math.abs(pct)}%)`;}
   else{db.classList.add('zero');dv.textContent='0 KG';dp.textContent='(ตรงกัน 100%)';}
 }
 
@@ -1260,11 +1263,11 @@ function generateImage(){
     if(sub) boxText(sub, x, y+104, '22px Sarabun,sans-serif', tc);
   }
 
-  drawBox(bx[0],'น้ำหนักสินค้าสุทธิทั้งหมด',tN.toLocaleString('en-US')+' KG','',T.light,T.border,G8,G8);
-  drawBox(bx[1],'น้ำหนักหน้าใบขนสินค้า',decl>0?decl.toLocaleString('en-US')+' KG':'-','',T.light,T.border,G8,G8);
+  drawBox(bx[0],'น้ำหนักสินค้าสุทธิทั้งหมด',tN.toLocaleString('en-US')+' KG','','#FFFFFF',T.border,G8,G8);
+  drawBox(bx[1],'น้ำหนักหน้าใบขนสินค้า',decl>0?decl.toLocaleString('en-US')+' KG':'-','','#FFFFFF',T.border,G8,G8);
 
   const dfStr=diff===0?'0 KG':(diff>0?'+':'')+diff.toLocaleString('en-US')+' KG';
-  const dfSub=decl>0?`(${diff>0?'มากกว่า':diff<0?'น้อยกว่า':'ตรงกัน'}ที่สำแดง ${Math.abs(pct)}%)`:'';
+  const dfSub=decl>0?`(${diff>0?'มากกว่า':diff<0?'น้อยกว่า':'ตรงกัน'}ใบขน ${Math.abs(pct)}%)`:'';
   const dfFill=diff>0?RB:diff<0?GB:'#F4F4F4';
   const dfBrd=diff>0?'#FFCCCC':diff<0?'#B8E8C8':'#E8E8E8';
   const dfTc=diff>0?RT:diff<0?GT:G6;
