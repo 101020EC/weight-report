@@ -429,7 +429,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
         <div class="form-group">
           <label>ประเภทสินค้า <span class="req">*</span></label>
           <div class="chip-row chip-group" id="goodsChips" style="flex-wrap:nowrap;gap:6px;">
-            <button type="button" class="chip" data-val="หอมหัวใหญ่" data-color="c-orange" onclick="pickGoods(this)">หอมหัวใหญ่</button>
+            <button type="button" class="chip" data-val="หอม" data-color="c-orange" onclick="pickGoods(this)">หอม</button>
             <button type="button" class="chip" data-val="กระเทียม" data-color="c-orange" onclick="pickGoods(this)">กระเทียม</button>
             <button type="button" class="chip" data-val="__other__" data-color="c-pink" onclick="pickGoods(this)">อื่นๆ</button>
           </div>
@@ -928,7 +928,7 @@ function matchImporter(val){
 function matchGoods(val){
   if(!val)return'';const v=val.toLowerCase();
   if(v.includes('กระเทียม')||v.includes('garlic'))return'กระเทียม';
-  if(v==='หอมหัวใหญ่')return'หอมหัวใหญ่';
+  if(v==='หอม'||v==='หอมหัวใหญ่')return'หอม';
   return'';
 }
 function setF(id,val){const el=document.getElementById(id);if(!el)return;el.value=(val!=null&&val!=='')? val:'';}
