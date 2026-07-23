@@ -918,7 +918,7 @@ function matchImporter(val){
 function matchGoods(val){
   if(!val)return'';const v=val.toLowerCase();
   if(v.includes('กระเทียม')||v.includes('garlic'))return'กระเทียม';
-  if(v.includes('หอม')||v.includes('onion'))return'หอมหัวใหญ่';
+  if(v==='หอมหัวใหญ่')return'หอมหัวใหญ่';
   return'';
 }
 function setF(id,val){const el=document.getElementById(id);if(!el)return;el.value=(val!=null&&val!=='')? val:'';}
