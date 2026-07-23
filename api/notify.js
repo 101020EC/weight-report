@@ -5,7 +5,9 @@ function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 async function sendTelegramNotification(message) {
@@ -58,12 +60,23 @@ async function sendTelegramNotification(message) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // CORS — จำกัดเฉพาะโดเมนแอป
+  const ALLOWED_ORIGINS = [
+    'https://weight-report.vercel.app',
+  ];
+  const origin = req.headers.origin || '';
+  const isAllowedOrigin = ALLOWED_ORIGINS.includes(origin);
+  if (isAllowedOrigin) res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
+
+  if (origin && !isAllowedOrigin) {
+    return res.status(403).json({ success: false, error: 'Origin not allowed' });
+  }
 
   try {
     const { action, declaration_no, importer, date, goods_type, plates, diff_text } = req.body;

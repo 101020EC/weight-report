@@ -64,7 +64,9 @@ function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // ── Telegram Notification Helper ────────────────────────────
@@ -122,13 +124,24 @@ module.exports = async function handler(req, res) {
   const startTime = Date.now();
   const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
 
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // CORS — จำกัดเฉพาะโดเมนแอป กันเว็บอื่นยิง API เผา quota Gemini
+  const ALLOWED_ORIGINS = [
+    'https://weight-report.vercel.app',
+  ];
+  const origin = req.headers.origin || '';
+  const isAllowedOrigin = ALLOWED_ORIGINS.includes(origin);
+  if (isAllowedOrigin) res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
+
+  // ถ้าเป็น request จากเบราว์เซอร์โดเมนอื่น (มี Origin แต่ไม่อยู่ใน allowlist) ให้ปฏิเสธ
+  if (origin && !isAllowedOrigin) {
+    return res.status(403).json({ success: false, error: 'Origin not allowed' });
+  }
 
   const keys = getApiKeys();
   if (keys.length === 0) {
@@ -231,7 +244,7 @@ module.exports = async function handler(req, res) {
       const REQUIRED = { no:'เลขที่ใบขนสินค้า', goods:'สินค้า', origin:'เมืองกำเนิด', qty:'จำนวน', weight:'น้ำหนัก' };
       decls.forEach((d, i) => {
         const missing = Object.entries(REQUIRED)
-          .filter(([k]) => !d[k] || d[k].trim() === '')
+          .filter(([k]) => String(d[k] ?? '').trim() === '')
           .map(([, label]) => label);
         if (missing.length > 0) {
           warnings.push(`ใบขนที่ ${i+1} (${d.no||'ไม่ทราบเลข'}) ขาด: ${missing.join(', ')}`);
@@ -241,8 +254,8 @@ module.exports = async function handler(req, res) {
       // รวมน้ำหนักหน้าใบขนแยกตามประเภทสินค้า
       const weightByGoods = {};
       decls.forEach(d => {
-        const g = (d.goods || 'ไม่ระบุ').trim();
-        const w = parseFloat((d.weight || '0').replace(/,/g, '')) || 0;
+        const g = String(d.goods ?? 'ไม่ระบุ').trim() || 'ไม่ระบุ';
+        const w = parseFloat(String(d.weight ?? '0').replace(/,/g, '')) || 0;
         weightByGoods[g] = (weightByGoods[g] || 0) + w;
       });
 
