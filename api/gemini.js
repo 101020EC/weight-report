@@ -39,6 +39,20 @@ function normalizeOriginToThai(origin) {
   return trimmed;
 }
 
+function normalizeGoodsToStandard(goods) {
+  if (!goods || typeof goods !== 'string') return goods || '';
+  const trimmed = goods.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (lower.includes('หอม') || lower.includes('onion')) {
+    return 'หอมหัวใหญ่';
+  }
+  if (lower.includes('กระเทียม') || lower.includes('garlic')) {
+    return 'กระเทียม';
+  }
+  return trimmed;
+}
+
 // สุ่ม key จาก pool แล้ว retry ถ้า quota หมด
 async function callGeminiWithRotation(parts) {
   const keys = getApiKeys();
@@ -218,6 +232,9 @@ module.exports = async function handler(req, res) {
 
     if (type === 'weight') {
       const parsed = extractJSON(raw);
+      if (parsed.goods_type) {
+        parsed.goods_type = normalizeGoodsToStandard(parsed.goods_type);
+      }
       if (parsed.origin) {
         parsed.origin = normalizeOriginToThai(parsed.origin);
       }
@@ -259,6 +276,9 @@ module.exports = async function handler(req, res) {
       const dupNos = new Set();
       const decls = [];
       rawDecls.forEach(d => {
+        if (d.goods) {
+          d.goods = normalizeGoodsToStandard(d.goods);
+        }
         if (d.origin) {
           d.origin = normalizeOriginToThai(d.origin);
         }
