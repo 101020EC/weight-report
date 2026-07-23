@@ -1000,6 +1000,30 @@ function onOriginOtherInput(inp){
   hid.value=inp.value.trim();
   hid.classList.remove('invalid');
 }
+function normalizeOriginToThai(origin) {
+  if (!origin || typeof origin !== 'string') return origin || '';
+  const trimmed = origin.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (lower.includes('china') || lower.includes('chinese') || lower === 'cn') return 'จีน';
+  if (lower.includes('india') || lower.includes('indian') || lower === 'in') return 'อินเดีย';
+  if (lower.includes('netherland') || lower.includes('holland') || lower === 'nl') return 'เนเธอร์แลนด์';
+  if (lower.includes('egypt') || lower === 'eg') return 'อียิปต์';
+  if (lower.includes('vietnam') || lower.includes('viet nam') || lower === 'vn') return 'เวียดนาม';
+  if (lower.includes('myanmar') || lower.includes('burma') || lower === 'mm') return 'เมียนมา';
+  if (lower.includes('pakistan') || lower === 'pk') return 'ปากีสถาน';
+  if (lower.includes('indonesia') || lower === 'id') return 'อินโดนีเซีย';
+  if (lower.includes('malaysia') || lower === 'my') return 'มาเลเซีย';
+  if (lower.includes('australia') || lower === 'au') return 'ออสเตรเลีย';
+  if (lower.includes('new zealand') || lower === 'nz') return 'นิวซีแลนด์';
+  if (lower.includes('usa') || lower.includes('united states') || lower === 'us') return 'สหรัฐอเมริกา';
+  if (lower.includes('japan') || lower === 'jp') return 'ญี่ปุ่น';
+  if (lower.includes('korea') || lower === 'kr') return 'เกาหลีใต้';
+  if (lower.includes('taiwan') || lower === 'tw') return 'ไต้หวัน';
+
+  return trimmed;
+}
+
 function selectOrigin(val){
   const sel=document.getElementById('f_origin_select');
   const other=document.getElementById('f_origin_other');
@@ -1008,16 +1032,11 @@ function selectOrigin(val){
   if(!val||val.trim()===''){
     sel.value='';other.style.display='none';other.value='';hid.value='';return;
   }
-  const v=val.toLowerCase();
-  let matched='';
-  if(v.includes('จีน')||v.includes('china')) matched='จีน';
-  else if(v.includes('อินเดีย')||v.includes('india')) matched='อินเดีย';
-  else if(v.includes('เนเธอร์แลนด์')||v.includes('netherland')||v.includes('holland')) matched='เนเธอร์แลนด์';
-
-  if(matched){
-    sel.value=matched;other.style.display='none';other.value='';hid.value=matched;
+  const thaiVal = normalizeOriginToThai(val);
+  if(thaiVal==='จีน'||thaiVal==='อินเดีย'||thaiVal==='เนเธอร์แลนด์'){
+    sel.value=thaiVal;other.style.display='none';other.value='';hid.value=thaiVal;
   } else {
-    sel.value='__other__';other.style.display='block';other.value=val;hid.value=val;
+    sel.value='__other__';other.style.display='block';other.value=thaiVal;hid.value=thaiVal;
   }
   sel.classList.remove('invalid');
   hid.classList.remove('invalid');
