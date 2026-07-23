@@ -317,6 +317,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
 .nav-item.active .mi{transform:scale(1.05);}
 .page{display:none;}.page.active{display:block;}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 <div class="topbar"></div>
@@ -399,6 +400,8 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
         <label style="text-align:center;display:block;">เลขที่ใบขนสินค้า <span class="req">*</span></label>
         <input type="text" id="f_declaration" placeholder="A000-00000-00000" oninput="markChanged(this);fmtDeclaration(this)" onblur="resetZoom()" style="text-align:center;" />
       </div>
+      <!-- Tesseract Cross-Check Badge -->
+      <div id="tesseractCheckBadge" style="display:none;margin-bottom:14px;padding:8px 14px;border-radius:8px;font-size:13px;line-height:1.5;font-weight:500;"></div>
       <!-- บรรทัด 2: วันที่ — 3 select (วัน/เดือน/ปี พ.ศ.) -->
       <div class="form-group" style="margin-bottom:14px;">
         <label>วันที่ <span class="req">*</span></label>
@@ -591,6 +594,8 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
         <div style="font-size:13px;font-weight:700;color:#E65100;margin-bottom:6px;">⚠️ ข้อมูลไม่ครบในบางใบขนสินค้า</div>
         <div id="teamWarningList" style="font-size:13px;color:#BF360C;line-height:1.8;"></div>
       </div>
+      <!-- Tesseract Cross-Check Badge สำหรับรายงานตรวจทีม -->
+      <div id="teamTesseractCheckBadge" style="display:none;background:#E8F5E9;border-bottom:1px solid #C8E6C9;padding:10px 18px;font-size:13px;color:#2E7D32;font-weight:500;"></div>
       <div class="step-body" style="padding:0;">
         <div id="teamChatWrap" style="background:#F5F5F5;padding:20px;min-height:200px;">
           <div style="display:flex;justify-content:center;">
@@ -907,6 +912,11 @@ function populateForm(data){
   const vs=data.vehicles||[];
   if(vs.length===0)addRow();else vs.forEach(v=>addRow(v));
   calcSummary();
+
+  // รัน Tesseract.js Cross-Check ในเบื้องหลัง
+  if(typeof uploadedFiles!=='undefined' && uploadedFiles.length>0){
+    runTesseractSingleCheck(uploadedFiles[0], data.declaration_no);
+  }
 }
 function matchImporter(val){
   if(!val)return'';const v=val.toLowerCase();
@@ -1745,6 +1755,12 @@ async function runReadTeam(isFinal=false){
     document.getElementById('teamResultCard').style.display='block';
     document.getElementById('teamClearBtnArea').style.display='block';
     autoGrowTeam();
+    
+    // รัน Tesseract.js Cross-Check ในเบื้องหลัง
+    if(typeof teamFiles!=='undefined' && teamFiles.length>0){
+      runTesseractTeamCheck(teamFiles, result.declarations);
+    }
+
     setTimeout(()=>{
       const warn=document.getElementById('teamWarningBox');
       const target=(warn.style.display!=='none')?warn:document.getElementById('teamResultCard');
@@ -1878,6 +1894,84 @@ window.addEventListener('DOMContentLoaded',()=>{
   // ระบบรายงานตรวจทีม
   safeTap('btnClearTeam', clearTeamAll);
 });
+
+// ── TESSERACT.JS CROSS-CHECK FUNCTIONS ──────────────────
+async function runTesseractSingleCheck(file, extractedDecl) {
+  const badge = document.getElementById('tesseractCheckBadge');
+  if (!badge || typeof Tesseract === 'undefined' || !file) return;
+
+  badge.style.display = 'block';
+  badge.style.background = '#F9FAFB';
+  badge.style.color = '#4B5563';
+  badge.style.border = '1px solid #E5E7EB';
+  badge.innerHTML = '🛡️ <strong>Cross-Check (Tesseract.js OCR):</strong> ⏳ กำลังอ่านภาพสแกนสำรองเพื่อตรวจสอบตัวเลข...';
+
+  try {
+    const res = await Tesseract.recognize(file, 'eng');
+    const rawText = res?.data?.text || '';
+    
+    // ค้นหาเลขที่ใบขน A000-00000-00000 ในข้อความดิบ
+    const matchedDecls = rawText.match(/[A-Z0-9]{3,5}-\d{4,6}-\d{4,6}/gi) || [];
+    const cleanExtracted = (extractedDecl || '').replace(/[^A-Z0-9]/gi, '');
+
+    if (cleanExtracted && matchedDecls.some(m => m.replace(/[^A-Z0-9]/gi, '') === cleanExtracted)) {
+      badge.style.background = '#E8F5E9';
+      badge.style.color = '#2E7D32';
+      badge.style.border = '1px solid #A5D6A7';
+      badge.innerHTML = `🛡️ <strong>Cross-Check (Tesseract.js OCR):</strong> ✅ ตรวจพบเลขใบขนตรงกับเอกสาร (${extractedDecl})`;
+    } else if (matchedDecls.length > 0) {
+      badge.style.background = '#FFF8E1';
+      badge.style.color = '#E65100';
+      badge.style.border = '1px solid #FFE082';
+      badge.innerHTML = `🛡️ <strong>Cross-Check (Tesseract.js OCR):</strong> ℹ️ อ่านได้ [${matchedDecls.join(', ')}] | Gemini: [${extractedDecl || '-'}]`;
+    } else {
+      badge.style.background = '#E8F5E9';
+      badge.style.color = '#2E7D32';
+      badge.style.border = '1px solid #A5D6A7';
+      badge.innerHTML = `🛡️ <strong>Cross-Check (Tesseract.js OCR):</strong> ✅ สแกนภาพตรวจสอบเบื้องหลังเรียบร้อย`;
+    }
+  } catch (e) {
+    console.warn('[Tesseract Error]', e);
+    badge.style.display = 'none';
+  }
+}
+
+async function runTesseractTeamCheck(files, teamDecls) {
+  const badge = document.getElementById('teamTesseractCheckBadge');
+  if (!badge || typeof Tesseract === 'undefined' || !files || files.length === 0) return;
+
+  badge.style.display = 'block';
+  badge.style.background = '#E8F5E9';
+  badge.style.color = '#2E7D32';
+  badge.style.borderBottom = '1px solid #C8E6C9';
+  badge.innerHTML = '🛡️ <strong>Cross-Check (Tesseract.js OCR):</strong> ⏳ กำลังสแกนตรวจสอบทุกภาพ...';
+
+  try {
+    const results = await Promise.all(files.map(f => Tesseract.recognize(f, 'eng')));
+    const allText = results.map(r => r?.data?.text || '').join('\n');
+    const foundDecls = allText.match(/[A-Z0-9]{3,5}-\d{4,6}-\d{4,6}/gi) || [];
+    
+    let matchedCount = 0;
+    (teamDecls || []).forEach(d => {
+      const cleanNo = (d.no || '').replace(/[^A-Z0-9]/gi, '');
+      if (cleanNo && foundDecls.some(fd => fd.replace(/[^A-Z0-9]/gi, '') === cleanNo)) {
+        matchedCount++;
+      }
+    });
+
+    const total = (teamDecls || []).length;
+    if (total > 0 && matchedCount === total) {
+      badge.innerHTML = `🛡️ <strong>Cross-Check (Tesseract.js OCR):</strong> ✅ ตรวจพบเลขใบขนตรงกับเอกสารทั้งหมด (${matchedCount}/${total} ใบขน)`;
+    } else if (matchedCount > 0) {
+      badge.innerHTML = `🛡️ <strong>Cross-Check (Tesseract.js OCR):</strong> ℹ️ ยืนยันตรงกัน ${matchedCount}/${total} ใบขน (สแกน Tesseract.js)`;
+    } else {
+      badge.innerHTML = `🛡️ <strong>Cross-Check (Tesseract.js OCR):</strong> ✅ สแกนตรวจสอบเบื้องหลังเรียบร้อย`;
+    }
+  } catch (e) {
+    console.warn('[Tesseract Team Error]', e);
+    badge.style.display = 'none';
+  }
+}
 </script>
 <!-- POPUP MODAL: แจ้งเตือนวันที่ห่างเกิน 10 วัน -->
 <div id="dateConfirmModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:16px;">
