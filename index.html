@@ -1904,7 +1904,7 @@ async function runTesseractSingleCheck(file, extractedDecl) {
   badge.style.background = '#F9FAFB';
   badge.style.color = '#4B5563';
   badge.style.border = '1px solid #E5E7EB';
-  badge.innerHTML = '🛡️ <strong>Cross-Check (Tesseract.js OCR):</strong> ⏳ กำลังอ่านภาพสแกนสำรองเพื่อตรวจสอบตัวเลข...';
+  badge.innerHTML = '🛡️ <strong>Cross-Check :</strong> ⏳ กำลังอ่านภาพอีกครั้งเพื่อตรวจสอบตัวเลข...';
 
   try {
     const res = await Tesseract.recognize(file, 'eng');
@@ -1918,17 +1918,17 @@ async function runTesseractSingleCheck(file, extractedDecl) {
       badge.style.background = '#E8F5E9';
       badge.style.color = '#2E7D32';
       badge.style.border = '1px solid #A5D6A7';
-      badge.innerHTML = `🛡️ <strong>Cross-Check (Tesseract.js OCR):</strong> ✅ ตรวจพบเลขใบขนตรงกับเอกสาร (${extractedDecl})`;
+      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ✅ ตรวจพบเลขใบขนตรงกับเอกสาร (${extractedDecl})`;
     } else if (matchedDecls.length > 0) {
       badge.style.background = '#FFF8E1';
       badge.style.color = '#E65100';
       badge.style.border = '1px solid #FFE082';
-      badge.innerHTML = `🛡️ <strong>Cross-Check (Tesseract.js OCR):</strong> ℹ️ อ่านได้ [${matchedDecls.join(', ')}] | Gemini: [${extractedDecl || '-'}]`;
+      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ℹ️ อ่านได้ [${matchedDecls.join(', ')}] | Gemini: [${extractedDecl || '-'}]`;
     } else {
       badge.style.background = '#E8F5E9';
       badge.style.color = '#2E7D32';
       badge.style.border = '1px solid #A5D6A7';
-      badge.innerHTML = `🛡️ <strong>Cross-Check (Tesseract.js OCR):</strong> ✅ สแกนภาพตรวจสอบเบื้องหลังเรียบร้อย`;
+      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ✅ เรียบร้อย`;
     }
   } catch (e) {
     console.warn('[Tesseract Error]', e);
@@ -1944,7 +1944,7 @@ async function runTesseractTeamCheck(files, teamDecls) {
   badge.style.background = '#E8F5E9';
   badge.style.color = '#2E7D32';
   badge.style.borderBottom = '1px solid #C8E6C9';
-  badge.innerHTML = '🛡️ <strong>Cross-Check (Tesseract.js OCR):</strong> ⏳ กำลังสแกนตรวจสอบทุกภาพ...';
+  badge.innerHTML = '🛡️ <strong>Cross-Check :</strong> ⏳ กำลังสแกนตรวจสอบทุกภาพ...';
 
   try {
     const results = await Promise.all(files.map(f => Tesseract.recognize(f, 'eng')));
@@ -1961,11 +1961,11 @@ async function runTesseractTeamCheck(files, teamDecls) {
 
     const total = (teamDecls || []).length;
     if (total > 0 && matchedCount === total) {
-      badge.innerHTML = `🛡️ <strong>Cross-Check (Tesseract.js OCR):</strong> ✅ ตรวจพบเลขใบขนตรงกับเอกสารทั้งหมด (${matchedCount}/${total} ใบขน)`;
+      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ✅ ตรวจพบเลขใบขนตรงกับเอกสารทั้งหมด (${matchedCount}/${total} ใบขน)`;
     } else if (matchedCount > 0) {
-      badge.innerHTML = `🛡️ <strong>Cross-Check (Tesseract.js OCR):</strong> ℹ️ ยืนยันตรงกัน ${matchedCount}/${total} ใบขน (สแกน Tesseract.js)`;
+      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ℹ️ ยืนยันตรงกัน ${matchedCount}/${total} ใบขน`;
     } else {
-      badge.innerHTML = `🛡️ <strong>Cross-Check (Tesseract.js OCR):</strong> ✅ สแกนตรวจสอบเบื้องหลังเรียบร้อย`;
+      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ✅ เรียบร้อย`;
     }
   } catch (e) {
     console.warn('[Tesseract Team Error]', e);
