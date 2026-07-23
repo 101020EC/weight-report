@@ -686,31 +686,34 @@ async function readImagesWithRetry(){
   }
 
   // รอบที่ 1 (Initial)
-  const success1 = await runReadImages(false);
-  if(success1){
+  const res1 = await runReadImages(false);
+  if(res1 === true){
     totalFailedAttempts = 0;
     return;
   }
+  if(res1 === 'PAYLOAD_TOO_LARGE') return;
   totalFailedAttempts++;
 
   // auto-retry รอบที่ 1 (Attempt 2)
   showToast('ลองใหม่อีกครั้ง... (รอบที่ 1/2)','warn');
   await new Promise(r=>setTimeout(r,1500));
-  const success2 = await runReadImages(false);
-  if(success2){
+  const res2 = await runReadImages(false);
+  if(res2 === true){
     totalFailedAttempts = 0;
     return;
   }
+  if(res2 === 'PAYLOAD_TOO_LARGE') return;
   totalFailedAttempts++;
 
   // auto-retry รอบที่ 2 (Attempt 3)
   showToast('ลองใหม่อีกครั้ง... (รอบที่ 2/2)','warn');
   await new Promise(r=>setTimeout(r,1500));
-  const success3 = await runReadImages(true);
-  if(success3){
+  const res3 = await runReadImages(true);
+  if(res3 === true){
     totalFailedAttempts = 0;
     return;
   }
+  if(res3 === 'PAYLOAD_TOO_LARGE') return;
   totalFailedAttempts++;
 
   if(totalFailedAttempts >= 6){
@@ -733,6 +736,16 @@ function closeQuotaModalAndManual(){
   manualEntry();
 }
 
+function showPayloadTooLargeModal(){
+  const m = document.getElementById('payloadTooLargeModal');
+  if(m) m.style.display = 'flex';
+}
+
+function closePayloadTooLargeModal(){
+  const m = document.getElementById('payloadTooLargeModal');
+  if(m) m.style.display = 'none';
+}
+
 async function runReadImages(isFinal=false){
   if(uploadedFiles.length===0) return false;
   document.getElementById('loadingArea').style.display='block';
@@ -753,6 +766,10 @@ async function runReadImages(isFinal=false){
     });
     if(!resp.ok){
       const errText=await resp.text();
+      if(resp.status === 413 || errText.includes('413') || errText.includes('FUNCTION_PAYLOAD_TOO_LARGE') || errText.includes('Payload Too Large') || errText.includes('TOO_LARGE')){
+        showPayloadTooLargeModal();
+        return 'PAYLOAD_TOO_LARGE';
+      }
       throw new Error(`Server error ${resp.status}: ${errText.slice(0,150)}`);
     }
     const result=await resp.json();
@@ -769,6 +786,10 @@ async function runReadImages(isFinal=false){
     showToast('อ่านข้อมูลสำเร็จ ✓','success');
     return true;
   }catch(err){
+    if(err.message && (err.message.includes('413') || err.message.includes('PAYLOAD_TOO_LARGE') || err.message.includes('Too Large'))){
+      showPayloadTooLargeModal();
+      return 'PAYLOAD_TOO_LARGE';
+    }
     if(isFinal){
       showToast('ผิดพลาด: '+(err.message||'เกิดข้อผิดพลาด'),'error');
     }
@@ -818,16 +839,15 @@ function clearFiles(){
 function updateReadBtn(){document.getElementById('readBtn').disabled=uploadedFiles.length===0;}
 
 // ── RESIZE + BASE64 ───────────────────────────────────────
-// Resize รูปให้ใหญ่ขึ้น (max 2000px) ก่อนส่ง Gemini เพื่อให้อ่านได้ชัดขึ้น
+// Resize รูปภาพย่อขนาดถ้าใหญ่กว่า MAX (1400px) และควบคุม Quality 0.80 เพื่อไม่ให้เกิน Vercel Payload Limit (4.5MB)
 function resizeAndEncode(file){
   return new Promise((resolve)=>{
     const img=new Image();
     const url=URL.createObjectURL(file);
     img.onload=()=>{
-      const MAX=2000;
+      const MAX=1400;
       let w=img.width, h=img.height;
-      if(w<MAX&&h<MAX){
-        // รูปเล็กกว่า MAX ให้ scale up
+      if(w>MAX || h>MAX){
         const scale=MAX/Math.max(w,h);
         w=Math.round(w*scale); h=Math.round(h*scale);
       }
@@ -838,7 +858,7 @@ function resizeAndEncode(file){
       ctx.imageSmoothingQuality='high';
       ctx.drawImage(img,0,0,w,h);
       URL.revokeObjectURL(url);
-      const dataUrl=canvas.toDataURL('image/jpeg',0.95);
+      const dataUrl=canvas.toDataURL('image/jpeg',0.80);
       resolve({mimeType:'image/jpeg', data:dataUrl.split(',')[1]});
     };
     img.onerror=()=>{
@@ -1658,12 +1678,11 @@ function handleTeamFiles(files){
 }
 
 async function readTeamWithRetry(){
-  const ok=await runReadTeam();
-  if(!ok){
-    showToast('ลองใหม่อีกครั้ง...','warn');
-    await new Promise(r=>setTimeout(r,1500));
-    await runReadTeam(true);
-  }
+  const res1=await runReadTeam();
+  if(res1===true || res1==='PAYLOAD_TOO_LARGE') return;
+  showToast('ลองใหม่อีกครั้ง...','warn');
+  await new Promise(r=>setTimeout(r,1500));
+  await runReadTeam(true);
 }
 
 async function runReadTeam(isFinal=false){
@@ -1683,7 +1702,14 @@ async function runReadTeam(isFinal=false){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({type:'team',images:imagesData})
     });
-    if(!resp.ok){const t=await resp.text();throw new Error(`${resp.status}: ${t.slice(0,100)}`);}
+    if(!resp.ok){
+      const t=await resp.text();
+      if(resp.status === 413 || t.includes('413') || t.includes('FUNCTION_PAYLOAD_TOO_LARGE') || t.includes('Payload Too Large') || t.includes('TOO_LARGE')){
+        showPayloadTooLargeModal();
+        return 'PAYLOAD_TOO_LARGE';
+      }
+      throw new Error(`${resp.status}: ${t.slice(0,100)}`);
+    }
     const result=await resp.json();
     if(!result.success) throw new Error(result.error||'เกิดข้อผิดพลาด');
     document.getElementById('teamChatBubble').value=result.text;
@@ -1704,6 +1730,10 @@ async function runReadTeam(isFinal=false){
     showToast('สร้างรายงานสำเร็จ ✓','success');
     return true;
   }catch(err){
+    if(err.message && (err.message.includes('413') || err.message.includes('PAYLOAD_TOO_LARGE') || err.message.includes('Too Large'))){
+      showPayloadTooLargeModal();
+      return 'PAYLOAD_TOO_LARGE';
+    }
     if(isFinal) showToast('ผิดพลาด: '+(err.message||'เกิดข้อผิดพลาด'),'error');
     return false;
   }finally{
@@ -1854,6 +1884,22 @@ window.addEventListener('DOMContentLoaded',()=>{
     <div style="display:flex;gap:10px;">
       <button type="button" class="btn" onclick="closeQuotaModal()" style="flex:1;background:#F3F4F6;color:#4B5563;border:1px solid #D1D5DB;padding:10px;font-weight:600;">ปิด</button>
       <button type="button" class="btn btn-primary" onclick="closeQuotaModalAndManual()" style="flex:1;padding:10px;font-weight:700;">Manual</button>
+    </div>
+  </div>
+</div>
+<!-- POPUP MODAL: Payload Too Large (413) -->
+<div id="payloadTooLargeModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:white;border-radius:22px;max-width:380px;width:100%;padding:28px 24px;box-shadow:0 20px 50px rgba(0,0,0,0.3);text-align:center;">
+    <div style="font-size:42px;margin-bottom:12px;">🖼️⚠️</div>
+    <h3 style="margin:0 0 10px;font-size:1.2rem;font-weight:700;color:var(--gray-900);">ขนาดภาพรวมใหญ่เกินไป</h3>
+    <p style="margin:0 0 10px;font-size:0.95rem;color:var(--gray-700);line-height:1.5;">
+      รูปภาพที่เลือกมีขนาดรวมใหญ่เกินกว่าที่ระบบรับได้ (เกิน 4.5 MB)
+    </p>
+    <p style="margin:0 0 20px;font-size:0.85rem;color:var(--gray-500);line-height:1.4;">
+      กรุณาลดจำนวนรูปภาพ หรือถ่ายภาพใหม่/เลือกรูปภาพที่มีขนาดเล็กลงแล้วลองใหม่อีกครั้งครับ
+    </p>
+    <div style="display:flex;gap:10px;">
+      <button type="button" class="btn btn-primary" onclick="closePayloadTooLargeModal()" style="flex:1;padding:10px;font-weight:700;">รับทราบ</button>
     </div>
   </div>
 </div>
