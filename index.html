@@ -398,7 +398,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
       <!-- บรรทัด 1: เลขที่ใบขน — เต็มแถว กึ่งกลาง -->
       <div class="form-group" style="margin-bottom:14px;">
         <label style="text-align:center;display:block;">เลขที่ใบขนสินค้า <span class="req">*</span></label>
-        <input type="text" id="f_declaration" placeholder="A000-00000-00000" oninput="markChanged(this);fmtDeclaration(this)" onblur="resetZoom()" style="text-align:center;" />
+        <input type="text" inputmode="numeric" pattern="[0-9]*" id="f_declaration" placeholder="A000-00000-00000" oninput="markChanged(this);fmtDeclaration(this)" onblur="resetZoom()" style="text-align:center;font-size:16px!important;" />
       </div>
       <!-- Tesseract Cross-Check Badge -->
       <div id="tesseractCheckBadge" style="display:none;margin-bottom:14px;padding:8px 14px;border-radius:8px;font-size:13px;line-height:1.5;font-weight:500;"></div>
@@ -1148,8 +1148,10 @@ function validateForm(){
 // ── DECLARATION FORMAT (รูปแบบ A000-00000-00000) ──────────────────────────
 function formatDeclarationStr(val){
   if(!val) return '';
-  let v=String(val).replace(/[^A-Za-z0-9]/g,'').toUpperCase();
-  let out='';
+  let digits = String(val).replace(/[^0-9]/g, '');
+  if (digits.length === 0) return '';
+  let v = 'A' + digits.slice(0, 13);
+  let out = '';
   if(v.length>0)  out+=v.slice(0,4);
   if(v.length>4)  out+='-'+v.slice(4,9);
   if(v.length>9)  out+='-'+v.slice(9,14);
