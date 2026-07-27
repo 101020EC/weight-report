@@ -398,7 +398,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
       <!-- บรรทัด 1: เลขที่ใบขน — เต็มแถว กึ่งกลาง -->
       <div class="form-group" style="margin-bottom:14px;">
         <label style="text-align:center;display:block;">เลขที่ใบขนสินค้า <span class="req">*</span></label>
-        <input type="text" inputmode="numeric" pattern="[0-9]*" id="f_declaration" placeholder="A000-00000-00000" oninput="markChanged(this);fmtDeclaration(this)" onblur="resetZoom()" style="text-align:center;font-size:16px!important;" />
+        <input type="text" inputmode="numeric" pattern="[0-9]*" id="f_declaration" placeholder="A000-00000-00000" onfocus="onDeclarationFocus(this)" oninput="markChanged(this);fmtDeclaration(this)" onblur="onDeclarationBlur(this)" style="text-align:center;font-size:16px!important;" />
       </div>
       <!-- Tesseract Cross-Check Badge -->
       <div id="tesseractCheckBadge" style="display:none;margin-bottom:14px;padding:8px 14px;border-radius:8px;font-size:13px;line-height:1.5;font-weight:500;"></div>
@@ -1138,7 +1138,7 @@ function validateForm(){
   ['f_declaration','f_declared_weight','f_date','f_origin'].forEach(id=>{
     const el=document.getElementById(id);
     if(!el) return;
-    const empty=(el.value==null||el.value.trim()==='');
+    const empty=(el.value==null||el.value.trim()===''||el.value.trim()==='A');
     el.classList.toggle('invalid',empty);
     if(empty) missing.push(FIELD_NAMES[id]);
   });
@@ -1149,7 +1149,9 @@ function validateForm(){
 function formatDeclarationStr(val){
   if(!val) return '';
   let digits = String(val).replace(/[^0-9]/g, '');
-  if (digits.length === 0) return '';
+  if (digits.length === 0) {
+    return String(val).toUpperCase().includes('A') ? 'A' : '';
+  }
   let v = 'A' + digits.slice(0, 13);
   let out = '';
   if(v.length>0)  out+=v.slice(0,4);
@@ -1161,6 +1163,22 @@ function formatDeclarationStr(val){
 function fmtDeclaration(el){
   el.value=formatDeclarationStr(el.value);
   markChanged(el);
+}
+
+function onDeclarationFocus(el){
+  if(!el.value){
+    el.value='A';
+    setTimeout(()=>{
+      try{ el.setSelectionRange(1,1); }catch(e){}
+    },0);
+  }
+}
+
+function onDeclarationBlur(el){
+  if(el.value==='A'){
+    el.value='';
+  }
+  resetZoom();
 }
 
 // ── THAI DATE NORMALIZER ──────────────────────────────────
@@ -1306,7 +1324,8 @@ function confirmDateAndGenerate(){
 
 function doGenerateImage(){
   const im  = document.getElementById('f_importer').value||'-';
-  const dn  = document.getElementById('f_declaration').value||'-';
+  const dnRaw = (document.getElementById('f_declaration').value||'').trim();
+  const dn  = (dnRaw && dnRaw !== 'A') ? dnRaw : '-';
   const dw  = (document.getElementById('f_declared_weight').value||'0').replace(/,/g,'');
   const dt  = document.getElementById('f_date').value||'-';
   const gt  = document.getElementById('f_goods_type').value||'-';
