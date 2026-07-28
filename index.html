@@ -468,7 +468,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
     <div class="step-header" style="position:relative;display:flex;align-items:center;justify-content:center;gap:10px;">
       <div class="step-num" id="num-3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
       <div class="step-label">น้ำหนักรถและสินค้า</div>
-      <button type="button" class="btn" id="btnViewSlip" onclick="openSlipModal()" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:var(--orange-light);color:var(--orange-deep);border:1.5px solid var(--orange);padding:5px 12px;border-radius:18px;font-size:0.82rem;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;white-space:nowrap;">
+      <button type="button" class="btn" id="btnViewSlip" onclick="toggleSlipModal()" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:var(--orange-light);color:var(--orange-deep);border:1.5px solid var(--orange);padding:5px 12px;border-radius:18px;font-size:0.82rem;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;white-space:nowrap;">
         ดูใบชั่ง
       </button>
     </div>
@@ -1920,7 +1920,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   // ระบบอ่านใบชั่งน้ำหนัก
   safeTap('btnGenerate', ()=>{ generateImage(); });
   safeTap('btnGenerateNew', ()=>{ generateImage(); });
-  safeTap('btnViewSlip', openSlipModal);
+  safeTap('btnViewSlip', toggleSlipModal);
   safeTap('clearBtn', clearAllData);
   safeTap('btnClearBefore', clearAllData);
   safeTap('btnClearWeight', clearAllData);
@@ -2143,6 +2143,13 @@ function autoCropWhiteDocument(img) {
     }
 
     const foundCount = bestCount;
+
+    // ── 4) บีบให้เหลือเฉพาะ "ตารางชั่งน้ำหนัก" ──────────────
+    // ครอบกระดาษอย่างเดียวไม่พอ: ถ้าถ่ายใกล้จนกระดาษล้นเฟรม จะตัดได้ด้านเดียว
+    // และหัวกระดาษ (ชื่อบริษัท/เลขที่/วันที่) กับลายเซ็นก็ยังติดมาด้วย
+    const tbox = findTableBox(lum, w, h, thr, minX, minY, maxX, maxY);
+    if (tbox) { minX = tbox[0]; minY = tbox[1]; maxX = tbox[2]; maxY = tbox[3]; }
+
     const cropW = maxX - minX;
     const cropH = maxY - minY;
     if (foundCount > total * 0.02 && cropW > w * 0.15 && cropH > h * 0.15) {
@@ -2179,6 +2186,126 @@ function autoCropWhiteDocument(img) {
   return null;
 }
 
+// หากรอบของ "ตารางชั่งน้ำหนัก" ภายในกรอบกระดาษที่หามาได้แล้ว
+// หลักการ: เส้นขอบตารางคือเส้นเข้มที่พาดยาวเกือบเต็มความกว้าง/ความสูงของตาราง
+// หัวกระดาษ (ชื่อบริษัท เลขที่ วันที่) และลายเซ็นไม่มีเส้นยาวแบบนี้ จึงถูกตัดออก
+// คืน null เมื่อหาเส้นไม่เจอ → ผู้เรียกใช้กรอบกระดาษเดิมต่อ (fallback)
+function findTableBox(lum, w, h, thr, px0, py0, px1, py1) {
+  // หดกรอบเข้ามาก่อน: ขอบกระดาษที่ต่อกับพื้นหลังจะเบลอเป็นสีกลาง ๆ ซึ่งเข้มกว่า threshold
+  // ทั้งแถวเลยถูกนับเป็น "เส้นตาราง" แล้วลากกรอบไปจนสุดขอบกระดาษ
+  const ix = Math.max(3, Math.round((px1 - px0 + 1) * 0.02));
+  const iy = Math.max(3, Math.round((py1 - py0 + 1) * 0.02));
+  px0 += ix; px1 -= ix; py0 += iy; py1 -= iy;
+
+  const pw = px1 - px0 + 1, ph = py1 - py0 + 1;
+  if (pw < 40 || ph < 40) return null;
+
+  const LINE_RATIO = 0.35;   // เส้นต้องยาวอย่างน้อย 35% ของด้านนั้น
+  const R = 3;               // เผื่อรูปเอียงเล็กน้อย: รวมพิกเซลข้ามแถวใกล้กัน
+
+  const dark = new Uint8Array(pw * ph);
+  for (let y = 0; y < ph; y++) {
+    const src = (py0 + y) * w + px0, dst = y * pw;
+    for (let x = 0; x < pw; x++) dark[dst + x] = lum[src + x] < thr ? 1 : 0;
+  }
+
+  // เส้นแนวนอน: ขยายมาสก์ตามแนวตั้งก่อน เพื่อให้เส้นที่เอียงยังนับได้เต็มแถว
+  const vd = new Uint8Array(pw * ph);
+  for (let y = 0; y < ph; y++) {
+    for (let x = 0; x < pw; x++) {
+      let v = 0;
+      for (let k = -R; k <= R && !v; k++) {
+        const yy = y + k;
+        if (yy >= 0 && yy < ph && dark[yy * pw + x]) v = 1;
+      }
+      vd[y * pw + x] = v;
+    }
+  }
+  // นับ "ช่วงเข้มที่ยาวติดกันที่สุด" ไม่ใช่จำนวนพิกเซลเข้มรวม
+  // เส้นขอบตารางเป็นเส้นทึบยาวช่วงเดียว ส่วนตัวหนังสือหัวกระดาษเป็นช่วงสั้น ๆ หลายช่วง
+  // ถ้านับรวมทั้งแถว ชื่อบริษัทตัวใหญ่จะถูกนับเป็นเส้นตารางไปด้วย
+  const rowHit = new Uint8Array(ph);
+  for (let y = 0; y < ph; y++) {
+    rowHit[y] = longestRun(vd, y * pw, pw, 1) >= pw * LINE_RATIO ? 1 : 0;
+  }
+  const rowGroups = groupRuns(rowHit);
+  if (rowGroups.length < 3) return null;   // ตารางต้องมีอย่างน้อย 3 เส้น
+
+  const ty0 = rowGroups[0][0];
+  const ty1 = rowGroups[rowGroups.length - 1][1];
+  const bandH = ty1 - ty0 + 1;
+  if (bandH < ph * 0.1) return null;
+
+  // เส้นแนวตั้ง: ขยายมาสก์ตามแนวนอน แล้วนับเฉพาะในช่วงความสูงของตาราง
+  const hd = new Uint8Array(pw * ph);
+  for (let y = ty0; y <= ty1; y++) {
+    for (let x = 0; x < pw; x++) {
+      let v = 0;
+      for (let k = -R; k <= R && !v; k++) {
+        const xx = x + k;
+        if (xx >= 0 && xx < pw && dark[y * pw + xx]) v = 1;
+      }
+      hd[y * pw + x] = v;
+    }
+  }
+  const colHit = new Uint8Array(pw);
+  for (let x = 0; x < pw; x++) {
+    colHit[x] = longestRun(hd, ty0 * pw + x, bandH, pw) >= bandH * LINE_RATIO ? 1 : 0;
+  }
+  const colGroups = groupRuns(colHit);
+
+  let tx0, tx1;
+  if (colGroups.length >= 2) {
+    tx0 = colGroups[0][0];
+    tx1 = colGroups[colGroups.length - 1][1];
+  } else {
+    // ไม่มีเส้นแนวตั้ง (ตารางแบบมีแค่เส้นคั่นแนวนอน) → ใช้ขอบซ้าย-ขวาของหมึกในช่วงตาราง
+    tx0 = pw; tx1 = 0;
+    for (let y = ty0; y <= ty1; y++) {
+      for (let x = 0; x < pw; x++) {
+        if (dark[y * pw + x]) { if (x < tx0) tx0 = x; if (x > tx1) tx1 = x; }
+      }
+    }
+    if (tx1 <= tx0) return null;
+  }
+  if (tx1 - tx0 < pw * 0.2) return null;
+
+  return [px0 + tx0, py0 + ty0, px0 + tx1, py0 + ty1];
+}
+
+// ความยาวของช่วง 1 ที่ต่อกันยาวที่สุด เดินจาก start ไป n ก้าว ก้าวละ step
+function longestRun(arr, start, n, step) {
+  let best = 0, cur = 0;
+  for (let i = 0, p = start; i < n; i++, p += step) {
+    if (arr[p]) { cur++; if (cur > best) best = cur; }
+    else cur = 0;
+  }
+  return best;
+}
+
+// รวมช่วงที่ต่อเนื่องกันเป็นกลุ่ม: [1,1,0,0,1] → [[0,1],[4,4]]
+function groupRuns(hits) {
+  const out = [];
+  let s = -1;
+  for (let i = 0; i < hits.length; i++) {
+    if (hits[i] && s < 0) s = i;
+    else if (!hits[i] && s >= 0) { out.push([s, i - 1]); s = -1; }
+  }
+  if (s >= 0) out.push([s, hits.length - 1]);
+  return out;
+}
+
+function isSlipModalOpen() {
+  const m = document.getElementById('slipViewModal');
+  return !!m && m.style.display === 'flex';
+}
+
+// กดปุ่ม ดูใบชั่ง ซ้ำขณะรูปโชว์อยู่ = ปิดรูป
+function toggleSlipModal() {
+  if (isSlipModalOpen()) { closeSlipModal(); return; }
+  openSlipModal();
+}
+
 async function openSlipModal() {
   if (!currentSlipOriginalUrl && typeof uploadedFiles !== 'undefined' && uploadedFiles.length > 0) {
     await prepareSlipModalImage(uploadedFiles[0]);
@@ -2204,6 +2331,9 @@ async function openSlipModal() {
   // ไม่ล็อก scroll แล้ว — ตารางต้องเลื่อนดูได้ขณะเทียบกับรูป
   positionSlipModal();
   resetSlipZoom();
+  // cursor:pointer ที่ body ถ่ายทอดลงไปทุก element (cursor เป็น inherited property)
+  // จำเป็นบน iOS Safari — ไม่งั้นแตะช่องว่างที่เป็น <div> ธรรมดาจะไม่เกิด click event เลย
+  document.body.style.cursor = 'pointer';
 }
 
 // วางรูปให้ขอบล่างอยู่เหนือการ์ด "น้ำหนักรถและสินค้า" เพื่อเทียบตารางกันได้
@@ -2240,6 +2370,7 @@ function closeSlipModal() {
     m.style.bottom = '0';
     document.body.style.overflow = '';
   }
+  document.body.style.cursor = '';
   resetSlipZoom();
 }
 
@@ -2324,16 +2455,23 @@ function initSlipZoom() {
   }, { passive: false });
 }
 
+// แตะที่ไหนก็ได้ทั้งจอ (ทั้งบนพื้นที่ของ popup และบนหน้าเว็บใต้รูป) แล้วปิด
+// ยกเว้น: ตัวรูปเอง, ปุ่ม ดูใบชั่ง (มันสลับเปิด/ปิดเอง) และช่องกรอก/ปุ่มต่าง ๆ
+// เพื่อให้ยังพิมพ์แก้ตัวเลขในตารางได้ขณะเปิดรูปเทียบ ซึ่งเป็นหัวใจของฟีเจอร์นี้
+const SLIP_KEEP_OPEN_SEL = 'input,textarea,select,button,a,label,[contenteditable="true"]';
+
 function closeSlipModalOnBackdrop(e) {
-  const t = e.target;
-  if (!t) return;
+  if (!isSlipModalOpen()) return;
   if (slipGesture) return;   // เพิ่งซูม/ลากอยู่ อย่าเพิ่งปิด
-  // แตะที่ไหนก็ได้ที่ไม่ใช่ตัวรูปและไม่ใช่ปุ่ม → ปิด
-  // (เดิมเช็คแค่ id === 'slipViewModal' ทำให้ขอบดำรอบรูป/แถบหัว/แถบท้าย กดแล้วไม่ปิด)
+  const t = e.target;
+  if (!t || !t.closest) return;
   if (t.id === 'slipModalImg') return;
-  if (t.closest && t.closest('button')) return;
+  if (t.closest('#btnViewSlip')) return;
+  if (t.closest(SLIP_KEEP_OPEN_SEL)) return;
   closeSlipModal();
 }
+
+document.addEventListener('click', closeSlipModalOnBackdrop);
 
 function updateSlipModalImageSrc() {
   const img = document.getElementById('slipModalImg');
