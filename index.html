@@ -317,7 +317,6 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
 .nav-item.active .mi{transform:scale(1.05);}
 .page{display:none;}.page.active{display:block;}
 </style>
-<!-- Grog AI Cross-Check Integration -->
 </head>
 <body>
 <div class="topbar"></div>
@@ -400,8 +399,6 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
         <label style="text-align:center;display:block;">เลขที่ใบขนสินค้า <span class="req">*</span></label>
         <input type="text" inputmode="numeric" pattern="[0-9]*" id="f_declaration" placeholder="A000-00000-00000" onfocus="onDeclarationFocus(this)" oninput="markChanged(this);fmtDeclaration(this, event)" onblur="onDeclarationBlur(this)" style="text-align:center;font-size:16px!important;" />
       </div>
-      <!-- Tesseract Cross-Check Badge -->
-      <div id="tesseractCheckBadge" style="display:none;margin-bottom:14px;padding:8px 14px;border-radius:8px;font-size:13px;line-height:1.5;font-weight:500;"></div>
       <!-- บรรทัด 2: วันที่ — 3 select (วัน/เดือน/ปี พ.ศ.) -->
       <div class="form-group" style="margin-bottom:14px;">
         <label>วันที่ <span class="req">*</span></label>
@@ -597,8 +594,6 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
         <div style="font-size:13px;font-weight:700;color:#E65100;margin-bottom:6px;">⚠️ ข้อมูลไม่ครบในบางใบขนสินค้า</div>
         <div id="teamWarningList" style="font-size:13px;color:#BF360C;line-height:1.8;"></div>
       </div>
-      <!-- Tesseract Cross-Check Badge สำหรับรายงานตรวจทีม -->
-      <div id="teamTesseractCheckBadge" style="display:none;background:#E8F5E9;border-bottom:1px solid #C8E6C9;padding:10px 18px;font-size:13px;color:#2E7D32;font-weight:500;"></div>
       <div class="step-body" style="padding:0;">
         <div id="teamChatWrap" style="background:#F5F5F5;padding:20px;min-height:200px;">
           <div style="display:flex;justify-content:center;">
@@ -916,10 +911,6 @@ function populateForm(data){
   if(vs.length===0)addRow();else vs.forEach(v=>addRow(v));
   calcSummary();
 
-  // รัน Grog Cross-Check ในเบื้องหลัง
-  if(typeof uploadedFiles!=='undefined' && uploadedFiles.length>0){
-    runGroqSingleCheck(uploadedFiles[0], data.declaration_no);
-  }
 }
 function matchImporter(val){
   if(!val)return'';const v=val.toLowerCase();
@@ -1789,10 +1780,6 @@ async function runReadTeam(isFinal=false){
     document.getElementById('teamClearBtnArea').style.display='block';
     autoGrowTeam();
     
-    // รัน Grog Cross-Check ในเบื้องหลัง
-    if(typeof teamFiles!=='undefined' && teamFiles.length>0){
-      runGroqTeamCheck(teamFiles, result.declarations);
-    }
 
     setTimeout(()=>{
       const warn=document.getElementById('teamWarningBox');
@@ -1932,129 +1919,6 @@ window.addEventListener('DOMContentLoaded',()=>{
   initSlipZoom();
 });
 
-// ── GROQ AI CROSS-CHECK FUNCTIONS ──────────────────
-async function runGroqSingleCheck(file, extractedDecl) {
-  const badge = document.getElementById('tesseractCheckBadge');
-  if (!badge || !file) return;
-
-  badge.style.display = 'block';
-  badge.style.background = '#F9FAFB';
-  badge.style.color = '#4B5563';
-  badge.style.border = '1px solid #E5E7EB';
-  badge.innerHTML = '🛡️ <strong>Cross-Check :</strong> ⏳ Grog กำลังอ่านภาพอีกครั้ง...';
-
-  try {
-    const encoded = await resizeAndEncode(file);
-    const resp = await fetch('/api/groq', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: encoded })
-    });
-
-    if (!resp.ok) {
-      const errRes = await resp.json().catch(() => ({}));
-      throw new Error(errRes.error || `Groq HTTP ${resp.status}`);
-    }
-
-    const res = await resp.json();
-    if (!res.success) {
-      throw new Error(res.error || 'Groq error');
-    }
-
-    const rawText = res.text || '';
-    const matchedDecls = rawText.match(/[A-Z0-9]{3,5}-\d{4,6}-\d{4,6}/gi) || [];
-    const cleanExtracted = (extractedDecl || '').replace(/[^A-Z0-9]/gi, '');
-
-    if (cleanExtracted && matchedDecls.some(m => m.replace(/[^A-Z0-9]/gi, '') === cleanExtracted)) {
-      badge.style.background = '#E8F5E9';
-      badge.style.color = '#2E7D32';
-      badge.style.border = '1px solid #A5D6A7';
-      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ✅ Grog พบเลขใบขนตรงตาม (${extractedDecl})`;
-    } else if (matchedDecls.length > 0) {
-      badge.style.background = '#FFF8E1';
-      badge.style.color = '#E65100';
-      badge.style.border = '1px solid #FFE082';
-      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ℹ️ Grog: อ่านได้ [${matchedDecls.join(', ')}] | Gemini: อ่านได้ [${extractedDecl || '-'}]`;
-    } else {
-      badge.style.background = '#FFF8E1';
-      badge.style.color = '#E65100';
-      badge.style.border = '1px solid #FFE082';
-      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ℹ️ Grog: อ่านได้ [-] | Gemini: อ่านได้ [${extractedDecl || '-'}]`;
-    }
-  } catch (e) {
-    console.warn('[Groq Cross-Check Warning]', e);
-    showToast('Grog grog grog...', 'warn');
-    badge.style.background = '#FFF3CD';
-    badge.style.color = '#856404';
-    badge.style.border = '1px solid #FFEEBA';
-    badge.innerHTML = '🛡️ <strong>Cross-Check :</strong> ⚠️ Grog grog grog...';
-  }
-}
-
-async function runGroqTeamCheck(files, teamDecls) {
-  const badge = document.getElementById('teamTesseractCheckBadge');
-  if (!badge || !files || files.length === 0) return;
-
-  badge.style.display = 'block';
-  badge.style.background = '#F9FAFB';
-  badge.style.color = '#4B5563';
-  badge.style.borderBottom = '1px solid #E5E7EB';
-  badge.innerHTML = '🛡️ <strong>Cross-Check :</strong> ⏳ Grog กำลังอ่านภาพอีกครั้ง...';
-
-  try {
-    const encodedImages = await Promise.all(files.map(f => resizeAndEncode(f)));
-    const resp = await fetch('/api/groq', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ images: encodedImages })
-    });
-
-    if (!resp.ok) {
-      const errRes = await resp.json().catch(() => ({}));
-      throw new Error(errRes.error || `Groq HTTP ${resp.status}`);
-    }
-
-    const res = await resp.json();
-    if (!res.success) {
-      throw new Error(res.error || 'Groq error');
-    }
-
-    const rawText = res.text || '';
-    const foundDecls = rawText.match(/[A-Z0-9]{3,5}-\d{4,6}-\d{4,6}/gi) || [];
-
-    let matchedCount = 0;
-    (teamDecls || []).forEach(d => {
-      const cleanNo = (d.no || '').replace(/[^A-Z0-9]/gi, '');
-      if (cleanNo && foundDecls.some(fd => fd.replace(/[^A-Z0-9]/gi, '') === cleanNo)) {
-        matchedCount++;
-      }
-    });
-
-    const total = (teamDecls || []).length;
-    if (total > 0 && matchedCount === total) {
-      badge.style.background = '#E8F5E9';
-      badge.style.color = '#2E7D32';
-      badge.style.borderBottom = '1px solid #C8E6C9';
-      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ✅ Grog พบเลขใบขนตรงตามทั้งหมด (${matchedCount}/${total} ใบขน)`;
-    } else {
-      badge.style.background = '#FFF8E1';
-      badge.style.color = '#E65100';
-      badge.style.borderBottom = '1px solid #FFE082';
-      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ℹ️ Grog: อ่านได้ [${foundDecls.join(', ') || '-'}] | Gemini: อ่านได้ [${(teamDecls||[]).map(d=>d.no).join(', ')||'-'}]`;
-    }
-  } catch (e) {
-    console.warn('[Groq Team Cross-Check Warning]', e);
-    showToast('Grog grog grog...', 'warn');
-    badge.style.background = '#FFF3CD';
-    badge.style.color = '#856404';
-    badge.style.borderBottom = '1px solid #FFEEBA';
-    badge.innerHTML = '🛡️ <strong>Cross-Check :</strong> ⚠️ Grog grog grog...';
-  }
-}
-
-// Fallback Alias สำหรับรับประกันความเข้ากันได้
-const runTesseractSingleCheck = runGroqSingleCheck;
-const runTesseractTeamCheck = runGroqTeamCheck;
 
 // ── SLIP MODAL & AUTO CROP WHITE DOCUMENT ──────────────────
 let currentSlipOriginalUrl = '';
