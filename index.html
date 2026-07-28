@@ -2144,11 +2144,11 @@ function autoCropWhiteDocument(img) {
 
     const foundCount = bestCount;
 
-    // ── 4) บีบให้เหลือเฉพาะ "ตารางชั่งน้ำหนัก" ──────────────
-    // ครอบกระดาษอย่างเดียวไม่พอ: ถ้าถ่ายใกล้จนกระดาษล้นเฟรม จะตัดได้ด้านเดียว
-    // และหัวกระดาษ (ชื่อบริษัท/เลขที่/วันที่) กับลายเซ็นก็ยังติดมาด้วย
-    const tbox = findTableBox(lum, w, h, thr, minX, minY, maxX, maxY);
-    if (tbox) { minX = tbox[0]; minY = tbox[1]; maxX = tbox[2]; maxY = tbox[3]; }
+    // ── 4) หาช่วงบน-ล่างของ "ตารางชั่งน้ำหนัก" ──────────────
+    // ครอปเฉพาะแนวตั้ง ไม่ตัดซ้าย-ขวา: ตัดข้างทำให้ตารางขาดหายไปบางคอลัมน์
+    const rows = findTableRows(lum, w, h, thr);
+    if (rows) { minY = rows[0]; maxY = rows[1]; }
+    minX = 0; maxX = w - 1;
 
     const cropW = maxX - minX;
     const cropH = maxY - minY;
@@ -2186,91 +2186,63 @@ function autoCropWhiteDocument(img) {
   return null;
 }
 
-// หากรอบของ "ตารางชั่งน้ำหนัก" ภายในกรอบกระดาษที่หามาได้แล้ว
-// หลักการ: เส้นขอบตารางคือเส้นเข้มที่พาดยาวเกือบเต็มความกว้าง/ความสูงของตาราง
-// หัวกระดาษ (ชื่อบริษัท เลขที่ วันที่) และลายเซ็นไม่มีเส้นยาวแบบนี้ จึงถูกตัดออก
-// คืน null เมื่อหาเส้นไม่เจอ → ผู้เรียกใช้กรอบกระดาษเดิมต่อ (fallback)
-function findTableBox(lum, w, h, thr, px0, py0, px1, py1) {
-  // หดกรอบเข้ามาก่อน: ขอบกระดาษที่ต่อกับพื้นหลังจะเบลอเป็นสีกลาง ๆ ซึ่งเข้มกว่า threshold
-  // ทั้งแถวเลยถูกนับเป็น "เส้นตาราง" แล้วลากกรอบไปจนสุดขอบกระดาษ
-  const ix = Math.max(3, Math.round((px1 - px0 + 1) * 0.02));
-  const iy = Math.max(3, Math.round((py1 - py0 + 1) * 0.02));
-  px0 += ix; px1 -= ix; py0 += iy; py1 -= iy;
+// หาช่วงแถวบน-ล่างของ "ตารางชั่งน้ำหนัก" จากทั้งรูป (ไม่จำกัดอยู่ในกรอบกระดาษ)
+// หลักการ: เส้นขอบตารางคือเส้นเข้ม "บาง" ที่พาดยาวเกือบเต็มความกว้าง
+// - ยาว → ตัดตัวหนังสือ (หัวกระดาษ/ข้อความบนรูป) ที่เป็นช่วงสั้น ๆ หลายช่วงออก
+// - บาง → ตัดพื้นไม้/เงา/แถบมืดทึบ ที่เข้มยาวเต็มแถวเหมือนกันแต่หนาเป็นร้อยแถวออก
+// คืน null เมื่อหาเส้นไม่เจอ → ผู้เรียกใช้ช่วงของกรอบกระดาษต่อ (fallback)
+function findTableRows(lum, w, h, thr) {
+  if (w < 40 || h < 40) return null;
 
-  const pw = px1 - px0 + 1, ph = py1 - py0 + 1;
-  if (pw < 40 || ph < 40) return null;
+  const LINE_RATIO = 0.35;                       // เส้นต้องยาวอย่างน้อย 35% ของความกว้างรูป
+  const R = 3;                                   // เผื่อรูปเอียงเล็กน้อย
+  const MAX_LINE_THICK = Math.max(10, Math.round(h * 0.03));  // เส้นตารางต้องไม่หนาเกินนี้
 
-  const LINE_RATIO = 0.35;   // เส้นต้องยาวอย่างน้อย 35% ของด้านนั้น
-  const R = 3;               // เผื่อรูปเอียงเล็กน้อย: รวมพิกเซลข้ามแถวใกล้กัน
+  const total = w * h;
+  const dark = new Uint8Array(total);
+  for (let i = 0; i < total; i++) dark[i] = lum[i] < thr ? 1 : 0;
 
-  const dark = new Uint8Array(pw * ph);
-  for (let y = 0; y < ph; y++) {
-    const src = (py0 + y) * w + px0, dst = y * pw;
-    for (let x = 0; x < pw; x++) dark[dst + x] = lum[src + x] < thr ? 1 : 0;
-  }
-
-  // เส้นแนวนอน: ขยายมาสก์ตามแนวตั้งก่อน เพื่อให้เส้นที่เอียงยังนับได้เต็มแถว
-  const vd = new Uint8Array(pw * ph);
-  for (let y = 0; y < ph; y++) {
-    for (let x = 0; x < pw; x++) {
+  // ขยายมาสก์ตามแนวตั้งก่อน เพื่อให้เส้นที่เอียงยังนับเป็นช่วงยาวช่วงเดียวได้
+  const vd = new Uint8Array(total);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
       let v = 0;
       for (let k = -R; k <= R && !v; k++) {
         const yy = y + k;
-        if (yy >= 0 && yy < ph && dark[yy * pw + x]) v = 1;
+        if (yy >= 0 && yy < h && dark[yy * w + x]) v = 1;
       }
-      vd[y * pw + x] = v;
+      vd[y * w + x] = v;
     }
   }
-  // นับ "ช่วงเข้มที่ยาวติดกันที่สุด" ไม่ใช่จำนวนพิกเซลเข้มรวม
-  // เส้นขอบตารางเป็นเส้นทึบยาวช่วงเดียว ส่วนตัวหนังสือหัวกระดาษเป็นช่วงสั้น ๆ หลายช่วง
-  // ถ้านับรวมทั้งแถว ชื่อบริษัทตัวใหญ่จะถูกนับเป็นเส้นตารางไปด้วย
-  const rowHit = new Uint8Array(ph);
-  for (let y = 0; y < ph; y++) {
-    rowHit[y] = longestRun(vd, y * pw, pw, 1) >= pw * LINE_RATIO ? 1 : 0;
-  }
-  const rowGroups = groupRuns(rowHit);
-  if (rowGroups.length < 3) return null;   // ตารางต้องมีอย่างน้อย 3 เส้น
 
-  const ty0 = rowGroups[0][0];
-  const ty1 = rowGroups[rowGroups.length - 1][1];
-  const bandH = ty1 - ty0 + 1;
-  if (bandH < ph * 0.1) return null;
-
-  // เส้นแนวตั้ง: ขยายมาสก์ตามแนวนอน แล้วนับเฉพาะในช่วงความสูงของตาราง
-  const hd = new Uint8Array(pw * ph);
-  for (let y = ty0; y <= ty1; y++) {
-    for (let x = 0; x < pw; x++) {
-      let v = 0;
-      for (let k = -R; k <= R && !v; k++) {
-        const xx = x + k;
-        if (xx >= 0 && xx < pw && dark[y * pw + xx]) v = 1;
-      }
-      hd[y * pw + x] = v;
-    }
+  const rowHit = new Uint8Array(h);
+  for (let y = 0; y < h; y++) {
+    rowHit[y] = longestRun(vd, y * w, w, 1) >= w * LINE_RATIO ? 1 : 0;
   }
-  const colHit = new Uint8Array(pw);
-  for (let x = 0; x < pw; x++) {
-    colHit[x] = longestRun(hd, ty0 * pw + x, bandH, pw) >= bandH * LINE_RATIO ? 1 : 0;
-  }
-  const colGroups = groupRuns(colHit);
 
-  let tx0, tx1;
-  if (colGroups.length >= 2) {
-    tx0 = colGroups[0][0];
-    tx1 = colGroups[colGroups.length - 1][1];
-  } else {
-    // ไม่มีเส้นแนวตั้ง (ตารางแบบมีแค่เส้นคั่นแนวนอน) → ใช้ขอบซ้าย-ขวาของหมึกในช่วงตาราง
-    tx0 = pw; tx1 = 0;
-    for (let y = ty0; y <= ty1; y++) {
-      for (let x = 0; x < pw; x++) {
-        if (dark[y * pw + x]) { if (x < tx0) tx0 = x; if (x > tx1) tx1 = x; }
-      }
-    }
-    if (tx1 <= tx0) return null;
-  }
-  if (tx1 - tx0 < pw * 0.2) return null;
+  const groups = groupRuns(rowHit);
+  const thick = (g) => (g[1] - g[0] + 1) > MAX_LINE_THICK;
+  const lines = groups.filter(g => !thick(g));   // เส้นตารางจริง = บาง
+  const bands = groups.filter(thick);            // แถบทึบ = พื้นไม้/เงา/พื้นหลัง
+  if (lines.length < 3) return null;             // ตารางต้องมีอย่างน้อย 3 เส้น
 
-  return [px0 + tx0, py0 + ty0, px0 + tx1, py0 + ty1];
+  let ty0 = lines[0][0];
+  let ty1 = lines[lines.length - 1][1];
+
+  // เส้นแรก/เส้นสุดท้ายของตารางมักติดกับขอบกระดาษ แล้วถูกกลืนรวมเป็นแถบทึบไปด้วย
+  // ทำให้แถวหัวตารางหายไป — ถ้ามีแถบทึบอยู่ชิด ๆ ให้ขยายไปจนถึงขอบของแถบนั้น
+  const gaps = [];
+  for (let i = 1; i < lines.length; i++) gaps.push(lines[i][0] - lines[i-1][1]);
+  gaps.sort((a, b) => a - b);
+  const REACH = Math.round((gaps.length ? gaps[gaps.length >> 1] : 0) * 1.5);
+  const firstLine = ty0, lastLine = ty1;
+  for (const g of bands) {
+    if (g[1] < firstLine && firstLine - g[1] <= REACH) ty0 = Math.min(ty0, g[1] + 1);
+    if (g[0] > lastLine  && g[0] - lastLine  <= REACH) ty1 = Math.max(ty1, g[0] - 1);
+  }
+
+  if (ty1 - ty0 + 1 < h * 0.08) return null;
+  return [ty0, ty1];
 }
 
 // ความยาวของช่วง 1 ที่ต่อกันยาวที่สุด เดินจาก start ไป n ก้าว ก้าวละ step
@@ -2357,9 +2329,11 @@ function positionSlipModal() {
   m.style.height = Math.max(vh * 0.3, top - 8) + 'px';
 }
 
-window.addEventListener('resize', () => {
-  const m = document.getElementById('slipViewModal');
-  if (m && m.style.display === 'flex') positionSlipModal();
+// จัดตำแหน่งใหม่เฉพาะตอนหมุนจอเท่านั้น — ห้ามผูกกับ resize
+// บน iOS แถบ URL ยุบ/ขยายตอนเลื่อนหน้าจะยิง resize ตลอด ทำให้รูปขยับตามและถูกเลื่อนหน้าซ้ำ
+// เปิดแล้วรูปต้องล็อกอยู่กับที่ ไม่ขยับตามการเลื่อนหน้าจอ
+window.addEventListener('orientationchange', () => {
+  if (isSlipModalOpen()) setTimeout(positionSlipModal, 250);
 });
 
 function closeSlipModal() {
