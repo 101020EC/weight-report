@@ -2016,6 +2016,9 @@ let isCroppedMode = true;
 
 function prepareSlipModalImage(file) {
   if (!file) return Promise.resolve(null);
+  // รูปใหม่ = เริ่มที่โหมดครอบเสมอ (จุดประสงค์ของ popup คือครอสเช็คตัวเลขบนใบชั่ง ภาพครอบอ่านง่ายกว่า)
+  // ไม่ผูกกับ clearAllData เพราะผู้ใช้อาจอัปโหลดรูปใหม่ทับโดยไม่กดล้างข้อมูลก่อน
+  isCroppedMode = true;
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -2088,11 +2091,20 @@ function autoCropWhiteDocument(img) {
       const srcW = Math.min(realOrigW - srcX, Math.ceil(cropW / scale) + (padX * 2));
       const srcH = Math.min(realOrigH - srcY, Math.ceil(cropH / scale) + (padY * 2));
 
+      // จำกัดด้านยาวสุดของภาพ output ไว้ที่ 1600px
+      // รูปกล้อง iPhone ~12MP ถ้า export เต็มความละเอียดจะได้ base64 หลาย MB
+      // และแคนวาสขนาดนั้นเสี่ยงชนลิมิตพื้นที่ของ iOS Safari (ภาพกลายเป็นดำ/ว่าง)
+      // modal แสดงแค่ max-height:70vh อยู่แล้ว 1600px คมเกินพอ
+      const OUT_MAX = 1600;
+      const outScale = Math.min(1, OUT_MAX / Math.max(srcW, srcH));
+      const outW = Math.max(1, Math.round(srcW * outScale));
+      const outH = Math.max(1, Math.round(srcH * outScale));
+
       const outCanvas = document.createElement('canvas');
-      outCanvas.width = srcW;
-      outCanvas.height = srcH;
+      outCanvas.width = outW;
+      outCanvas.height = outH;
       const outCtx = outCanvas.getContext('2d');
-      outCtx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+      outCtx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, outW, outH);
       return outCanvas.toDataURL('image/jpeg', 0.92);
     }
   } catch(e) {
@@ -2111,10 +2123,19 @@ async function openSlipModal() {
   }
   updateSlipModalImageSrc();
   const m = document.getElementById('slipViewModal');
-  if (m) {
-    m.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+  if (!m) return;
+  // กัน modal ถูกซ้อนอยู่ใต้ element ที่ display:none (เช่น HTML ปิดแท็กไม่ครบ)
+  // ถ้าเจอว่า parent ไม่ใช่ body ให้ย้ายมาไว้ใต้ body ก่อนเปิด
+  if (m.parentElement !== document.body) document.body.appendChild(m);
+  m.style.display = 'flex';
+  // ถ้าเปิดแล้วยังมองไม่เห็นจริง ๆ อย่าล็อก scroll ทิ้งไว้จนหน้าจอค้าง
+  // (getClientRects() = 0 เมื่อถูก ancestor display:none บัง แม้ตัวเองเป็น position:fixed)
+  if (m.getClientRects().length === 0) {
+    m.style.display = 'none';
+    showToast('ไม่สามารถเปิดภาพใบชั่งได้ กรุณาลองใหม่อีกครั้ง', 'warn');
+    return;
   }
+  document.body.style.overflow = 'hidden';
 }
 
 function closeSlipModal() {
@@ -2126,9 +2147,13 @@ function closeSlipModal() {
 }
 
 function closeSlipModalOnBackdrop(e) {
-  if (e.target && e.target.id === 'slipViewModal') {
-    closeSlipModal();
-  }
+  const t = e.target;
+  if (!t) return;
+  // แตะที่ไหนก็ได้ที่ไม่ใช่ตัวรูปและไม่ใช่ปุ่ม → ปิด
+  // (เดิมเช็คแค่ id === 'slipViewModal' ทำให้ขอบดำรอบรูป/แถบหัว/แถบท้าย กดแล้วไม่ปิด)
+  if (t.id === 'slipModalImg') return;
+  if (t.closest && t.closest('button')) return;
+  closeSlipModal();
 }
 
 function toggleSlipCropMode() {
@@ -2167,6 +2192,7 @@ window.addEventListener('keydown', (e) => {
       <button type="button" class="btn btn-primary" onclick="confirmDateAndGenerate()" style="flex:1;padding:10px;font-weight:700;">ตกลง</button>
     </div>
   </div>
+</div>
 <!-- POPUP MODAL: Quota Limit Exceeded (Sad Sloth) -->
 <div id="quotaLimitModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);align-items:center;justify-content:center;padding:16px;">
   <div style="background:white;border-radius:22px;max-width:380px;width:100%;padding:28px 24px;box-shadow:0 20px 50px rgba(0,0,0,0.3);text-align:center;">
@@ -2198,8 +2224,11 @@ window.addEventListener('keydown', (e) => {
     <div style="display:flex;gap:10px;">
       <button type="button" class="btn btn-primary" onclick="closePayloadTooLargeModal()" style="flex:1;padding:10px;font-weight:700;">รับทราบ</button>
     </div>
+  </div>
+</div>
 <!-- POPUP MODAL: ดูใบชั่งน้ำหนัก -->
-<div id="slipViewModal" onclick="closeSlipModalOnBackdrop(event)" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;">
+<!-- cursor:pointer จำเป็นบน iOS Safari — ไม่งั้น <div> ธรรมดาจะไม่ยิง click event -->
+<div id="slipViewModal" onclick="closeSlipModalOnBackdrop(event)" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;cursor:pointer;">
   <div style="background:white;border-radius:20px;max-width:540px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 25px 60px rgba(0,0,0,0.4);overflow:hidden;">
     <div style="padding:12px 18px;background:#F9FAFB;border-bottom:1px solid #E5E7EB;display:flex;align-items:center;justify-content:space-between;">
       <div style="font-weight:700;font-size:0.98rem;color:var(--gray-900);display:flex;align-items:center;gap:6px;">
@@ -2209,14 +2238,14 @@ window.addEventListener('keydown', (e) => {
         <button type="button" onclick="toggleSlipCropMode()" id="btnToggleCrop" style="font-size:12px;padding:4px 10px;border-radius:12px;border:1px solid #D1D5DB;background:white;color:#374151;cursor:pointer;font-weight:600;">
           🖼️ ดูรูปภาพเต็ม
         </button>
-        <button type="button" onclick="closeSlipModal()" style="background:none;border:none;font-size:24px;color:#6B7280;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
+        <button type="button" id="btnCloseSlipModal" onclick="closeSlipModal()" style="background:none;border:none;font-size:24px;color:#6B7280;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
       </div>
     </div>
     <div style="padding:14px;overflow-y:auto;display:flex;align-items:center;justify-content:center;background:#111827;flex:1;min-height:260px;">
       <img id="slipModalImg" src="" style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.5);" alt="ใบชั่งน้ำหนัก" />
     </div>
     <div style="padding:10px 16px;background:#F9FAFB;border-top:1px solid #E5E7EB;text-align:center;font-size:12px;color:#6B7280;">
-      แตะบริเวณด้านนอกเพื่อปิด
+      แตะที่ใดก็ได้นอกรูปเพื่อปิด
     </div>
   </div>
 </div>
