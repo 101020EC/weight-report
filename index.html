@@ -465,9 +465,14 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
 
   <!-- STEP 3: น้ำหนักรถและสินค้า -->
   <div class="step-card" id="card-table-section" style="display:none;">
-    <div class="step-header">
-      <div class="step-num" id="num-3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
-      <div class="step-label">น้ำหนักรถและสินค้า</div>
+    <div class="step-header" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="step-num" id="num-3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+        <div class="step-label">น้ำหนักรถและสินค้า</div>
+      </div>
+      <button type="button" class="btn" id="btnViewSlip" onclick="openSlipModal()" style="display:inline-flex;align-items:center;gap:5px;background:var(--orange-light);color:var(--orange-deep);border:1.5px solid var(--orange);padding:5px 12px;border-radius:18px;font-size:0.82rem;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(232,105,26,0.12);transition:all 0.2s;white-space:nowrap;">
+        👁️ ดูใบชั่ง
+      </button>
     </div>
     <div class="step-body">
       <div class="table-wrap" style="overflow-x:hidden;">
@@ -673,8 +678,8 @@ function handleFiles(files){
   for(const f of files){if(!f.type.startsWith('image/'))continue;uploadedFiles.push(f);}
   renderBigPreview();
   updateReadBtn();
-  // รัน readImages อัตโนมัติหลังอัปโหลด
   if(uploadedFiles.length>0){
+    prepareSlipModalImage(uploadedFiles[0]);
     setTimeout(()=>{
       document.getElementById('readBtn')?.scrollIntoView({behavior:'smooth',block:'center'});
       setTimeout(()=>readImagesWithRetry(),400);
@@ -1649,6 +1654,8 @@ function clearAllData(){
   // ไม่มีคำยืนยัน — reset กลับสภาพเริ่มต้นทั้งหมด
   // ล้างไฟล์อัปโหลด
   uploadedFiles=[];
+  currentSlipOriginalUrl = '';
+  currentSlipCroppedUrl = '';
   document.getElementById('fileInput').value='';
   renderBigPreview();
   // ล้าง form fields
@@ -2000,6 +2007,136 @@ async function runTesseractTeamCheck(files, teamDecls) {
     badge.style.display = 'none';
   }
 }
+
+// ── SLIP MODAL & AUTO CROP WHITE DOCUMENT ──────────────────
+let currentSlipOriginalUrl = '';
+let currentSlipCroppedUrl = '';
+let isCroppedMode = true;
+
+function prepareSlipModalImage(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    currentSlipOriginalUrl = e.target.result;
+    const img = new Image();
+    img.onload = () => {
+      currentSlipCroppedUrl = autoCropWhiteDocument(img) || currentSlipOriginalUrl;
+      updateSlipModalImageSrc();
+    };
+    img.src = currentSlipOriginalUrl;
+  };
+  reader.readAsDataURL(file);
+}
+
+function autoCropWhiteDocument(img) {
+  try {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const maxDim = 900;
+    let w = img.naturalWidth || img.width;
+    let h = img.naturalHeight || img.height;
+    let scale = 1;
+    if (w > maxDim || h > maxDim) {
+      scale = maxDim / Math.max(w, h);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+    }
+    canvas.width = w;
+    canvas.height = h;
+    ctx.drawImage(img, 0, 0, w, h);
+
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+
+    let minX = w, minY = h, maxX = 0, maxY = 0;
+    let foundCount = 0;
+
+    for (let y = 0; y < h; y += 3) {
+      for (let x = 0; x < w; x += 3) {
+        const idx = (y * w + x) * 4;
+        const r = data[idx], g = data[idx+1], b = data[idx+2];
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+        if (lum > 140) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+          foundCount++;
+        }
+      }
+    }
+
+    const cropW = maxX - minX;
+    const cropH = maxY - minY;
+    if (foundCount > 50 && cropW > w * 0.15 && cropH > h * 0.15) {
+      const padX = Math.round(15 * scale);
+      const padY = Math.round(15 * scale);
+      const realOrigW = img.naturalWidth || img.width;
+      const realOrigH = img.naturalHeight || img.height;
+
+      const srcX = Math.max(0, Math.floor(minX / scale) - padX);
+      const srcY = Math.max(0, Math.floor(minY / scale) - padY);
+      const srcW = Math.min(realOrigW - srcX, Math.ceil(cropW / scale) + (padX * 2));
+      const srcH = Math.min(realOrigH - srcY, Math.ceil(cropH / scale) + (padY * 2));
+
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = srcW;
+      outCanvas.height = srcH;
+      const outCtx = outCanvas.getContext('2d');
+      outCtx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+      return outCanvas.toDataURL('image/jpeg', 0.92);
+    }
+  } catch(e) {
+    console.warn('Auto crop error:', e);
+  }
+  return null;
+}
+
+function openSlipModal() {
+  if (!currentSlipOriginalUrl && typeof uploadedFiles !== 'undefined' && uploadedFiles.length > 0) {
+    prepareSlipModalImage(uploadedFiles[0]);
+  }
+  if (!currentSlipOriginalUrl) {
+    showToast('กรุณาอัปโหลดรูปภาพใบชั่งน้ำหนักก่อน', 'warn');
+    return;
+  }
+  updateSlipModalImageSrc();
+  const m = document.getElementById('slipViewModal');
+  if (m) m.style.display = 'flex';
+}
+
+function closeSlipModal() {
+  const m = document.getElementById('slipViewModal');
+  if (m) m.style.display = 'none';
+}
+
+function closeSlipModalOnBackdrop(e) {
+  if (e.target && e.target.id === 'slipViewModal') {
+    closeSlipModal();
+  }
+}
+
+function toggleSlipCropMode() {
+  isCroppedMode = !isCroppedMode;
+  updateSlipModalImageSrc();
+}
+
+function updateSlipModalImageSrc() {
+  const img = document.getElementById('slipModalImg');
+  const btn = document.getElementById('btnToggleCrop');
+  if (!img) return;
+  if (isCroppedMode && currentSlipCroppedUrl) {
+    img.src = currentSlipCroppedUrl;
+    if (btn) btn.innerHTML = '🖼️ ดูรูปภาพเต็ม';
+  } else {
+    img.src = currentSlipOriginalUrl;
+    if (btn) btn.innerHTML = '🔎 ครอบขอบกระดาษ';
+  }
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeSlipModal();
+});
 </script>
 <!-- POPUP MODAL: แจ้งเตือนวันที่ห่างเกิน 10 วัน -->
 <div id="dateConfirmModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:16px;">
@@ -2045,6 +2182,26 @@ async function runTesseractTeamCheck(files, teamDecls) {
     </p>
     <div style="display:flex;gap:10px;">
       <button type="button" class="btn btn-primary" onclick="closePayloadTooLargeModal()" style="flex:1;padding:10px;font-weight:700;">รับทราบ</button>
+    </div>
+<!-- POPUP MODAL: ดูใบชั่งน้ำหนัก -->
+<div id="slipViewModal" onclick="closeSlipModalOnBackdrop(event)" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:white;border-radius:20px;max-width:540px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 25px 60px rgba(0,0,0,0.4);overflow:hidden;">
+    <div style="padding:12px 18px;background:#F9FAFB;border-bottom:1px solid #E5E7EB;display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-weight:700;font-size:0.98rem;color:var(--gray-900);display:flex;align-items:center;gap:6px;">
+        <span>📄</span> ภาพใบชั่งน้ำหนัก
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button type="button" onclick="toggleSlipCropMode()" id="btnToggleCrop" style="font-size:12px;padding:4px 10px;border-radius:12px;border:1px solid #D1D5DB;background:white;color:#374151;cursor:pointer;font-weight:600;">
+          🖼️ ดูรูปภาพเต็ม
+        </button>
+        <button type="button" onclick="closeSlipModal()" style="background:none;border:none;font-size:24px;color:#6B7280;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
+      </div>
+    </div>
+    <div style="padding:14px;overflow-y:auto;display:flex;align-items:center;justify-content:center;background:#111827;flex:1;min-height:260px;">
+      <img id="slipModalImg" src="" style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.5);" alt="ใบชั่งน้ำหนัก" />
+    </div>
+    <div style="padding:10px 16px;background:#F9FAFB;border-top:1px solid #E5E7EB;text-align:center;font-size:12px;color:#6B7280;">
+      แตะบริเวณด้านนอกเพื่อปิด
     </div>
   </div>
 </div>
