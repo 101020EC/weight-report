@@ -101,7 +101,7 @@ async function callGeminiWithRotation(parts) {
 
         const data = await resp.json();
         const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        if (raw) return raw;
+        if (raw) return { raw, modelUsed: model };
 
       } catch (e) {
         if (e.message.includes('quota') || e.message.includes('RESOURCE_EXHAUSTED') || e.message.includes('429')) {
