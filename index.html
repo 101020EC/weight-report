@@ -317,7 +317,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
 .nav-item.active .mi{transform:scale(1.05);}
 .page{display:none;}.page.active{display:block;}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<!-- Grog AI Cross-Check Integration -->
 </head>
 <body>
 <div class="topbar"></div>
@@ -916,9 +916,9 @@ function populateForm(data){
   if(vs.length===0)addRow();else vs.forEach(v=>addRow(v));
   calcSummary();
 
-  // รัน Tesseract.js Cross-Check ในเบื้องหลัง
+  // รัน Grog Cross-Check ในเบื้องหลัง
   if(typeof uploadedFiles!=='undefined' && uploadedFiles.length>0){
-    runTesseractSingleCheck(uploadedFiles[0], data.declaration_no);
+    runGroqSingleCheck(uploadedFiles[0], data.declaration_no);
   }
 }
 function matchImporter(val){
@@ -1789,9 +1789,9 @@ async function runReadTeam(isFinal=false){
     document.getElementById('teamClearBtnArea').style.display='block';
     autoGrowTeam();
     
-    // รัน Tesseract.js Cross-Check ในเบื้องหลัง
+    // รัน Grog Cross-Check ในเบื้องหลัง
     if(typeof teamFiles!=='undefined' && teamFiles.length>0){
-      runTesseractTeamCheck(teamFiles, result.declarations);
+      runGroqTeamCheck(teamFiles, result.declarations);
     }
 
     setTimeout(()=>{
@@ -1932,22 +1932,35 @@ window.addEventListener('DOMContentLoaded',()=>{
   initSlipZoom();
 });
 
-// ── TESSERACT.JS CROSS-CHECK FUNCTIONS ──────────────────
-async function runTesseractSingleCheck(file, extractedDecl) {
+// ── GROQ AI CROSS-CHECK FUNCTIONS ──────────────────
+async function runGroqSingleCheck(file, extractedDecl) {
   const badge = document.getElementById('tesseractCheckBadge');
-  if (!badge || typeof Tesseract === 'undefined' || !file) return;
+  if (!badge || !file) return;
 
   badge.style.display = 'block';
   badge.style.background = '#F9FAFB';
   badge.style.color = '#4B5563';
   badge.style.border = '1px solid #E5E7EB';
-  badge.innerHTML = '🛡️ <strong>Cross-Check :</strong> ⏳ กำลังอ่านภาพอีกครั้งเพื่อตรวจสอบตัวเลข...';
+  badge.innerHTML = '🛡️ <strong>Cross-Check :</strong> ⏳ Grog กำลังอ่านภาพอีกครั้ง...';
 
   try {
-    const res = await Tesseract.recognize(file, 'eng');
-    const rawText = res?.data?.text || '';
-    
-    // ค้นหาเลขที่ใบขน A000-00000-00000 ในข้อความดิบ
+    const encoded = await resizeAndEncode(file);
+    const resp = await fetch('/api/groq', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: encoded })
+    });
+
+    if (!resp.ok) {
+      throw new Error(`Groq HTTP ${resp.status}`);
+    }
+
+    const res = await resp.json();
+    if (!res.success) {
+      throw new Error(res.error || 'Groq error');
+    }
+
+    const rawText = res.text || '';
     const matchedDecls = rawText.match(/[A-Z0-9]{3,5}-\d{4,6}-\d{4,6}/gi) || [];
     const cleanExtracted = (extractedDecl || '').replace(/[^A-Z0-9]/gi, '');
 
@@ -1955,39 +1968,58 @@ async function runTesseractSingleCheck(file, extractedDecl) {
       badge.style.background = '#E8F5E9';
       badge.style.color = '#2E7D32';
       badge.style.border = '1px solid #A5D6A7';
-      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ✅ ตรวจพบเลขใบขนตรงกับเอกสาร (${extractedDecl})`;
+      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ✅ Grog พบเลขใบขนตรงตาม (${extractedDecl})`;
     } else if (matchedDecls.length > 0) {
       badge.style.background = '#FFF8E1';
       badge.style.color = '#E65100';
       badge.style.border = '1px solid #FFE082';
-      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ℹ️ อ่านได้ [${matchedDecls.join(', ')}] | Gemini: [${extractedDecl || '-'}]`;
+      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ℹ️ Grog: อ่านได้ [${matchedDecls.join(', ')}] | Gemini: อ่านได้ [${extractedDecl || '-'}]`;
     } else {
-      badge.style.background = '#E8F5E9';
-      badge.style.color = '#2E7D32';
-      badge.style.border = '1px solid #A5D6A7';
-      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ✅ เรียบร้อย`;
+      badge.style.background = '#FFF8E1';
+      badge.style.color = '#E65100';
+      badge.style.border = '1px solid #FFE082';
+      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ℹ️ Grog: อ่านได้ [-] | Gemini: อ่านได้ [${extractedDecl || '-'}]`;
     }
   } catch (e) {
-    console.warn('[Tesseract Error]', e);
-    badge.style.display = 'none';
+    console.warn('[Groq Cross-Check Warning]', e);
+    showToast('Grog grog grog...', 'warn');
+    badge.style.background = '#FFF3CD';
+    badge.style.color = '#856404';
+    badge.style.border = '1px solid #FFEEBA';
+    badge.innerHTML = '🛡️ <strong>Cross-Check :</strong> ⚠️ Grog grog grog...';
   }
 }
 
-async function runTesseractTeamCheck(files, teamDecls) {
+async function runGroqTeamCheck(files, teamDecls) {
   const badge = document.getElementById('teamTesseractCheckBadge');
-  if (!badge || typeof Tesseract === 'undefined' || !files || files.length === 0) return;
+  if (!badge || !files || files.length === 0) return;
 
   badge.style.display = 'block';
-  badge.style.background = '#E8F5E9';
-  badge.style.color = '#2E7D32';
-  badge.style.borderBottom = '1px solid #C8E6C9';
-  badge.innerHTML = '🛡️ <strong>Cross-Check :</strong> ⏳ กำลังสแกนตรวจสอบทุกภาพ...';
+  badge.style.background = '#F9FAFB';
+  badge.style.color = '#4B5563';
+  badge.style.borderBottom = '1px solid #E5E7EB';
+  badge.innerHTML = '🛡️ <strong>Cross-Check :</strong> ⏳ Grog กำลังอ่านภาพอีกครั้ง...';
 
   try {
-    const results = await Promise.all(files.map(f => Tesseract.recognize(f, 'eng')));
-    const allText = results.map(r => r?.data?.text || '').join('\n');
-    const foundDecls = allText.match(/[A-Z0-9]{3,5}-\d{4,6}-\d{4,6}/gi) || [];
-    
+    const encodedImages = await Promise.all(files.map(f => resizeAndEncode(f)));
+    const resp = await fetch('/api/groq', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ images: encodedImages })
+    });
+
+    if (!resp.ok) {
+      throw new Error(`Groq HTTP ${resp.status}`);
+    }
+
+    const res = await resp.json();
+    if (!res.success) {
+      throw new Error(res.error || 'Groq error');
+    }
+
+    const rawText = res.text || '';
+    const foundDecls = rawText.match(/[A-Z0-9]{3,5}-\d{4,6}-\d{4,6}/gi) || [];
+
     let matchedCount = 0;
     (teamDecls || []).forEach(d => {
       const cleanNo = (d.no || '').replace(/[^A-Z0-9]/gi, '');
@@ -1998,17 +2030,29 @@ async function runTesseractTeamCheck(files, teamDecls) {
 
     const total = (teamDecls || []).length;
     if (total > 0 && matchedCount === total) {
-      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ✅ ตรวจพบเลขใบขนตรงกับเอกสารทั้งหมด (${matchedCount}/${total} ใบขน)`;
-    } else if (matchedCount > 0) {
-      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ℹ️ ยืนยันตรงกัน ${matchedCount}/${total} ใบขน`;
+      badge.style.background = '#E8F5E9';
+      badge.style.color = '#2E7D32';
+      badge.style.borderBottom = '1px solid #C8E6C9';
+      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ✅ Grog พบเลขใบขนตรงตามทั้งหมด (${matchedCount}/${total} ใบขน)`;
     } else {
-      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ✅ เรียบร้อย`;
+      badge.style.background = '#FFF8E1';
+      badge.style.color = '#E65100';
+      badge.style.borderBottom = '1px solid #FFE082';
+      badge.innerHTML = `🛡️ <strong>Cross-Check :</strong> ℹ️ Grog: อ่านได้ [${foundDecls.join(', ') || '-'}] | Gemini: อ่านได้ [${(teamDecls||[]).map(d=>d.no).join(', ')||'-'}]`;
     }
   } catch (e) {
-    console.warn('[Tesseract Team Error]', e);
-    badge.style.display = 'none';
+    console.warn('[Groq Team Cross-Check Warning]', e);
+    showToast('Grog grog grog...', 'warn');
+    badge.style.background = '#FFF3CD';
+    badge.style.color = '#856404';
+    badge.style.borderBottom = '1px solid #FFEEBA';
+    badge.innerHTML = '🛡️ <strong>Cross-Check :</strong> ⚠️ Grog grog grog...';
   }
 }
+
+// Fallback Alias สำหรับรับประกันความเข้ากันได้
+const runTesseractSingleCheck = runGroqSingleCheck;
+const runTesseractTeamCheck = runGroqTeamCheck;
 
 // ── SLIP MODAL & AUTO CROP WHITE DOCUMENT ──────────────────
 let currentSlipOriginalUrl = '';
