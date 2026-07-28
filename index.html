@@ -2058,12 +2058,19 @@ function autoCropWhiteDocument(img) {
     const data = imgData.data;
     const total = w * h;
 
-    // ── 1) หา threshold แบบ Otsu (ปรับตามแสงของรูปเอง ไม่ fix ที่ 140) ──
+    // ── 1) ให้คะแนน "ความเป็นกระดาษขาว" แล้วหา threshold แบบ Otsu ──
+    // ใช้ความสว่างอย่างเดียวไม่พอ: พื้นโต๊ะไม้สว่างพอ ๆ กับกระดาษจนถูกนับเป็นกระดาษไปด้วย
+    // แต่ไม้เป็นสีน้ำตาล = สีจัด ส่วนกระดาษเป็นขาว/ฟ้าอ่อน = สีจาง
+    // คะแนน = ความสว่าง − 2 × ความจัดของสี จึงแยกสองอย่างนี้ออกจากกันได้
+    // (ไม้ ~154,133,112 → 135 − 2×42 = 51 | กระดาษ ~207,224,238 → 220 − 2×31 = 158)
     const lum = new Uint8Array(total);
     const hist = new Uint32Array(256);
     for (let i = 0; i < total; i++) {
       const j = i * 4;
-      const v = (0.299 * data[j] + 0.587 * data[j+1] + 0.114 * data[j+2]) | 0;
+      const r = data[j], g = data[j+1], b = data[j+2];
+      const br = (0.299 * r + 0.587 * g + 0.114 * b) | 0;
+      const sat = Math.max(r, g, b) - Math.min(r, g, b);
+      const v = Math.max(0, Math.min(255, br - 2 * sat)) | 0;
       lum[i] = v;
       hist[v]++;
     }
@@ -2144,24 +2151,24 @@ function autoCropWhiteDocument(img) {
 
     const foundCount = bestCount;
 
-    // ── 4) หาช่วงบน-ล่างของ "ตารางชั่งน้ำหนัก" ──────────────
-    // ครอปเฉพาะแนวตั้ง ไม่ตัดซ้าย-ขวา: ตัดข้างทำให้ตารางขาดหายไปบางคอลัมน์
-    const rows = findTableRows(lum, w, h, thr);
-    if (rows) { minY = rows[0]; maxY = rows[1]; }
+    // ── 4) ครอปเฉพาะแนวตั้ง ให้เหลือแค่ช่วงของกระดาษขาว ──────
+    // ไม่ตัดซ้าย-ขวา: ตัดข้างทำให้ตารางขาดหายไปบางคอลัมน์
+    // หดเข้ามาเล็กน้อยเพื่อไม่ให้ติดขอบกระดาษที่เบลอกับพื้นหลัง
+    const inset = Math.max(1, Math.round((maxY - minY) * 0.01));
+    minY += inset; maxY -= inset;
     minX = 0; maxX = w - 1;
 
     const cropW = maxX - minX;
     const cropH = maxY - minY;
     if (foundCount > total * 0.02 && cropW > w * 0.15 && cropH > h * 0.15) {
-      const padX = Math.round(15 * scale);
-      const padY = Math.round(15 * scale);
       const realOrigW = img.naturalWidth || img.width;
       const realOrigH = img.naturalHeight || img.height;
 
-      const srcX = Math.max(0, Math.floor(minX / scale) - padX);
-      const srcY = Math.max(0, Math.floor(minY / scale) - padY);
-      const srcW = Math.min(realOrigW - srcX, Math.ceil(cropW / scale) + (padX * 2));
-      const srcH = Math.min(realOrigH - srcY, Math.ceil(cropH / scale) + (padY * 2));
+      // แนวนอนใช้เต็มความกว้างจริงเสมอ (ไม่ผ่านการแปลงพิกัดย่อ-ขยาย จะได้ไม่ขาดไป 1-2px)
+      const srcX = 0;
+      const srcW = realOrigW;
+      const srcY = Math.max(0, Math.floor(minY / scale));
+      const srcH = Math.min(realOrigH - srcY, Math.ceil((cropH + 1) / scale));
 
       // จำกัดด้านยาวสุดของภาพ output ไว้ที่ 2000px
       // รูปกล้อง iPhone ~12MP ถ้า export เต็มความละเอียดจะได้ base64 หลาย MB
@@ -2184,87 +2191,6 @@ function autoCropWhiteDocument(img) {
     console.warn('Auto crop error:', e);
   }
   return null;
-}
-
-// หาช่วงแถวบน-ล่างของ "ตารางชั่งน้ำหนัก" จากทั้งรูป (ไม่จำกัดอยู่ในกรอบกระดาษ)
-// หลักการ: เส้นขอบตารางคือเส้นเข้ม "บาง" ที่พาดยาวเกือบเต็มความกว้าง
-// - ยาว → ตัดตัวหนังสือ (หัวกระดาษ/ข้อความบนรูป) ที่เป็นช่วงสั้น ๆ หลายช่วงออก
-// - บาง → ตัดพื้นไม้/เงา/แถบมืดทึบ ที่เข้มยาวเต็มแถวเหมือนกันแต่หนาเป็นร้อยแถวออก
-// คืน null เมื่อหาเส้นไม่เจอ → ผู้เรียกใช้ช่วงของกรอบกระดาษต่อ (fallback)
-function findTableRows(lum, w, h, thr) {
-  if (w < 40 || h < 40) return null;
-
-  const LINE_RATIO = 0.35;                       // เส้นต้องยาวอย่างน้อย 35% ของความกว้างรูป
-  const R = 3;                                   // เผื่อรูปเอียงเล็กน้อย
-  const MAX_LINE_THICK = Math.max(10, Math.round(h * 0.03));  // เส้นตารางต้องไม่หนาเกินนี้
-
-  const total = w * h;
-  const dark = new Uint8Array(total);
-  for (let i = 0; i < total; i++) dark[i] = lum[i] < thr ? 1 : 0;
-
-  // ขยายมาสก์ตามแนวตั้งก่อน เพื่อให้เส้นที่เอียงยังนับเป็นช่วงยาวช่วงเดียวได้
-  const vd = new Uint8Array(total);
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let v = 0;
-      for (let k = -R; k <= R && !v; k++) {
-        const yy = y + k;
-        if (yy >= 0 && yy < h && dark[yy * w + x]) v = 1;
-      }
-      vd[y * w + x] = v;
-    }
-  }
-
-  const rowHit = new Uint8Array(h);
-  for (let y = 0; y < h; y++) {
-    rowHit[y] = longestRun(vd, y * w, w, 1) >= w * LINE_RATIO ? 1 : 0;
-  }
-
-  const groups = groupRuns(rowHit);
-  const thick = (g) => (g[1] - g[0] + 1) > MAX_LINE_THICK;
-  const lines = groups.filter(g => !thick(g));   // เส้นตารางจริง = บาง
-  const bands = groups.filter(thick);            // แถบทึบ = พื้นไม้/เงา/พื้นหลัง
-  if (lines.length < 3) return null;             // ตารางต้องมีอย่างน้อย 3 เส้น
-
-  let ty0 = lines[0][0];
-  let ty1 = lines[lines.length - 1][1];
-
-  // เส้นแรก/เส้นสุดท้ายของตารางมักติดกับขอบกระดาษ แล้วถูกกลืนรวมเป็นแถบทึบไปด้วย
-  // ทำให้แถวหัวตารางหายไป — ถ้ามีแถบทึบอยู่ชิด ๆ ให้ขยายไปจนถึงขอบของแถบนั้น
-  const gaps = [];
-  for (let i = 1; i < lines.length; i++) gaps.push(lines[i][0] - lines[i-1][1]);
-  gaps.sort((a, b) => a - b);
-  const REACH = Math.round((gaps.length ? gaps[gaps.length >> 1] : 0) * 1.5);
-  const firstLine = ty0, lastLine = ty1;
-  for (const g of bands) {
-    if (g[1] < firstLine && firstLine - g[1] <= REACH) ty0 = Math.min(ty0, g[1] + 1);
-    if (g[0] > lastLine  && g[0] - lastLine  <= REACH) ty1 = Math.max(ty1, g[0] - 1);
-  }
-
-  if (ty1 - ty0 + 1 < h * 0.08) return null;
-  return [ty0, ty1];
-}
-
-// ความยาวของช่วง 1 ที่ต่อกันยาวที่สุด เดินจาก start ไป n ก้าว ก้าวละ step
-function longestRun(arr, start, n, step) {
-  let best = 0, cur = 0;
-  for (let i = 0, p = start; i < n; i++, p += step) {
-    if (arr[p]) { cur++; if (cur > best) best = cur; }
-    else cur = 0;
-  }
-  return best;
-}
-
-// รวมช่วงที่ต่อเนื่องกันเป็นกลุ่ม: [1,1,0,0,1] → [[0,1],[4,4]]
-function groupRuns(hits) {
-  const out = [];
-  let s = -1;
-  for (let i = 0; i < hits.length; i++) {
-    if (hits[i] && s < 0) s = i;
-    else if (!hits[i] && s >= 0) { out.push([s, i - 1]); s = -1; }
-  }
-  if (s >= 0) out.push([s, hits.length - 1]);
-  return out;
 }
 
 function isSlipModalOpen() {
@@ -2311,27 +2237,30 @@ async function openSlipModal() {
 // วางรูปให้ขอบล่างอยู่เหนือการ์ด "น้ำหนักรถและสินค้า" เพื่อเทียบตารางกันได้
 // ปุ่ม ดูใบชั่ง อยู่ในหัวการ์ดนั้นเอง ตอนกดหัวการ์ดจึงอยู่ตรงไหนของจอก็ได้
 // ถ้าไม่เลื่อนหน้าก่อน รูปอาจเหลือที่แสดงแทบไม่มี — จึงเลื่อนให้การ์ดมาอยู่ครึ่งล่างเสมอ
+// รูปถูกวางแบบ position:absolute ในพิกัดของหน้าเอกสาร (ไม่ใช่ fixed บนจอ)
+// รูปจึงเลื่อนไปพร้อมหน้า เกาะอยู่เหนือการ์ด "น้ำหนักรถและสินค้า" ตลอด
+// เลื่อนพ้นการ์ดไปแล้วรูปก็เลื่อนหายไปด้วย ไม่ค้างบังจออยู่ตลอดเวลา
 function positionSlipModal() {
   const m = document.getElementById('slipViewModal');
   const card = document.getElementById('card-table-section');
   if (!m) return;
+  const vh = window.innerHeight;
   if (!card || card.getClientRects().length === 0) {
-    m.style.height = '';
-    m.style.bottom = '0';
+    m.style.top = window.scrollY + 'px';
+    m.style.height = vh + 'px';
     return;
   }
-  const vh = window.innerHeight;
-  const target = card.getBoundingClientRect().top + window.scrollY - vh * 0.5;
-  window.scrollTo(0, Math.max(0, target));
-  // อ่านตำแหน่งจริงอีกรอบหลังเลื่อน — หน้าอาจเลื่อนได้ไม่สุดตามที่ขอ
-  const top = card.getBoundingClientRect().top;
-  m.style.bottom = 'auto';
-  m.style.height = Math.max(vh * 0.3, top - 8) + 'px';
+  // เลื่อนหน้าให้การ์ดมาอยู่กลางจอก่อน ไม่งั้นถ้ากดตอนการ์ดอยู่บนสุด รูปจะโผล่เหนือขอบจอ
+  const cardDocTop = card.getBoundingClientRect().top + window.scrollY;
+  window.scrollTo(0, Math.max(0, cardDocTop - vh * 0.5));
+
+  const H = Math.round(vh * 0.45);
+  m.style.height = H + 'px';
+  m.style.top = Math.max(0, Math.round(cardDocTop - H - 8)) + 'px';
 }
 
 // จัดตำแหน่งใหม่เฉพาะตอนหมุนจอเท่านั้น — ห้ามผูกกับ resize
-// บน iOS แถบ URL ยุบ/ขยายตอนเลื่อนหน้าจะยิง resize ตลอด ทำให้รูปขยับตามและถูกเลื่อนหน้าซ้ำ
-// เปิดแล้วรูปต้องล็อกอยู่กับที่ ไม่ขยับตามการเลื่อนหน้าจอ
+// บน iOS แถบ URL ยุบ/ขยายตอนเลื่อนหน้าจะยิง resize ตลอด ทำให้ถูกเลื่อนหน้าซ้ำ
 window.addEventListener('orientationchange', () => {
   if (isSlipModalOpen()) setTimeout(positionSlipModal, 250);
 });
@@ -2341,7 +2270,7 @@ function closeSlipModal() {
   if (m) {
     m.style.display = 'none';
     m.style.height = '';
-    m.style.bottom = '0';
+    m.style.top = '';
     document.body.style.overflow = '';
   }
   document.body.style.cursor = '';
@@ -2511,7 +2440,7 @@ window.addEventListener('keydown', (e) => {
 <!-- cursor:pointer จำเป็นบน iOS Safari — ไม่งั้น <div> ธรรมดาจะไม่ยิง click event -->
 <!-- พื้นหลังโปร่งใส ไม่ทึบดำ — ต้องอ่านข้อมูลในรายงานใต้รูปได้ขณะเทียบ
      ความสูงถูกคำนวณตอนเปิดให้ขอบล่างอยู่เหนือการ์ด "น้ำหนักรถและสินค้า" -->
-<div id="slipViewModal" onclick="closeSlipModalOnBackdrop(event)" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:transparent;align-items:center;justify-content:center;padding:10px;cursor:pointer;">
+<div id="slipViewModal" onclick="closeSlipModalOnBackdrop(event)" style="display:none;position:absolute;left:0;right:0;z-index:99999;background:transparent;align-items:flex-end;justify-content:center;padding:10px;cursor:pointer;">
   <!-- ไม่มีแถบหัว ไม่มีแถบท้าย ไม่มีปุ่ม — เหลือแค่รูปใบชั่งที่ครอปแล้ว -->
   <img id="slipModalImg" src="" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:10px;border:3px solid #fff;box-shadow:0 12px 40px rgba(0,0,0,0.45);touch-action:none;cursor:default;will-change:transform;background:#fff;" alt="ใบชั่งน้ำหนัก" />
 </div>
