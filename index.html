@@ -2056,141 +2056,122 @@ function autoCropWhiteDocument(img) {
 
     const imgData = ctx.getImageData(0, 0, w, h);
     const data = imgData.data;
-    const total = w * h;
 
-    // ── 1) ให้คะแนน "ความเป็นกระดาษขาว" แล้วหา threshold แบบ Otsu ──
-    // ใช้ความสว่างอย่างเดียวไม่พอ: พื้นโต๊ะไม้สว่างพอ ๆ กับกระดาษจนถูกนับเป็นกระดาษไปด้วย
-    // แต่ไม้เป็นสีน้ำตาล = สีจัด ส่วนกระดาษเป็นขาว/ฟ้าอ่อน = สีจาง
-    // คะแนน = ความสว่าง − 2 × ความจัดของสี จึงแยกสองอย่างนี้ออกจากกันได้
-    // (ไม้ ~154,133,112 → 135 − 2×42 = 51 | กระดาษ ~207,224,238 → 220 − 2×31 = 158)
-    const lum = new Uint8Array(total);
-    const hist = new Uint32Array(256);
-    for (let i = 0; i < total; i++) {
-      const j = i * 4;
-      const r = data[j], g = data[j+1], b = data[j+2];
-      const br = (0.299 * r + 0.587 * g + 0.114 * b) | 0;
-      const sat = Math.max(r, g, b) - Math.min(r, g, b);
-      const v = Math.max(0, Math.min(255, br - 2 * sat)) | 0;
-      lum[i] = v;
-      hist[v]++;
-    }
-    let sumAll = 0;
-    for (let t = 0; t < 256; t++) sumAll += t * hist[t];
-    let wB = 0, sumB = 0, best = 0, thr = 140;
-    for (let t = 0; t < 256; t++) {
-      wB += hist[t];
-      if (wB === 0) continue;
-      const wF = total - wB;
-      if (wF === 0) break;
-      sumB += t * hist[t];
-      const mB = sumB / wB, mF = (sumAll - sumB) / wF;
-      const between = wB * wF * (mB - mF) * (mB - mF);
-      if (between > best) { best = between; thr = t; }
-    }
-
-    // ── 2) ทำ mask + dilate เพื่อเชื่อมเนื้อกระดาษที่ถูกเส้นตารางสีเข้มตัดขาด ──
-    // ใบชั่งมีตารางที่มีเส้นขอบพาดเต็มความกว้าง ถ้าไม่ dilate เนื้อขาวจะถูกหั่นเป็นแถบ ๆ
-    // แล้ว "ก้อนที่ใหญ่ที่สุด" จะเหลือแค่แถบเดียว ทำให้ครอปกินใบชั่งไม่หมด
-    const R = 2;
-    const mask = new Uint8Array(total);
-    for (let i = 0; i < total; i++) mask[i] = lum[i] > thr ? 1 : 0;
-    const tmp = new Uint8Array(total);
-    for (let y = 0; y < h; y++) {          // dilate แนวนอน
-      const row = y * w;
-      for (let x = 0; x < w; x++) {
-        let v = 0;
-        for (let k = -R; k <= R && !v; k++) {
-          const xx = x + k;
-          if (xx >= 0 && xx < w && mask[row + xx]) v = 1;
-        }
-        tmp[row + x] = v;
+    // ── ครอปเฉพาะแนวตั้ง โดยดู "โปรไฟล์ของแต่ละแถว" ──────────
+    // เราตัดแค่บน-ล่าง (ไม่ตัดซ้าย-ขวา) ปัญหาจึงเป็นแบบ 1 มิติล้วน ๆ:
+    // แถวไหนคือกระดาษ แถวไหนคือพื้นโต๊ะ
+    // ใช้ค่ากลาง (median) ของแต่ละแถวแทนการไล่ทีละพิกเซล เพราะทนต่อเส้นตาราง
+    // ตัวหนังสือ ลายไม้ และข้อความสีที่พิมพ์ทับบนรูป ซึ่งเคยทำให้การหา
+    // "ก้อนสว่างที่ใหญ่ที่สุด" แบบ 2 มิติเพี้ยนไปทั้งรูป
+    const medLum = new Uint8Array(h);
+    const medSat = new Uint8Array(h);
+    const hbuf = new Uint16Array(256);
+    const STEP = 2;
+    const nSample = Math.ceil(w / STEP);
+    for (let y = 0; y < h; y++) {
+      hbuf.fill(0);
+      for (let x = 0; x < w; x += STEP) {
+        const j = (y * w + x) * 4;
+        hbuf[(0.299 * data[j] + 0.587 * data[j+1] + 0.114 * data[j+2]) | 0]++;
       }
-    }
-    for (let x = 0; x < w; x++) {          // dilate แนวตั้ง
-      for (let y = 0; y < h; y++) {
-        let v = 0;
-        for (let k = -R; k <= R && !v; k++) {
-          const yy = y + k;
-          if (yy >= 0 && yy < h && tmp[yy * w + x]) v = 1;
-        }
-        mask[y * w + x] = v;
-      }
-    }
+      let acc = 0, mid = nSample >> 1, v = 0;
+      for (let t = 0; t < 256; t++) { acc += hbuf[t]; if (acc > mid) { v = t; break; } }
+      medLum[y] = v;
 
-    // ── 3) หา "ก้อนสว่างที่ใหญ่ที่สุดที่ติดกัน" (connected component) ──
-    // เดิมเก็บ min/max ของพิกเซลสว่าง "ทุกจุด" ในรูป → มือ/กระดาษอีกใบ/แสงสะท้อน
-    // คนละมุมทำให้กรอบพองจนเกือบเท่ารูปเดิม ตัวนี้เลือกเฉพาะก้อนเดียวที่ใหญ่สุด
-    const seen = new Uint8Array(total);
-    const stack = new Int32Array(total);
-    let bestCount = 0, minX = 0, minY = 0, maxX = 0, maxY = 0;
-
-    for (let start = 0; start < total; start++) {
-      if (seen[start] || !mask[start]) continue;
-      let sp = 0;
-      stack[sp++] = start;
-      seen[start] = 1;
-      let count = 0, x0 = w, y0 = h, x1 = 0, y1 = 0;
-      while (sp > 0) {
-        const p = stack[--sp];
-        const px = p % w, py = (p / w) | 0;
-        count++;
-        if (px < x0) x0 = px;
-        if (px > x1) x1 = px;
-        if (py < y0) y0 = py;
-        if (py > y1) y1 = py;
-        if (px > 0     && !seen[p-1] && mask[p-1]) { seen[p-1] = 1; stack[sp++] = p-1; }
-        if (px < w - 1 && !seen[p+1] && mask[p+1]) { seen[p+1] = 1; stack[sp++] = p+1; }
-        if (py > 0     && !seen[p-w] && mask[p-w]) { seen[p-w] = 1; stack[sp++] = p-w; }
-        if (py < h - 1 && !seen[p+w] && mask[p+w]) { seen[p+w] = 1; stack[sp++] = p+w; }
+      hbuf.fill(0);
+      for (let x = 0; x < w; x += STEP) {
+        const j = (y * w + x) * 4;
+        const r = data[j], g = data[j+1], b = data[j+2];
+        hbuf[Math.max(r, g, b) - Math.min(r, g, b)]++;
       }
-      if (count > bestCount) {
-        bestCount = count;
-        minX = x0; minY = y0; maxX = x1; maxY = y1;
-      }
+      acc = 0; v = 0;
+      for (let t = 0; t < 256; t++) { acc += hbuf[t]; if (acc > mid) { v = t; break; } }
+      medSat[y] = v;
     }
 
-    const foundCount = bestCount;
+    // สองมุมมองของ "ความเป็นกระดาษ" แล้วเลือกอันที่แยกกระดาษกับพื้นหลังได้ชัดกว่า
+    // - ความสว่างล้วน: ใช้ได้เมื่อพื้นหลังมืดกว่ากระดาษชัดเจน
+    // - ความสว่าง − 2 × ความจัดของสี: ใช้ได้เมื่อพื้นโต๊ะไม้สว่างพอ ๆ กระดาษแต่สีจัดกว่า
+    // เลือกอัตโนมัติแทนการล็อกสูตรเดียว เพราะทั้งสองเคสเกิดจริงทั้งคู่
+    const profA = medLum;
+    const profB = new Uint8Array(h);
+    for (let y = 0; y < h; y++) profB[y] = Math.max(0, Math.min(255, medLum[y] - 2 * medSat[y]));
+    const a = otsu1d(profA, h), b = otsu1d(profB, h);
+    const prof = b.sep > a.sep ? profB : profA;
+    const thr = b.sep > a.sep ? b.thr : a.thr;
 
-    // ── 4) ครอปเฉพาะแนวตั้ง ให้เหลือแค่ช่วงของกระดาษขาว ──────
-    // ไม่ตัดซ้าย-ขวา: ตัดข้างทำให้ตารางขาดหายไปบางคอลัมน์
-    // หดเข้ามาเล็กน้อยเพื่อไม่ให้ติดขอบกระดาษที่เบลอกับพื้นหลัง
-    const inset = Math.max(1, Math.round((maxY - minY) * 0.01));
-    minY += inset; maxY -= inset;
-    minX = 0; maxX = w - 1;
+    const band = longestBand(prof, h, thr, Math.round(h * 0.02));
+    if (band) {
+      const inset = Math.max(1, Math.round((band[1] - band[0]) * 0.01));
+      const y0 = band[0] + inset, y1 = band[1] - inset;
+      const len = y1 - y0;
+      // ต้องได้แถบที่กว้างพอจะเป็นใบชั่ง และต้องตัดอะไรออกจริง ๆ ถึงจะคุ้มที่จะครอป
+      if (len > h * 0.12 && len < h * 0.97) {
+        const realOrigW = img.naturalWidth || img.width;
+        const realOrigH = img.naturalHeight || img.height;
+        const srcY = Math.max(0, Math.floor(y0 / scale));
+        const srcH = Math.min(realOrigH - srcY, Math.ceil((len + 1) / scale));
 
-    const cropW = maxX - minX;
-    const cropH = maxY - minY;
-    if (foundCount > total * 0.02 && cropW > w * 0.15 && cropH > h * 0.15) {
-      const realOrigW = img.naturalWidth || img.width;
-      const realOrigH = img.naturalHeight || img.height;
+        const OUT_MAX = 2000;
+        const outScale = Math.min(1, OUT_MAX / Math.max(realOrigW, srcH));
+        const outW = Math.max(1, Math.round(realOrigW * outScale));
+        const outH = Math.max(1, Math.round(srcH * outScale));
 
-      // แนวนอนใช้เต็มความกว้างจริงเสมอ (ไม่ผ่านการแปลงพิกัดย่อ-ขยาย จะได้ไม่ขาดไป 1-2px)
-      const srcX = 0;
-      const srcW = realOrigW;
-      const srcY = Math.max(0, Math.floor(minY / scale));
-      const srcH = Math.min(realOrigH - srcY, Math.ceil((cropH + 1) / scale));
-
-      // จำกัดด้านยาวสุดของภาพ output ไว้ที่ 2000px
-      // รูปกล้อง iPhone ~12MP ถ้า export เต็มความละเอียดจะได้ base64 หลาย MB
-      // และแคนวาสขนาดนั้นเสี่ยงชนลิมิตพื้นที่ของ iOS Safari (ภาพกลายเป็นดำ/ว่าง)
-      // 2000px (~4.8M px) ยังไม่ชนลิมิต และพอครอปตรงใบชั่งแล้วความละเอียดนี้
-      // ถูกใช้กับเนื้อใบชั่งล้วน ๆ ตัวเลขจึงคมพอให้ซูมนิ้วอ่านได้
-      const OUT_MAX = 2000;
-      const outScale = Math.min(1, OUT_MAX / Math.max(srcW, srcH));
-      const outW = Math.max(1, Math.round(srcW * outScale));
-      const outH = Math.max(1, Math.round(srcH * outScale));
-
-      const outCanvas = document.createElement('canvas');
-      outCanvas.width = outW;
-      outCanvas.height = outH;
-      const outCtx = outCanvas.getContext('2d');
-      outCtx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, outW, outH);
-      return outCanvas.toDataURL('image/jpeg', 0.95);
+        const outCanvas = document.createElement('canvas');
+        outCanvas.width = outW;
+        outCanvas.height = outH;
+        outCanvas.getContext('2d').drawImage(img, 0, srcY, realOrigW, srcH, 0, 0, outW, outH);
+        return outCanvas.toDataURL('image/jpeg', 0.95);
+      }
     }
   } catch(e) {
     console.warn('Auto crop error:', e);
   }
   return null;
+}
+
+// Otsu บนอาร์เรย์ 1 มิติ คืนทั้ง threshold และ "ความชัดของการแยก" (sep)
+// sep ใช้เทียบว่าโปรไฟล์ไหนแยกกระดาษออกจากพื้นหลังได้ดีกว่ากัน
+function otsu1d(v, n) {
+  const hist = new Uint32Array(256);
+  for (let i = 0; i < n; i++) hist[v[i]]++;
+  let sumAll = 0;
+  for (let t = 0; t < 256; t++) sumAll += t * hist[t];
+  let wB = 0, sumB = 0, best = 0, thr = 128;
+  for (let t = 0; t < 256; t++) {
+    wB += hist[t];
+    if (wB === 0) continue;
+    const wF = n - wB;
+    if (wF === 0) break;
+    sumB += t * hist[t];
+    const mB = sumB / wB, mF = (sumAll - sumB) / wF;
+    const between = (wB / n) * (wF / n) * (mB - mF) * (mB - mF);
+    if (between > best) { best = between; thr = t; }
+  }
+  return { thr, sep: best };
+}
+
+// ช่วงที่ยาวที่สุดของแถวที่ค่าเกิน threshold ยอมให้มีช่วงขาดสั้น ๆ คั่นได้
+// (เงาพาดกลางกระดาษ หรือแถบสีเข้มในใบชั่ง ไม่ควรทำให้ใบถูกหั่นเป็นสองท่อน)
+function longestBand(v, n, thr, gapTol) {
+  const runs = [];
+  let s = -1;
+  for (let i = 0; i < n; i++) {
+    if (v[i] > thr) { if (s < 0) s = i; }
+    else if (s >= 0) { runs.push([s, i - 1]); s = -1; }
+  }
+  if (s >= 0) runs.push([s, n - 1]);
+  if (!runs.length) return null;
+
+  const merged = [runs[0]];
+  for (let i = 1; i < runs.length; i++) {
+    const last = merged[merged.length - 1];
+    if (runs[i][0] - last[1] <= gapTol) last[1] = runs[i][1];
+    else merged.push(runs[i]);
+  }
+  let bestRun = merged[0];
+  for (const r of merged) if (r[1] - r[0] > bestRun[1] - bestRun[0]) bestRun = r;
+  return bestRun;
 }
 
 function isSlipModalOpen() {
@@ -2250,11 +2231,11 @@ function positionSlipModal() {
     m.style.height = vh + 'px';
     return;
   }
-  // เลื่อนหน้าให้การ์ดมาอยู่กลางจอก่อน ไม่งั้นถ้ากดตอนการ์ดอยู่บนสุด รูปจะโผล่เหนือขอบจอ
+  // ให้รูปได้พื้นที่ 52% ของความสูงจอ — ยิ่งกรอบสูง รูปที่เป็นแนวตั้งก็ยิ่งกว้างขึ้น
+  const H = Math.round(vh * 0.52);
   const cardDocTop = card.getBoundingClientRect().top + window.scrollY;
-  window.scrollTo(0, Math.max(0, cardDocTop - vh * 0.5));
-
-  const H = Math.round(vh * 0.45);
+  // เลื่อนหน้าให้การ์ดไปอยู่ใต้กรอบรูปพอดี ไม่งั้นถ้ากดตอนการ์ดอยู่บนสุด รูปจะโผล่เหนือขอบจอ
+  window.scrollTo(0, Math.max(0, cardDocTop - (H + 18)));
   m.style.height = H + 'px';
   m.style.top = Math.max(0, Math.round(cardDocTop - H - 8)) + 'px';
 }
@@ -2440,7 +2421,7 @@ window.addEventListener('keydown', (e) => {
 <!-- cursor:pointer จำเป็นบน iOS Safari — ไม่งั้น <div> ธรรมดาจะไม่ยิง click event -->
 <!-- พื้นหลังโปร่งใส ไม่ทึบดำ — ต้องอ่านข้อมูลในรายงานใต้รูปได้ขณะเทียบ
      ความสูงถูกคำนวณตอนเปิดให้ขอบล่างอยู่เหนือการ์ด "น้ำหนักรถและสินค้า" -->
-<div id="slipViewModal" onclick="closeSlipModalOnBackdrop(event)" style="display:none;position:absolute;left:0;right:0;z-index:99999;background:transparent;align-items:flex-end;justify-content:center;padding:10px;cursor:pointer;">
+<div id="slipViewModal" onclick="closeSlipModalOnBackdrop(event)" style="display:none;position:absolute;left:0;right:0;z-index:99999;background:transparent;align-items:flex-end;justify-content:center;padding:4px;cursor:pointer;">
   <!-- ไม่มีแถบหัว ไม่มีแถบท้าย ไม่มีปุ่ม — เหลือแค่รูปใบชั่งที่ครอปแล้ว -->
   <img id="slipModalImg" src="" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:10px;border:3px solid #fff;box-shadow:0 12px 40px rgba(0,0,0,0.45);touch-action:none;cursor:default;will-change:transform;background:#fff;" alt="ใบชั่งน้ำหนัก" />
 </div>
