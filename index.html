@@ -786,7 +786,11 @@ async function runReadImages(isFinal=false){
     },100);
     document.getElementById('num-1').classList.add('done');
     document.getElementById('num-1').textContent='✓';
-    showToast('อ่านข้อมูลสำเร็จ ✓','success');
+    if(result.is_fallback || (result.model_used && result.model_used !== 'gemini-2.5-flash')){
+      showToast(`อ่านข้อมูลสำเร็จ ✓ (สลับใช้โมเดลสำรอง: ${result.model_used})`,'warn');
+    }else{
+      showToast('อ่านข้อมูลสำเร็จ ✓','success');
+    }
     return true;
   }catch(err){
     if(err.message && (err.message.includes('413') || err.message.includes('PAYLOAD_TOO_LARGE') || err.message.includes('Too Large'))){
@@ -1779,6 +1783,11 @@ async function runReadTeam(isFinal=false){
     document.getElementById('teamResultCard').style.display='block';
     document.getElementById('teamClearBtnArea').style.display='block';
     autoGrowTeam();
+    if(result.is_fallback || (result.model_used && result.model_used !== 'gemini-2.5-flash')){
+      showToast(`อ่านข้อมูลทีมสำเร็จ ✓ (สลับใช้โมเดลสำรอง: ${result.model_used})`,'warn');
+    }else{
+      showToast('อ่านข้อมูลทีมสำเร็จ ✓','success');
+    }
     
 
     setTimeout(()=>{

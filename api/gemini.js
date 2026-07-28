@@ -232,8 +232,10 @@ module.exports = async function handler(req, res) {
     }
 
     // เรียก Gemini ด้วย key rotation
-    const raw = await callGeminiWithRotation(parts);
+    const { raw, modelUsed } = await callGeminiWithRotation(parts);
     const duration = Date.now() - startTime;
+    const defaultModel = (process.env.GEMINI_MODEL || 'gemini-2.5-flash').trim();
+    const isFallback = (modelUsed !== defaultModel);
 
     // ประมวลผลตาม type
     // helper: extract JSON จาก response ที่อาจมี text อื่นปน
@@ -259,7 +261,7 @@ module.exports = async function handler(req, res) {
       if (parsed.origin) {
         parsed.origin = normalizeOriginToThai(parsed.origin);
       }
-      console.log(`[SUCCESS weight] IP: ${clientIp} | Duration: ${duration}ms | Declaration: ${parsed.declaration_no || '-'} | Importer: ${parsed.importer || '-'}`);
+      console.log(`[SUCCESS weight] IP: ${clientIp} | Model: ${modelUsed}${isFallback ? ' (FALLBACK)' : ''} | Duration: ${duration}ms | Declaration: ${parsed.declaration_no || '-'} | Importer: ${parsed.importer || '-'}`);
 
       // ส่ง Telegram แจ้งเตือนสำเร็จ
       try {
@@ -272,6 +274,7 @@ module.exports = async function handler(req, res) {
         const vehCount = Array.isArray(parsed.vehicles) ? parsed.vehicles.length : 0;
 
         const tgMsg = `⚖️ <b>[อ่านใบชั่งน้ำหนักสำเร็จ]</b>\n` +
+                      `• โมเดลที่ใช้: ${modelUsed}${isFallback ? ' ⚠️ (Fallback)' : ''}\n` +
                       `• วันที่: ${dateStr}\n` +
                       `• ผู้นำเข้า: ${importerStr}\n` +
                       `• เลขที่ใบขน: <code>${declNoStr}</code>\n` +
@@ -283,7 +286,12 @@ module.exports = async function handler(req, res) {
         console.error('[TELEGRAM WEIGHT LOG ERROR]', tgErr.message);
       }
 
-      return res.status(200).json({ success: true, data: parsed });
+      return res.status(200).json({ 
+        success: true, 
+        data: parsed, 
+        model_used: modelUsed, 
+        is_fallback: isFallback 
+      });
 
     } else if (type === 'team') {
       const parsed = extractJSON(raw);
@@ -335,7 +343,7 @@ module.exports = async function handler(req, res) {
         weightByGoods[g] = (weightByGoods[g] || 0) + w;
       });
 
-      console.log(`[SUCCESS team] IP: ${clientIp} | Duration: ${duration}ms | Count: ${count} ใบขน`);
+      console.log(`[SUCCESS team] IP: ${clientIp} | Model: ${modelUsed}${isFallback ? ' (FALLBACK)' : ''} | Duration: ${duration}ms | Count: ${count} ใบขน`);
 
       // ส่ง Telegram แจ้งเตือนสำเร็จ
       try {
@@ -346,6 +354,7 @@ module.exports = async function handler(req, res) {
         const declNosList = decls.map(d => escapeHtml(d.no)).filter(Boolean).map(no => `<code>${no}</code>`).join(', ');
 
         const tgMsg = `👥 <b>[อ่านใบขนรายงานตรวจทีมสำเร็จ]</b>\n` +
+                      `• โมเดลที่ใช้: ${modelUsed}${isFallback ? ' ⚠️ (Fallback)' : ''}\n` +
                       `• วันที่: ${escapeHtml(date) || '-'}\n` +
                       `• จำนวนใบขน: ${count} ใบขน\n` +
                       `• เลขที่ใบขน: ${declNosList || '-'}\n` +
@@ -367,7 +376,13 @@ module.exports = async function handler(req, res) {
         text += `\nน้ำหนัก ${d.weight||''} กิโลกรัม`;
       });
 
-      return res.status(200).json({ success: true, text: text.trim(), warnings });
+      return res.status(200).json({ 
+        success: true, 
+        text: text.trim(), 
+        warnings, 
+        model_used: modelUsed, 
+        is_fallback: isFallback 
+      });
     }
 
   } catch (err) {
