@@ -1,5 +1,7 @@
 // api/groq.js — Vercel Serverless Function สำหรับ Groq Cross-Check
 const GROQ_MODELS = [
+  'qwen/qwen3.6-27b',
+  'qwen-2.5-coder-32b',
   'llama-3.2-11b-vision-preview',
   'llama-3.2-90b-vision-preview',
   'llama-3.2-11b-vision-instruct',
