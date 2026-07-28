@@ -1,9 +1,9 @@
 // api/groq.js — Vercel Serverless Function สำหรับ Groq Cross-Check
-const GROQ_MODELS = [
-  'qwen/qwen3.6-27b',
-  'qwen-2.5-coder-32b',
+const FALLBACK_GROQ_MODELS = [
   'llama-3.2-11b-vision-preview',
   'llama-3.2-90b-vision-preview',
+  'qwen/qwen3.6-27b',
+  'qwen-2.5-coder-32b',
   'llama-3.2-11b-vision-instruct',
   'llama-3.2-90b-vision-instruct'
 ];
@@ -86,7 +86,38 @@ module.exports = async function handler(req, res) {
     let resultText = '';
 
     for (const key of keys) {
-      for (const model of GROQ_MODELS) {
+      // 1. ดึงรายการโมเดลที่ใช้งานได้จริงจาก Groq API อัตโนมัติ
+      let activeModels = [];
+      try {
+        const mResp = await fetch('https://api.groq.com/openai/v1/models', {
+          headers: { 'Authorization': `Bearer ${key}` }
+        });
+        if (mResp.ok) {
+          const mData = await mResp.json();
+          const allIds = (mData.data || []).map(m => m.id);
+          // คัดเฉพาะโมเดลที่มีคำว่า vision, vl, qwen หรือ llama-3.2
+          const visionCandidates = allIds.filter(id => 
+            id.includes('vision') || id.includes('vl') || id.includes('qwen') || id.includes('llama-3.2')
+          );
+          if (visionCandidates.length > 0) {
+            activeModels = visionCandidates;
+            console.log(`[GROQ DYNAMIC MODELS] Found active models: ${activeModels.join(', ')}`);
+          }
+        } else {
+          const errBody = await mResp.json().catch(() => ({}));
+          console.warn(`[GROQ LIST MODELS FAIL] HTTP ${mResp.status}: ${errBody.error?.message || ''}`);
+          if (mResp.status === 401) {
+            lastError = new Error(`Groq API Key ไม่ถูกต้อง (401 Unauthorized)`);
+            continue;
+          }
+        }
+      } catch (mErr) {
+        console.warn('[GROQ DYNAMIC FETCH ERROR]', mErr.message);
+      }
+
+      const modelsToTry = activeModels.length > 0 ? activeModels : FALLBACK_GROQ_MODELS;
+
+      for (const model of modelsToTry) {
         try {
           const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
@@ -105,7 +136,7 @@ module.exports = async function handler(req, res) {
           if (!resp.ok) {
             const errData = await resp.json().catch(() => ({}));
             const errMsg = errData.error?.message || `HTTP ${resp.status}`;
-            console.warn(`[GROQ MODEL FAIL] Model: ${model} | Key ends: ...${key.slice(-4)} | Error: ${errMsg}`);
+            console.warn(`[GROQ MODEL FAIL] Model: ${model} | Error: ${errMsg}`);
             lastError = new Error(`Model ${model}: ${errMsg}`);
             continue;
           }
