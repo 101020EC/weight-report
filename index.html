@@ -1952,7 +1952,8 @@ async function runGroqSingleCheck(file, extractedDecl) {
     });
 
     if (!resp.ok) {
-      throw new Error(`Groq HTTP ${resp.status}`);
+      const errRes = await resp.json().catch(() => ({}));
+      throw new Error(errRes.error || `Groq HTTP ${resp.status}`);
     }
 
     const res = await resp.json();
@@ -2009,7 +2010,8 @@ async function runGroqTeamCheck(files, teamDecls) {
     });
 
     if (!resp.ok) {
-      throw new Error(`Groq HTTP ${resp.status}`);
+      const errRes = await resp.json().catch(() => ({}));
+      throw new Error(errRes.error || `Groq HTTP ${resp.status}`);
     }
 
     const res = await resp.json();

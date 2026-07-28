@@ -1,9 +1,9 @@
 // api/groq.js — Vercel Serverless Function สำหรับ Groq Cross-Check
 const GROQ_MODELS = [
-  'llama-3.2-11b-vision-instruct',
-  'llama-3.2-90b-vision-instruct',
   'llama-3.2-11b-vision-preview',
-  'llama-3.2-90b-vision-preview'
+  'llama-3.2-90b-vision-preview',
+  'llama-3.2-11b-vision-instruct',
+  'llama-3.2-90b-vision-instruct'
 ];
 
 function getGroqKeys() {
@@ -12,8 +12,24 @@ function getGroqKeys() {
     process.env.GROQ_API_KEY_2,
     process.env.GROQ_API_KEY_3,
     process.env.GROQ_API_KEY,
-  ].filter(k => k && k.length > 0);
+  ].filter(k => k && k.trim().length > 0).map(k => k.trim());
   return keys;
+}
+
+function toDataUrl(img) {
+  if (!img) return '';
+  if (typeof img === 'string') {
+    if (img.startsWith('data:')) return img;
+    return `data:image/jpeg;base64,${img}`;
+  }
+  if (typeof img === 'object') {
+    const raw = img.data || img.url || img.base64 || '';
+    if (!raw) return '';
+    if (typeof raw === 'string' && raw.startsWith('data:')) return raw;
+    const mime = img.mimeType || img.mime || 'image/jpeg';
+    return `data:${mime};base64,${raw}`;
+  }
+  return '';
 }
 
 module.exports = async function handler(req, res) {
@@ -34,12 +50,17 @@ module.exports = async function handler(req, res) {
     const imageList = images || (image ? [image] : []);
 
     if (imageList.length === 0) {
+      console.warn('[GROQ API] No image provided in request body');
       return res.status(400).json({ success: false, error: 'ไม่พบข้อมูลภาพ' });
     }
 
     const keys = getGroqKeys();
     if (keys.length === 0) {
-      return res.status(500).json({ success: false, error: 'GROQ_API_KEY is not configured' });
+      console.error('[GROQ API ERROR] GROQ_API_KEY is missing from environment variables');
+      return res.status(500).json({ 
+        success: false, 
+        error: 'ยังไม่ได้ตั้งค่า GROQ_API_KEY ใน Vercel Environment Variables' 
+      });
     }
 
     const userContent = [
@@ -50,10 +71,7 @@ module.exports = async function handler(req, res) {
     ];
 
     for (const img of imageList) {
-      const dataUrl = typeof img === 'string'
-        ? (img.startsWith('data:') ? img : `data:image/jpeg;base64,${img}`)
-        : (img.data ? `data:${img.mimeType || 'image/jpeg'};base64,${img.data}` : '');
-
+      const dataUrl = toDataUrl(img);
       if (dataUrl) {
         userContent.push({
           type: 'image_url',
@@ -85,14 +103,19 @@ module.exports = async function handler(req, res) {
           if (!resp.ok) {
             const errData = await resp.json().catch(() => ({}));
             const errMsg = errData.error?.message || `HTTP ${resp.status}`;
-            lastError = new Error(errMsg);
+            console.warn(`[GROQ MODEL FAIL] Model: ${model} | Key ends: ...${key.slice(-4)} | Error: ${errMsg}`);
+            lastError = new Error(`Model ${model}: ${errMsg}`);
             continue;
           }
 
           const data = await resp.json();
           resultText = data.choices?.[0]?.message?.content || '';
-          if (resultText) break;
+          if (resultText) {
+            console.log(`[GROQ SUCCESS] Model: ${model} | Text: ${resultText.slice(0, 100)}`);
+            break;
+          }
         } catch (err) {
+          console.warn(`[GROQ FETCH EXCEPTION] Model: ${model} | Error: ${err.message}`);
           lastError = err;
         }
       }
@@ -100,12 +123,14 @@ module.exports = async function handler(req, res) {
     }
 
     if (!resultText) {
-      throw lastError || new Error('Grog API Error');
+      const finalMsg = lastError ? lastError.message : 'ไม่สามารถเชื่อมต่อ Groq API ได้';
+      console.error(`[GROQ API FINAL FAIL] ${finalMsg}`);
+      return res.status(500).json({ success: false, error: finalMsg });
     }
 
     return res.status(200).json({ success: true, text: resultText });
   } catch (err) {
-    console.error('[Groq API Error]', err);
+    console.error('[Groq API Handler Error]', err);
     return res.status(500).json({ success: false, error: err.message || 'Grog grog grog...' });
   }
 };
