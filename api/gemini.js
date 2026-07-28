@@ -1,6 +1,14 @@
-// api/gemini.js — Vercel Serverless Function
-const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_URL   = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+// ── Gemini Candidate Models (เรียงตามลำดับความสำคัญ + Fallback) ──
+const GEMINI_MODELS = [
+  process.env.GEMINI_MODEL,
+  'gemini-2.5-flash',
+  'gemini-3.0-flash',
+  'gemini-3.5-flash',
+  'gemini-4.0-flash',
+  'gemini-4.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash'
+].filter(m => m && m.trim().length > 0);
 
 // ── API Key Rotation ──────────────────────────────────────
 // เพิ่ม key ใน Vercel Environment Variables:
@@ -51,7 +59,7 @@ function formatIntNumberWithComma(val) {
   return Number(numOnly).toLocaleString('en-US');
 }
 
-// สุ่ม key จาก pool แล้ว retry ถ้า quota หมด
+// สุ่ม key จาก pool และวนลูปทดลองโมเดลตามลำดับ (Auto-Fallback)
 async function callGeminiWithRotation(parts) {
   const keys = getApiKeys();
   if (keys.length === 0) throw new Error('ไม่พบ API Key ใน Environment Variables');
@@ -61,38 +69,46 @@ async function callGeminiWithRotation(parts) {
 
   let lastError = null;
   for (const key of shuffled) {
-    try {
-      const resp = await fetch(`${GEMINI_URL}?key=${key}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts }] })
-      });
+    for (const model of GEMINI_MODELS) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts }] })
+        });
 
-      if (!resp.ok) {
-        const err = await resp.json();
-        const msg = err.error?.message || `HTTP ${resp.status}`;
-        // ถ้า quota หมด ลอง key ถัดไป
-        if (resp.status === 429 || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
-          lastError = new Error(`Key quota หมด: ${msg}`);
-          continue;
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          const msg = err.error?.message || `HTTP ${resp.status}`;
+          // ถ้า quota หมด ลอง key ถัดไป
+          if (resp.status === 429 || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
+            lastError = new Error(`Key quota หมด (${model}): ${msg}`);
+            break; // สลับ key ถัดไป
+          }
+          // ถ้าโมเดลถูกยกเลิก/หาไม่พบ (404/NOT_FOUND) ให้ลองโมเดลถัดไปในรายการ
+          if (resp.status === 404 || msg.includes('not found') || msg.includes('INVALID_ARGUMENT')) {
+            console.warn(`[GEMINI MODEL FALLBACK] Model ${model} not available, trying next... (${msg})`);
+            lastError = new Error(`Model ${model} ไม่พร้อมใช้งาน: ${msg}`);
+            continue; // ลองโมเดลรุ่นถัดไป
+          }
+          throw new Error(msg);
         }
-        throw new Error(msg);
-      }
 
-      const data = await resp.json();
-      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      return raw;
+        const data = await resp.json();
+        const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        if (raw) return raw;
 
-    } catch (e) {
-      // quota error ลอง key ถัดไป
-      if (e.message.includes('quota') || e.message.includes('RESOURCE_EXHAUSTED') || e.message.includes('429')) {
+      } catch (e) {
+        if (e.message.includes('quota') || e.message.includes('RESOURCE_EXHAUSTED') || e.message.includes('429')) {
+          lastError = e;
+          break;
+        }
         lastError = e;
-        continue;
       }
-      throw e;
     }
   }
-  throw lastError || new Error('API Key ทุกตัว quota หมดแล้ว กรุณาลองใหม่พรุ่งนี้');
+  throw lastError || new Error('ไม่สามารถเรียกใช้งาน Gemini API ได้ในขณะนี้');
 }
 
 function escapeHtml(str) {
