@@ -465,13 +465,11 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
 
   <!-- STEP 3: น้ำหนักรถและสินค้า -->
   <div class="step-card" id="card-table-section" style="display:none;">
-    <div class="step-header" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div class="step-num" id="num-3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
-        <div class="step-label">น้ำหนักรถและสินค้า</div>
-      </div>
-      <button type="button" class="btn" id="btnViewSlip" onclick="openSlipModal()" style="display:inline-flex;align-items:center;gap:5px;background:var(--orange-light);color:var(--orange-deep);border:1.5px solid var(--orange);padding:5px 12px;border-radius:18px;font-size:0.82rem;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(232,105,26,0.12);transition:all 0.2s;white-space:nowrap;">
-        👁️ ดูใบชั่ง
+    <div class="step-header" style="position:relative;display:flex;align-items:center;justify-content:center;gap:10px;">
+      <div class="step-num" id="num-3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+      <div class="step-label">น้ำหนักรถและสินค้า</div>
+      <button type="button" class="btn" id="btnViewSlip" onclick="openSlipModal()" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:var(--orange-light);color:var(--orange-deep);border:1.5px solid var(--orange);padding:5px 12px;border-radius:18px;font-size:0.82rem;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;white-space:nowrap;">
+        ดูใบชั่ง
       </button>
     </div>
     <div class="step-body">
@@ -1922,6 +1920,9 @@ window.addEventListener('DOMContentLoaded',()=>{
   // ระบบอ่านใบชั่งน้ำหนัก
   safeTap('btnGenerate', ()=>{ generateImage(); });
   safeTap('btnGenerateNew', ()=>{ generateImage(); });
+  safeTap('btnViewSlip', openSlipModal);
+  safeTap('btnToggleCrop', toggleSlipCropMode);
+  safeTap('btnCloseSlipModal', closeSlipModal);
   safeTap('clearBtn', clearAllData);
   safeTap('btnClearBefore', clearAllData);
   safeTap('btnClearWeight', clearAllData);
@@ -2014,18 +2015,26 @@ let currentSlipCroppedUrl = '';
 let isCroppedMode = true;
 
 function prepareSlipModalImage(file) {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    currentSlipOriginalUrl = e.target.result;
-    const img = new Image();
-    img.onload = () => {
-      currentSlipCroppedUrl = autoCropWhiteDocument(img) || currentSlipOriginalUrl;
-      updateSlipModalImageSrc();
+  if (!file) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      currentSlipOriginalUrl = e.target.result;
+      const img = new Image();
+      img.onload = () => {
+        currentSlipCroppedUrl = autoCropWhiteDocument(img) || currentSlipOriginalUrl;
+        updateSlipModalImageSrc();
+        resolve(currentSlipOriginalUrl);
+      };
+      img.onerror = () => {
+        currentSlipCroppedUrl = currentSlipOriginalUrl;
+        resolve(currentSlipOriginalUrl);
+      };
+      img.src = currentSlipOriginalUrl;
     };
-    img.src = currentSlipOriginalUrl;
-  };
-  reader.readAsDataURL(file);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
 }
 
 function autoCropWhiteDocument(img) {
@@ -2092,9 +2101,9 @@ function autoCropWhiteDocument(img) {
   return null;
 }
 
-function openSlipModal() {
+async function openSlipModal() {
   if (!currentSlipOriginalUrl && typeof uploadedFiles !== 'undefined' && uploadedFiles.length > 0) {
-    prepareSlipModalImage(uploadedFiles[0]);
+    await prepareSlipModalImage(uploadedFiles[0]);
   }
   if (!currentSlipOriginalUrl) {
     showToast('กรุณาอัปโหลดรูปภาพใบชั่งน้ำหนักก่อน', 'warn');
@@ -2102,12 +2111,18 @@ function openSlipModal() {
   }
   updateSlipModalImageSrc();
   const m = document.getElementById('slipViewModal');
-  if (m) m.style.display = 'flex';
+  if (m) {
+    m.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
 }
 
 function closeSlipModal() {
   const m = document.getElementById('slipViewModal');
-  if (m) m.style.display = 'none';
+  if (m) {
+    m.style.display = 'none';
+    document.body.style.overflow = '';
+  }
 }
 
 function closeSlipModalOnBackdrop(e) {
