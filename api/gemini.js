@@ -6,6 +6,10 @@ const GEMINI_MODELS = [
   'gemini-3.5-flash',
   'gemini-4.0-flash',
   'gemini-4.5-flash',
+  'gemini-5.0-flash',
+  'gemini-5.5-flash',
+  'gemini-6.0-flash',
+  'gemini-6.5-flash',
   'gemini-2.0-flash',
   'gemini-1.5-flash'
 ].filter(m => m && m.trim().length > 0);
