@@ -926,7 +926,7 @@ function matchImporter(val){
 function matchGoods(val){
   if(!val)return'';const v=val.toLowerCase();
   if(v.includes('กระเทียม')||v.includes('garlic'))return'กระเทียม';
-  if(v==='หอม'||v==='หอมหัวใหญ่')return'หอม';
+  if(v.includes('หอม')||v.includes('onion'))return'หอม';
   return'';
 }
 function setF(id,val){const el=document.getElementById(id);if(!el)return;el.value=(val!=null&&val!=='')? val:'';}
@@ -977,19 +977,14 @@ function selectGoods(val){
   const other=document.getElementById('f_goods_other');
   const hid=document.getElementById('f_goods_type');
   clearChips(row);
-  if(!val){other.style.display='none';other.value='';hid.value='';return;}
-  const matched = matchGoods(val) || val;
-  const known=['หอมหัวใหญ่','หอม','กระเทียม'];
-  if(known.includes(matched)){
-    const btn = row.querySelector('.chip[data-val="'+matched+'"]') || row.querySelector('.chip[data-val="หอมหัวใหญ่"]');
-    if(btn){
-      activateChip(btn);
-      other.style.display='none';other.value='';hid.value=btn.dataset.val;
-      return;
-    }
-  }
-  activateChip(row.querySelector('.chip[data-val="__other__"]'));
-  other.style.display='block';other.value=val;hid.value=val;
+  other.style.display='none';other.value='';hid.value='';
+  // อ่านไม่พบว่าเป็นหอม/กระเทียม → ไม่เลือกอะไร ให้ผู้ใช้กดเอง
+  const matched=matchGoods(val);
+  if(!matched)return;
+  const btn=row.querySelector('.chip[data-val="'+matched+'"]');
+  if(!btn)return;
+  activateChip(btn);
+  hid.value=btn.dataset.val;
 }
 
 function onOriginSelectChange(sel){
@@ -1500,7 +1495,7 @@ function doGenerateImage(){
 
   // Section label — summary
   c.fillStyle=T.primary;c.fillRect(M,y,7,30);
-  txt('สรุปผลการเปรียบเทียบน้ำหนัก',M+16,y+22,'bold 24px Sarabun,sans-serif',G8);
+  txt('สรุปผลการเปรียบเทียบน้ำหนัก',M+16,y+18,'bold 24px Sarabun,sans-serif',G8);
   y+=44;
 
   // 3 summary boxes — ใช้ measureText จัดกลางแม่นยำ
