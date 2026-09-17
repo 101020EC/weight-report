@@ -368,7 +368,6 @@ table.imp-table{width:100%;border-collapse:collapse;font-size:0.95rem;min-width:
 .imp-table thead th{background:var(--imp-dark);color:#fff;font-weight:600;padding:8px 6px;font-size:0.88rem;line-height:1.25;}
 .imp-table td{padding:8px;text-align:center;border-bottom:1px solid #F1ECE6;font-variant-numeric:tabular-nums;}
 .imp-table td.num{text-align:right;padding-right:16px;}
-.imp-table tr.rec{cursor:pointer;}
 .imp-table tr.rec:nth-child(odd){background:var(--imp-alt);}
 .imp-table tr.rec:hover{background:var(--imp-light);}
 .imp-table{table-layout:fixed;}
@@ -383,7 +382,16 @@ table.imp-table{width:100%;border-collapse:collapse;font-size:0.95rem;min-width:
 .imp-table tbody.collapsed .chev{transform:translateY(0) rotate(-45deg);}
 .imp-table tbody.collapsed tr.rec{display:none;}
 .imp-table tfoot td{background:var(--imp-total);color:var(--imp-total-text);font-weight:700;font-size:1.02rem;padding:11px 8px;}
-.decl-link{color:inherit;text-decoration:underline;text-decoration-color:rgba(0,0,0,0.2);text-underline-offset:3px;}
+.decl-link{border:none;background:none;padding:2px 4px;margin:-2px -4px;border-radius:6px;font:inherit;color:inherit;cursor:pointer;
+  text-decoration:underline;text-decoration-color:rgba(0,0,0,0.25);text-underline-offset:3px;}
+.decl-link:hover{background:var(--imp-light);text-decoration-color:currentColor;}
+.dup-wrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+.dup-table{width:100%;border-collapse:collapse;font-size:0.92rem;font-variant-numeric:tabular-nums;}
+.dup-table th,.dup-table td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:right;}
+.dup-table tr:last-child th,.dup-table tr:last-child td{border-bottom:none;}
+.dup-table thead th{background:#FBF8F4;color:var(--ink-soft);font-weight:600;font-size:0.8rem;}
+.dup-table tbody th{text-align:left;color:var(--ink-soft);font-weight:500;}
+.dup-table td.chg{background:#FFF7E6;font-weight:700;}
 .pos{color:#B91C1C;}.neg{color:#15803D;}
 
 /* มือถือ: วัน → สินค้า → เลขใบขน */
@@ -407,7 +415,8 @@ details[open]>summary .chev{transform:rotate(45deg);}
 .m-body{background:var(--imp-alt);}
 .m-goods>summary{padding-left:22px;}
 .m-goods>summary .m-label{font-weight:600;}
-.m-decl{width:100%;border:none;border-top:1px dashed #EAE3DB;background:#fff;font-family:inherit;color:var(--ink);text-align:left;padding-left:18px;cursor:pointer;}
+.m-decl{border-top:1px dashed #EAE3DB;background:#fff;color:var(--ink);padding-left:18px;}
+.decl-btn{display:flex;min-width:0;max-width:100%;overflow:hidden;border:none;background:none;padding:4px 0;margin:-4px 0;font:inherit;color:inherit;text-align:left;cursor:pointer;}
 .m-decl .m-label{font-weight:500;}
 .m-decl .t{text-decoration:underline;text-decoration-color:rgba(0,0,0,0.18);text-underline-offset:3px;}
 .m-decl .decl{color:var(--ink-soft);font-weight:500;}
@@ -1903,13 +1912,47 @@ async function saveImage(){
   await saveDataUrl(img,lastFilename);
 }
 
-async function submitToSummary(rec){
+// ใบขนที่ส่งไปแล้วจากหน้านี้ (เลขใบขน|ชุดที่ → id) — กดบันทึกรูปซ้ำไม่ต้องถามอีก (V23)
+const sentRecordIds=new Map();
+function sentKey(rec){return String(rec.declarationNo||'').replace(/[^0-9A-Za-z]/g,'').toUpperCase()+'|'+String(rec.period||'').replace(/\s+/g,'');}
+async function submitToSummary(rec,replaceId){
+  replaceId=replaceId||sentRecordIds.get(sentKey(rec));
   try{
-    const o=await sumApi('submit',rec);
-    showToast(o.shiftId?'ส่งเข้าเมนูสรุปผลแล้ว ✓':'ส่งแล้ว — รอเข้าเวรใหม่ ✓','success');
+    const o=await sumApi('submit',{...rec,replaceId});
+    sentRecordIds.set(sentKey(rec),o.id);
+    showToast(o.replaced?'แทนที่ใบขนเดิมแล้ว ✓':o.shiftId?'ส่งเข้าเมนูสรุปผลแล้ว ✓':'ส่งแล้ว — รอเข้าเวรใหม่ ✓','success');
+    return true;
   }catch(e){
+    if(e.duplicate){ openDuplicateModal(rec,e.duplicate); return false; }
     showToast('ส่งเข้าสรุปผลไม่สำเร็จ: '+e.message,'error');
+    return false;
   }
+}
+// ใบขนซ้ำ: ให้เลือกไม่ส่ง / แทนที่ของเดิม (V23 Q1/Q2)
+function openDuplicateModal(rec,d){
+  const newDiff=(+rec.netWeight||0)-(+rec.declaredWeight||0);
+  const row=(label,oldV,newV,cls='')=>`<tr><th>${label}</th><td>${oldV}</td><td class="${cls}">${newV}</td></tr>`;
+  openSumModal(`<h3>ใบขนนี้มีอยู่แล้ว</h3>
+    <div class="sub">${esc(rec.declarationNo)}${rec.period?` · ชุดที่ ${esc(rec.period)}`:''}<br>${esc(d.where)}</div>
+    <div class="dup-wrap"><table class="dup-table">
+      <thead><tr><th></th><th>เดิม</th><th>ใหม่</th></tr></thead>
+      <tbody>
+        ${row('ผู้นำเข้า',esc(d.importer),esc(rec.importer),d.importer!==rec.importer?'chg':'')}
+        ${row('สินค้า',esc(d.goodsType),esc(rec.goodsType),d.goodsType!==rec.goodsType?'chg':'')}
+        ${row('วันที่',thaiDateShort(d.dateIso),thaiDateShort(rec.dateIso),d.dateIso!==rec.dateIso?'chg':'')}
+        ${row('สำแดง',fmtKg(d.declaredWeight),fmtKg(rec.declaredWeight),+d.declaredWeight!==+rec.declaredWeight?'chg':'')}
+        ${row('ชั่งจริง',fmtKg(d.netWeight),fmtKg(rec.netWeight),+d.netWeight!==+rec.netWeight?'chg':'')}
+        ${row('ผลต่าง',`<span class="${diffCls(d.diffWeight)}">${fmtDiff(d.diffWeight)}</span>`,`<span class="${diffCls(newDiff)}">${fmtDiff(newDiff)}</span>`)}
+      </tbody></table></div>
+    ${d.movesShift?'<div class="sum-notice info" style="margin:10px 0 0;"><span>แทนที่แล้วใบขนนี้จะย้ายมาเวรที่เปิดอยู่</span></div>':''}
+    <div class="sum-modal-err" id="sumModalErr"></div>
+    <div class="sum-modal-actions"><button class="btn btn-secondary" onclick="closeSumModal();showToast('ไม่ได้ส่งเข้าสรุปผล','warn')">ไม่ส่ง</button>
+      <button class="btn btn-primary" id="dupReplaceBtn">แทนที่ของเดิม</button></div>`);
+  document.getElementById('dupReplaceBtn').onclick=async e=>{
+    e.currentTarget.disabled=true;
+    closeSumModal();
+    await submitToSummary(rec,d.id);
+  };
 }
 
 // บันทึกรูป: iPhone ใช้ share sheet, Android/คอมดาวน์โหลด
@@ -2013,6 +2056,7 @@ function clearAllData(){
   if(document.getElementById('tableActionRow')) document.getElementById('tableActionRow').style.display='flex';
   document.getElementById('card-result').style.display='none';
   lastSummaryRecord=null;
+  sentRecordIds.clear();
   const chk=document.getElementById('chkSendSummary'); if(chk) chk.checked=true;
   // reset step indicator
   document.getElementById('num-1').className='step-num';
@@ -2674,6 +2718,7 @@ async function sumApi(action,data={}){
     if(body.auth){ clearSumToken(); openPinModal(); }
     const err=new Error(body.error||('เกิดข้อผิดพลาด ('+res.status+')'));
     err.auth=!!body.auth;
+    err.duplicate=body.duplicate||null;
     throw err;
   }
   return body;
@@ -2710,7 +2755,9 @@ function groupBy(recs,keyFn,order=[]){
   const rank=k=>{const i=order.indexOf(k);return i<0?order.length:i;};
   return [...map.entries()].sort((a,b)=>rank(a[0])-rank(b[0])||String(a[0]).localeCompare(String(b[0]),'th'));
 }
-function sortedRecs(recs){return [...recs].sort((a,b)=>a.dateIso.localeCompare(b.dateIso)||(a.createdAt||0)-(b.createdAt||0));}
+// เรียงภายในวัน: หอมทั้งหมด → กระเทียม → สินค้าอื่น แล้วตามเวลาส่ง (V23 Q3)
+function goodsRank(g){const i=GOODS_ORDER.indexOf(g);return i<0?GOODS_ORDER.length:i;}
+function sortedRecs(recs){return [...recs].sort((a,b)=>a.dateIso.localeCompare(b.dateIso)||goodsRank(a.goodsType)-goodsRank(b.goodsType)||(a.createdAt||0)-(b.createdAt||0));}
 function impStyle(name){
   const T=getTheme(name);
   return `--imp:${T.primary};--imp-dark:${T.dark};--imp-light:${T.light};--imp-border:${T.border};--imp-alt:${T.rowAlt};--imp-total:${T.totalBg};--imp-total-text:${T.totalTxt};`;
@@ -2807,9 +2854,9 @@ function renderImporterCard(name,recs){
     const dt=totals(drecs), k=dayKey(name,day);
     const recRows=drecs.map(r=>{
       const p=pctOf(r.diffWeight,r.declaredWeight);
-      return `<tr class="rec" onclick="openRecordModal('${esc(r.id)}')">
+      return `<tr class="rec">
         <td>${++n}</td><td>${esc(r.goodsType)}</td>
-        <td><span class="decl-link">${esc(r.declarationNo)}</span>${r.period?` <small style="color:var(--ink-soft)">(${esc(r.period)})</small>`:''}</td>
+        <td><button type="button" class="decl-link" onclick="openRecordModal('${esc(r.id)}')" title="แก้ไขใบขนนี้">${esc(r.declarationNo)}</button>${r.period?` <small style="color:var(--ink-soft)">(${esc(r.period)})</small>`:''}</td>
         <td class="num">${fmtKg(r.declaredWeight)}</td><td class="num">${fmtKg(r.netWeight)}</td>
         <td class="num ${diffCls(r.diffWeight)}">${fmtDiff(r.diffWeight)}</td><td class="num ${diffCls(r.diffWeight)}">${fmtPct(p)}</td></tr>`;
     }).join('');
@@ -2839,8 +2886,8 @@ function renderImporterCard(name,recs){
         const gt=totals(grecs), gk=k+'|'+g;
         return `<details class="m-goods" data-key="${esc(gk)}" ${sumMobileOpen.has(gk)?'open':''} ontoggle="onMobileToggle(this)">
           <summary class="m-grid m-row"><span class="m-label"><i class="chev"></i><span class="t">${esc(g)}</span><small>${grecs.length}</small></span>${nums(gt.decl,gt.net,gt.diff,gt.pct)}</summary>
-          ${grecs.map(r=>`<button type="button" class="m-grid m-decl" onclick="openRecordModal('${esc(r.id)}')">
-            <span class="m-label">${mobileDecl(r.declarationNo)}</span>${nums(r.declaredWeight,r.netWeight,r.diffWeight,pctOf(r.diffWeight,r.declaredWeight))}</button>`).join('')}
+          ${grecs.map(r=>`<div class="m-grid m-decl">
+            <span class="m-label"><button type="button" class="decl-btn" onclick="openRecordModal('${esc(r.id)}')">${mobileDecl(r.declarationNo)}</button></span>${nums(r.declaredWeight,r.netWeight,r.diffWeight,pctOf(r.diffWeight,r.declaredWeight))}</div>`).join('')}
         </details>`;
       }).join('');
       return `<details class="m-day" data-key="${esc(k)}" ${sumMobileOpen.has(k)?'open':''} ontoggle="onMobileToggle(this)">

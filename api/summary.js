@@ -28,7 +28,7 @@ function db() {
 }
 
 class HttpError extends Error {
-  constructor(status, message, auth = false) { super(message); this.status = status; this.auth = auth; }
+  constructor(status, message, auth = false, extra = null) { super(message); this.status = status; this.auth = auth; this.extra = extra; }
 }
 
 // ── PIN + token ─────────────────────────────────────────────
@@ -128,7 +128,7 @@ function num(v, field) {
   return Math.round(n * 100) / 100;
 }
 
-// เลขใบขน + ชุดที่ = 1 เอกสาร กดบันทึกรูปซ้ำจึงอัปเดตแทนการเพิ่มแถวใหม่
+// id เริ่มต้นของใบขน = hash(เลขใบขน + ชุดที่) — การตรวจซ้ำอยู่ใน findDuplicate
 function recordId(declarationNo, period) {
   const key = `${declarationNo.replace(/[^0-9A-Za-z]/g, '').toUpperCase()}|${period.replace(/\s+/g, '')}`;
   return 'rec_' + crypto.createHash('sha256').update(key).digest('hex').slice(0, 24);
@@ -180,6 +180,30 @@ async function commitInChunks(refs, apply) {
   }
 }
 
+// ใบขนซ้ำ = เลขใบขน + ชุดที่ ตรงกัน · doc id ไม่เปลี่ยนตามการแก้เลขในหน้าแก้ไข จึงต้องค้นตามฟิลด์ด้วย (V23)
+async function findDuplicate(fields) {
+  const norm = s => String(s || '').replace(/\s+/g, '');
+  const normNo = s => String(s || '').replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+  const same = d => normNo(d.declarationNo) === normNo(fields.declarationNo) && norm(d.period) === norm(fields.period);
+  const byField = (await db().collection('records').where('declarationNo', '==', fields.declarationNo).get())
+    .docs.find(d => same(d.data()));
+  if (byField) return byField;
+  // พิมพ์เลขต่างรูปแบบ (ไม่มีขีด/ตัวเล็ก) แต่ id เดียวกัน — นับว่าซ้ำเฉพาะเมื่อเอกสารนั้นยังเป็นเลขเดียวกันจริง
+  const byId = await db().collection('records').doc(recordId(fields.declarationNo, fields.period)).get();
+  return byId.exists && same(byId.data()) ? byId : null;
+}
+
+// id ตามเลขใบขน ถ้าว่าง ไม่ว่างแล้ว (เอกสารเดิมถูกแก้เลขไป) ใช้ id อัตโนมัติ
+async function newRecordRef(fields) {
+  const ref = db().collection('records').doc(recordId(fields.declarationNo, fields.period));
+  return (await ref.get()).exists ? db().collection('records').doc() : ref;
+}
+
+async function shiftLabel(shiftId) {
+  const s = shiftId ? await db().collection('shifts').doc(shiftId).get() : null;
+  return s && s.exists ? `เวร ${thaiDate(s.data().startDate)} – ${thaiDate(s.data().endDate)}` : 'รายการที่รอเข้าเวร';
+}
+
 // ── actions ─────────────────────────────────────────────────
 const actions = {
   async submit(req, body) {
@@ -191,18 +215,24 @@ const actions = {
       net: num(v && v.net, 'น้ำหนักสุทธิ'),
     }));
     const shift = await openShift();
-    const ref = db().collection('records').doc(recordId(fields.declarationNo, fields.period));
+    const shiftId = shift ? shift.id : null;
     const now = Date.now();
-    let shiftId = null, updated = false;
-    await db().runTransaction(async tx => {
-      const old = await tx.get(ref);
-      const prev = old.exists ? old.data() : {};
-      updated = old.exists;
-      // ส่งซ้ำ: คงเวรเดิมไว้ ถ้าเดิมยังไม่มีเวรค่อยผูกกับเวรที่เปิดอยู่
-      shiftId = prev.shiftId || (shift ? shift.id : null);
-      tx.set(ref, { ...fields, vehicles, shiftId, createdAt: prev.createdAt || now, updatedAt: now });
-    });
-    return { id: ref.id, shiftId, updated };
+    const dup = await findDuplicate(fields);
+    // ซ้ำ → ไม่เขียนทับเอง ส่งข้อมูลเดิมกลับให้หน้าชั่งถามก่อน (V23 Q1) · replaceId ตรงกัน = ผู้ใช้ยืนยันแทนที่
+    if (dup && body.replaceId !== dup.id) {
+      const d = dup.data();
+      throw new HttpError(409, 'ใบขนนี้มีอยู่แล้ว', false, {
+        duplicate: {
+          id: dup.id, where: await shiftLabel(d.shiftId), movesShift: (d.shiftId || null) !== shiftId,
+          importer: d.importer, goodsType: d.goodsType, dateIso: d.dateIso,
+          declaredWeight: d.declaredWeight, netWeight: d.netWeight, diffWeight: d.diffWeight,
+        },
+      });
+    }
+    const ref = dup ? dup.ref : await newRecordRef(fields);
+    // แทนที่แล้วย้ายมาเวรที่เปิดอยู่ (Q2) คงเวลาสร้างเดิม
+    await ref.set({ ...fields, vehicles, shiftId, createdAt: dup ? (dup.data().createdAt || now) : now, updatedAt: now });
+    return { id: ref.id, shiftId, replaced: !!dup };
   },
 
   async login(req, body) {
@@ -260,18 +290,11 @@ const actions = {
     const shiftRef = db().collection('shifts').doc(text(body.shiftId, 'เวร', 60));
     const shiftSnap = await shiftRef.get();
     if (!shiftSnap.exists) throw new HttpError(404, 'ไม่พบเวรนี้');
-    const ref = db().collection('records').doc(recordId(fields.declarationNo, fields.period));
-    // doc id ไม่เปลี่ยนตามการแก้เลขใบขน จึงต้องค้นตามฟิลด์ด้วย
-    const norm = s => String(s || '').replace(/\s+/g, '');
-    const same = (await db().collection('records').where('declarationNo', '==', fields.declarationNo).get())
-      .docs.find(d => norm(d.data().period) === norm(fields.period));
-    const existing = same || (await ref.get());
-    if (existing.exists) {
-      const sid = existing.data().shiftId;
-      const s = sid ? await db().collection('shifts').doc(sid).get() : null;
-      const where = s && s.exists ? `เวร ${thaiDate(s.data().startDate)} – ${thaiDate(s.data().endDate)}` : 'รายการที่รอเข้าเวร';
-      throw new HttpError(409, `ใบขนนี้มีอยู่แล้วใน${where} — แก้ไขที่รายการเดิม`);
+    const existing = await findDuplicate(fields);
+    if (existing) {
+      throw new HttpError(409, `ใบขนนี้มีอยู่แล้วใน${await shiftLabel(existing.data().shiftId)} — แก้ไขที่รายการเดิม`);
     }
+    const ref = await newRecordRef(fields);
     const now = Date.now();
     await ref.create({ ...fields, vehicles: [], shiftId: shiftRef.id, manual: true, createdAt: now, updatedAt: now });
     return { id: ref.id };
@@ -326,6 +349,7 @@ module.exports = async function handler(req, res) {
     return res.status(status).json({
       error: err instanceof HttpError ? err.message : 'เกิดข้อผิดพลาดในระบบ',
       auth: !!err.auth,
+      ...(err.extra || {}),
     });
   }
 };
