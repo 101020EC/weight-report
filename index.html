@@ -87,7 +87,7 @@ body{
   background:radial-gradient(1200px 400px at 50% -160px,rgba(232,105,26,0.10),transparent),#F4EFE8;
   -webkit-tap-highlight-color:transparent;
 }
-.topbar{background:var(--orange);height:4px;}
+.topbar{display:none;} /* V22: เอาเส้นส้มบนสุดของหน้าออก */
 .header{background:rgba(255,255,255,0.96);backdrop-filter:blur(8px);border-bottom:1px solid rgba(232,105,26,0.15);padding:8px 16px;display:flex;align-items:center;justify-content:center;gap:10px;position:sticky;top:0;z-index:100;}
 .header-title{font-size:20px;font-weight:700;color:var(--gray-800);display:flex;align-items:center;gap:8px;}
 .header-badge{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--orange-mid),var(--orange-dark));color:white;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 4px 12px -4px rgba(232,105,26,0.6);flex-shrink:0;}
@@ -410,8 +410,9 @@ details[open]>summary .chev{transform:rotate(45deg);}
 .m-decl{width:100%;border:none;border-top:1px dashed #EAE3DB;background:#fff;font-family:inherit;color:var(--ink);text-align:left;padding-left:18px;cursor:pointer;}
 .m-decl .m-label{font-weight:500;}
 .m-decl .t{text-decoration:underline;text-decoration-color:rgba(0,0,0,0.18);text-underline-offset:3px;}
-.decl-short .pre{color:var(--ink-soft);font-weight:500;font-size:0.9em;}
-.decl-short b{color:var(--ink);font-weight:700;letter-spacing:0.01em;}
+.m-decl .decl{color:var(--ink-soft);font-weight:500;}
+.m-decl .decl .d-short,.m-decl .decl.short .d-full{display:none;}
+.m-decl .decl.short .d-short{display:inline;}
 .m-total{background:var(--imp-total);color:var(--imp-total-text);font-weight:700;}
 .m-total .m-label{color:var(--imp-total-text);}
 .m-total .m-label small{background:rgba(255,255,255,0.6);}
@@ -830,7 +831,7 @@ details[open]>summary .chev{transform:rotate(45deg);}
       </button>
     </div>
     <div class="sum-title">
-      <div class="sum-title-main">งานพิธีการ</div>
+      <div class="sum-title-main">สินค้าเกษตร</div>
       <div class="sum-title-sub" id="sumRange">&nbsp;</div>
     </div>
     <div class="sum-actions">
@@ -2762,6 +2763,7 @@ function renderSummary(){
   }
   const groups=groupBy(st.records,r=>r.importer,IMPORTER_ORDER);
   body.innerHTML=groups.map(([name,recs])=>renderImporterCard(name,sortedRecs(recs))).join('')+renderGrand(st.records,groups.length);
+  fitDecls(body);
 }
 
 // สถานะยุบ/กางของวัน (V18 Q1/Q4) — แค่การดูบนจอ ไม่มีผลกับรูป (V19 Q6)
@@ -2769,19 +2771,29 @@ function renderSummary(){
 const sumDeskCollapsed=new Set();   // key วันที่ยุบในตารางคอม
 const sumMobileOpen=new Set();      // key ของ <details> ที่แตะกางไว้บนมือถือ
 function dayKey(name,day){return name+'|'+day;}
-// เลขใบขนบนมือถือ: หัว…ท้าย เช่น A016…09708 (V21 Q1)
+// เลขใบขนบนมือถือ: เต็มถ้าช่องพอ ไม่พอย่อเป็น A016…09708 (V22) — ตัวจางทั้งเลข
 function mobileDecl(no){
-  const p=String(no||'').split('-');
-  if(p.length<3) return `<span class="t">${esc(no||'-')}</span>`;
-  return `<span class="t decl-short"><span class="pre">${esc(p[0])}…</span><b>${esc(p[p.length-1])}</b></span>`;
+  const full=String(no||'-'), p=full.split('-');
+  const short=p.length>=3?`${p[0]}…${p[p.length-1]}`:full;
+  return `<span class="t decl" title="${esc(full)}"><span class="d-full">${esc(full)}</span><span class="d-short">${esc(short)}</span></span>`;
 }
+// วัดหลังแสดงผลจริง (แถวที่ยุบอยู่กว้าง 0 จึงวัดตอนกาง)
+function fitDecls(root){
+  (root||document).querySelectorAll('.m-decl .decl').forEach(el=>{
+    if(!el.clientWidth) return;
+    el.classList.remove('short');
+    if(el.scrollWidth>el.clientWidth+1) el.classList.add('short');
+  });
+}
+let fitDeclsTimer;
+window.addEventListener('resize',()=>{clearTimeout(fitDeclsTimer);fitDeclsTimer=setTimeout(()=>fitDecls(),150);});
 function toggleDeskDay(tbody){
   const k=tbody.dataset.key;
   if(sumDeskCollapsed.has(k)) sumDeskCollapsed.delete(k); else sumDeskCollapsed.add(k);
   tbody.classList.toggle('collapsed',sumDeskCollapsed.has(k));
 }
 function onMobileToggle(el){
-  if(el.open) sumMobileOpen.add(el.dataset.key); else sumMobileOpen.delete(el.dataset.key);
+  if(el.open){ sumMobileOpen.add(el.dataset.key); fitDecls(el); } else sumMobileOpen.delete(el.dataset.key);
 }
 
 function renderImporterCard(name,recs){
@@ -3211,7 +3223,7 @@ function drawSummaryCanvas(shift,groups,opts){
   if(header){
     whiteCard(M,y,W-2*M,TITLE_H);
     txt('รายงานสรุปน้ำหนักหอม – กระเทียม',W/2,y+50,`bold 38px ${FONT}`,ORANGE_DEEP,'center');
-    txt(`งานพิธีการ  ·  ${thaiDate(shift.startDate)} — ${thaiDate(shift.endDate)}`,W/2,y+94,`24px ${FONT}`,SOFT,'center');
+    txt(`สินค้าเกษตร  ·  ${thaiDate(shift.startDate)} — ${thaiDate(shift.endDate)}`,W/2,y+94,`24px ${FONT}`,SOFT,'center');
     y+=TITLE_H+GAP;
   }
 
@@ -3416,7 +3428,7 @@ async function exportSummaryExcel(){
   ws.columns=[{width:8},{width:12},{width:24},{width:18},{width:18},{width:16},{width:12}];
   ws.mergeCells('A1:G1'); ws.getCell('A1').value='รายงานสรุปน้ำหนักหอม – กระเทียม';
   ws.getCell('A1').font={bold:true,size:16,color:{argb:argb('#C9550E')}};
-  ws.mergeCells('A2:G2'); ws.getCell('A2').value=`งานพิธีการ · ${range}`;
+  ws.mergeCells('A2:G2'); ws.getCell('A2').value=`สินค้าเกษตร · ${range}`;
   ws.getCell('A2').font={size:12,color:{argb:argb('#8A857D')}};
   const head=ws.getRow(4);
   head.values=['ลำดับ','สินค้า','เลขที่ใบขนสินค้า','น้ำหนักสำแดง (KG)','น้ำหนักชั่งจริง (KG)','ผลต่าง (KG)','ร้อยละ'];
