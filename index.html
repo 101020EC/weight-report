@@ -329,7 +329,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
 .sum-title-main{font-size:1.55rem;font-weight:700;color:var(--orange-deep);line-height:1.15;letter-spacing:0.01em;}
 .sum-title-sub{font-size:0.9rem;color:var(--ink-soft);margin-top:2px;white-space:nowrap;}
 .sum-title-sub .d-short{display:none;}
-.sum-actions{display:flex;gap:8px;align-items:center;}
+.sum-actions,.sum-left{display:flex;gap:8px;align-items:center;}
 .sum-icon-btn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--orange-deep);
   display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-family:inherit;}
 .sum-icon-btn svg{width:22px;height:22px;}
@@ -407,9 +407,11 @@ details[open]>summary .chev{transform:rotate(45deg);}
 .m-body{background:var(--imp-alt);}
 .m-goods>summary{padding-left:22px;}
 .m-goods>summary .m-label{font-weight:600;}
-.m-decl{width:100%;border:none;border-top:1px dashed #EAE3DB;background:#fff;font-family:inherit;color:var(--ink);text-align:left;padding-left:36px;cursor:pointer;}
+.m-decl{width:100%;border:none;border-top:1px dashed #EAE3DB;background:#fff;font-family:inherit;color:var(--ink);text-align:left;padding-left:18px;cursor:pointer;}
 .m-decl .m-label{font-weight:500;}
-.m-decl .t{text-decoration:underline;text-decoration-color:rgba(0,0,0,0.2);text-underline-offset:2px;}
+.m-decl .t{text-decoration:underline;text-decoration-color:rgba(0,0,0,0.18);text-underline-offset:3px;}
+.decl-short .pre{color:var(--ink-soft);font-weight:500;font-size:0.9em;}
+.decl-short b{color:var(--ink);font-weight:700;letter-spacing:0.01em;}
 .m-total{background:var(--imp-total);color:var(--imp-total-text);font-weight:700;}
 .m-total .m-label{color:var(--imp-total-text);}
 .m-total .m-label small{background:rgba(255,255,255,0.6);}
@@ -431,6 +433,7 @@ details[open]>summary .chev{transform:rotate(45deg);}
 .g-diff .v{color:var(--ink);}
 .g-diff.pos .v,.g-diff.pos .g-pct{color:#B91C1C;}.g-diff.neg .v,.g-diff.neg .g-pct{color:#15803D;}
 .g-pct{font-size:1rem;font-weight:700;margin-left:8px;}
+.grand-head .g-mini,.grand-head .chev{display:none;}
 /* ตัวเลือกบันทึกรูป */
 .opt-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-weight:600;}
 .opt-switch{appearance:none;-webkit-appearance:none;width:46px;height:26px;border-radius:999px;background:#E5E0D8;position:relative;cursor:pointer;transition:background 0.15s;flex-shrink:0;}
@@ -489,7 +492,7 @@ details[open]>summary .chev{transform:rotate(45deg);}
   .sum-title-sub .d-full{display:none;}
   .sum-title-sub .d-short{display:inline;}
   .sum-topbar{gap:6px;padding:10px;}
-  .sum-actions{gap:6px;}
+  .sum-actions,.sum-left{gap:6px;}
   .sum-icon-btn{width:38px;height:38px;}
   .sum-icon-btn svg{width:20px;height:20px;}
   .imp-head{flex-wrap:nowrap;gap:8px;padding:10px 12px;}
@@ -503,6 +506,16 @@ details[open]>summary .chev{transform:rotate(45deg);}
   .g-stat:nth-child(odd){border-left:none;}
   .g-stat .v,.g-diff .v{font-size:1.25rem;}
   .g-diff{flex:1 1 100%;text-align:center;}
+  .grand-head{cursor:pointer;padding:14px 14px;gap:8px;font-size:1rem;white-space:nowrap;user-select:none;-webkit-user-select:none;}
+  .grand-head .sigma{width:30px;height:30px;flex-shrink:0;}
+  .grand-head .g-mini{display:inline;margin-left:auto;font-weight:700;font-size:0.98rem;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .grand-head .g-mini small{font-size:0.7rem;color:var(--ink-soft);}
+  .grand-head .g-mini b{font-size:0.82rem;}
+  .grand-head .chev{display:inline-block;flex-shrink:0;width:8px;height:8px;margin:0 2px 4px 6px;border-right:2px solid var(--orange-deep);border-bottom:2px solid var(--orange-deep);transform:rotate(45deg);transition:transform 0.15s;}
+  .grand-card.open .grand-head .chev{transform:translateY(3px) rotate(-135deg);}
+  .grand-card:not(.open) .grand-body{display:none;}
+  .grand-card.open .grand-head .g-mini{display:none;}
+  .grand-card.open .grand-head .chev{margin-left:auto;}
 }
 @media(min-width:768px){
   .save-area .btn{height:54px!important;min-width:210px;padding:12px 30px!important;font-size:1.12rem!important;border-radius:14px;}
@@ -808,22 +821,24 @@ details[open]>summary .chev{transform:rotate(45deg);}
 <div class="page" id="page-summary">
 <div class="main">
   <div class="sum-topbar">
-    <button type="button" class="sum-icon-btn" onclick="openHistoryModal()" title="ข้อมูลย้อนหลัง" aria-label="ข้อมูลย้อนหลัง">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
-    </button>
+    <div class="sum-left">
+      <button type="button" class="sum-icon-btn" onclick="openHistoryModal()" title="ข้อมูลย้อนหลัง" aria-label="ข้อมูลย้อนหลัง">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+      </button>
+      <button type="button" class="sum-icon-btn" onclick="openSaveImageModal()" title="บันทึกรูปสรุปรวมทั้งหมด" aria-label="บันทึกรูปสรุปรวมทั้งหมด">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </button>
+    </div>
     <div class="sum-title">
       <div class="sum-title-main">งานพิธีการ</div>
       <div class="sum-title-sub" id="sumRange">&nbsp;</div>
     </div>
     <div class="sum-actions">
-      <button type="button" class="sum-icon-btn primary" onclick="openRecordModal()" title="เพิ่มใบขนสินค้า (Manual)" aria-label="เพิ่มใบขนสินค้า">
+      <button type="button" class="sum-icon-btn" onclick="openRecordModal()" title="เพิ่มใบขนสินค้า (Manual)" aria-label="เพิ่มใบขนสินค้า">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
-      <button type="button" class="sum-icon-btn primary" onclick="openSaveImageModal()" title="บันทึกรูปสรุปรวมทั้งหมด" aria-label="บันทึกรูปสรุปรวมทั้งหมด">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-      </button>
       <div class="sum-menu-wrap">
-        <button type="button" class="sum-icon-btn primary" id="sumMenuBtn" onclick="toggleSumMenu(event)" aria-label="เมนู" aria-haspopup="true">
+        <button type="button" class="sum-icon-btn" id="sumMenuBtn" onclick="toggleSumMenu(event)" aria-label="เมนู" aria-haspopup="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
         </button>
         <div class="sum-menu" id="sumMenu" hidden>
@@ -2754,6 +2769,12 @@ function renderSummary(){
 const sumDeskCollapsed=new Set();   // key วันที่ยุบในตารางคอม
 const sumMobileOpen=new Set();      // key ของ <details> ที่แตะกางไว้บนมือถือ
 function dayKey(name,day){return name+'|'+day;}
+// เลขใบขนบนมือถือ: หัว…ท้าย เช่น A016…09708 (V21 Q1)
+function mobileDecl(no){
+  const p=String(no||'').split('-');
+  if(p.length<3) return `<span class="t">${esc(no||'-')}</span>`;
+  return `<span class="t decl-short"><span class="pre">${esc(p[0])}…</span><b>${esc(p[p.length-1])}</b></span>`;
+}
 function toggleDeskDay(tbody){
   const k=tbody.dataset.key;
   if(sumDeskCollapsed.has(k)) sumDeskCollapsed.delete(k); else sumDeskCollapsed.add(k);
@@ -2807,7 +2828,7 @@ function renderImporterCard(name,recs){
         return `<details class="m-goods" data-key="${esc(gk)}" ${sumMobileOpen.has(gk)?'open':''} ontoggle="onMobileToggle(this)">
           <summary class="m-grid m-row"><span class="m-label"><i class="chev"></i><span class="t">${esc(g)}</span><small>${grecs.length}</small></span>${nums(gt.decl,gt.net,gt.diff,gt.pct)}</summary>
           ${grecs.map(r=>`<button type="button" class="m-grid m-decl" onclick="openRecordModal('${esc(r.id)}')">
-            <span class="m-label"><span class="t">${esc(String(r.declarationNo||'').split('-').pop())}</span></span>${nums(r.declaredWeight,r.netWeight,r.diffWeight,pctOf(r.diffWeight,r.declaredWeight))}</button>`).join('')}
+            <span class="m-label">${mobileDecl(r.declarationNo)}</span>${nums(r.declaredWeight,r.netWeight,r.diffWeight,pctOf(r.diffWeight,r.declaredWeight))}</button>`).join('')}
         </details>`;
       }).join('');
       return `<details class="m-day" data-key="${esc(k)}" ${sumMobileOpen.has(k)?'open':''} ontoggle="onMobileToggle(this)">
@@ -2831,11 +2852,22 @@ function renderImporterCard(name,recs){
 }
 
 // การ์ดสรุปรวม: พื้นขาวเด่น ส้มเป็นแค่ accent (Q7)
+let sumGrandOpen=false;
+function toggleGrand(card){
+  if(!window.matchMedia('(max-width:767px)').matches) return;
+  sumGrandOpen=!sumGrandOpen;
+  card.classList.toggle('open',sumGrandOpen);
+}
 function renderGrand(recs,importerCount){
   const t=totals(recs);
   const stat=(l,v,u)=>`<div class="g-stat"><div class="l">${l}</div><div class="v">${v} <small>${u}</small></div></div>`;
-  return `<div class="grand-card">
-    <div class="grand-head"><span class="sigma">Σ</span><span>สรุปรวมทั้งหมด</span></div>
+  // มือถือเริ่มยุบ เห็นแค่ชื่อ + ผลต่างรวม แตะเพื่อกาง · คอมกางเสมอ (V21)
+  return `<div class="grand-card ${sumGrandOpen?'open':''}">
+    <div class="grand-head" onclick="toggleGrand(this.parentElement)">
+      <span class="sigma">Σ</span><span>สรุปรวมทั้งหมด</span>
+      <span class="g-mini ${diffCls(t.diff)}">${fmtDiff(t.diff)} <small>KG</small> <b>${fmtPct(t.pct)}</b></span>
+      <i class="chev"></i>
+    </div>
     <div class="grand-body">
       <div class="grand-stats">
         ${stat('ผู้นำเข้า',importerCount,'ราย')}${stat('ใบขนสินค้า',t.count,'ใบขน')}
@@ -3154,7 +3186,12 @@ function drawSummaryCanvas(shift,groups,opts){
   c.scale(SCALE,SCALE);
   c.fillStyle='#FFFFFF';c.fillRect(0,0,W,H);
   const rr=(x,y,w,h,r)=>{c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();};
-  const txt=(s,x,y,font,color,align='left')=>{c.font=font;c.fillStyle=color;c.textAlign=align;c.textBaseline='middle';c.fillText(s,x,y);};
+  // จัดกึ่งกลาง/ชิดขวาเองด้วย measureText — Safari บน iPhone วาด textAlign 'center' เป็นชิดซ้าย (V21)
+  const txt=(s,x,y,font,color,align='left')=>{
+    c.font=font;c.fillStyle=color;c.textAlign='left';c.textBaseline='middle';
+    const w=align==='left'?0:c.measureText(s).width;
+    c.fillText(s,align==='center'?x-w/2:align==='right'?x-w:x,y);
+  };
   const measure=(s,font)=>{c.font=font;return c.measureText(s).width;};
   const grad=(x,y,w,a,b)=>{const g=c.createLinearGradient(x,y,x+w,y);g.addColorStop(0,a);g.addColorStop(1,b);return g;};
   const cellX=i=>M+cols.slice(0,i).reduce((a,b)=>a+b,0);
