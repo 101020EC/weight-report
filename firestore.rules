@@ -1,0 +1,9 @@
+rules_version = '2';
+// ปิดทั้งหมด — อ่าน/เขียนผ่าน api/summary.js (firebase-admin) เท่านั้น
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

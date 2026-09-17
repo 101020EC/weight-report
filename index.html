@@ -316,13 +316,262 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
 }
 .nav-item.active .mi{transform:scale(1.05);}
 .page{display:none;}.page.active{display:block;}
+.send-summary{display:flex;align-items:center;gap:10px;align-self:stretch;justify-content:center;padding:10px 14px;border-radius:12px;
+  background:#FFF7F0;border:1px solid #F5D3B8;color:var(--orange-deep);font-weight:700;font-size:1rem;cursor:pointer;user-select:none;-webkit-user-select:none;}
+.send-summary input{width:22px;height:22px;accent-color:var(--orange);cursor:pointer;flex-shrink:0;}
+/* ── เมนูสรุปผล ───────────────────────────────────────────── */
+.sum-modal[hidden],.sum-menu[hidden]{display:none!important;}
+.sum-topbar{position:relative;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;margin-bottom:12px;
+  background:#fff;border:1px solid var(--line);border-radius:1rem;padding:14px 12px 10px;box-shadow:var(--shadow);}
+/* แถบส้มด้านบนแบบเดียวกับการ์ดสรุปรวม — ไม่ใช้ overflow:hidden เพราะจะตัดเมนู ☰ */
+.sum-topbar::before{content:'';position:absolute;left:0;right:0;top:0;height:4px;border-radius:calc(1rem - 1px) calc(1rem - 1px) 0 0;background-image:linear-gradient(90deg,var(--orange-mid),var(--orange-deep));}
+.sum-title{text-align:center;min-width:0;}
+.sum-title-main{font-size:1.55rem;font-weight:700;color:var(--orange-deep);line-height:1.15;letter-spacing:0.01em;}
+.sum-title-sub{font-size:0.9rem;color:var(--ink-soft);margin-top:2px;white-space:nowrap;}
+.sum-title-sub .d-short{display:none;}
+.sum-actions{display:flex;gap:8px;align-items:center;}
+.sum-icon-btn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--orange-deep);
+  display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-family:inherit;}
+.sum-icon-btn svg{width:22px;height:22px;}
+.sum-icon-btn:hover{border-color:var(--orange-mid);background:#FFF8F2;}
+.sum-icon-btn.primary{border:none;color:#fff;background-image:linear-gradient(135deg,var(--orange-mid),var(--orange-deep));box-shadow:var(--shadow-btn);}
+.sum-menu-wrap{position:relative;}
+.sum-menu{position:absolute;right:0;top:calc(100% + 8px);z-index:400;min-width:190px;background:#fff;border:1px solid var(--line);
+  border-radius:14px;box-shadow:0 18px 40px -12px rgba(80,40,10,0.28);padding:6px;}
+.sum-menu button{display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;border:none;background:none;border-radius:10px;
+  font-family:inherit;font-size:1rem;color:var(--ink);cursor:pointer;text-align:left;}
+.sum-menu button:hover{background:#FDF3EA;}
+.sum-menu button svg{width:18px;height:18px;color:var(--orange-deep);flex-shrink:0;}
+.sum-menu .danger,.sum-menu .danger svg{color:#B91C1C;}
+.sum-notice{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-radius:12px;padding:10px 14px;
+  margin-bottom:12px;font-size:0.95rem;background:#FFF7E6;border:1px solid #F7D9A0;color:#8A5A00;}
+.sum-notice.info{background:#EFF6FF;border-color:#BFDBFE;color:#1E40AF;}
+.sum-notice .btn{height:34px;padding:6px 14px;font-size:0.9rem;}
+.sum-empty{background:#fff;border:1px dashed #E2D8CC;border-radius:1rem;padding:36px 20px;text-align:center;color:var(--ink-soft);}
+.sum-empty b{display:block;color:var(--ink);font-size:1.1rem;margin-bottom:6px;}
+.sum-empty .btn{margin-top:14px;}
+.sum-loading{padding:40px;text-align:center;color:var(--ink-soft);}
+
+.imp-card{background:#fff;border-radius:1rem;overflow:hidden;margin-bottom:16px;border:1px solid var(--imp-border);box-shadow:var(--shadow);}
+.imp-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;color:#fff;
+  background-image:linear-gradient(135deg,var(--imp-dark),var(--imp));}
+.imp-name{font-size:1.35rem;font-weight:700;line-height:1.2;margin-right:auto;min-width:0;}
+.imp-name small{font-size:0.95rem;font-weight:500;opacity:0.9;margin-right:6px;}
+.imp-pill{background:#fff;color:var(--imp-dark);border-radius:999px;padding:4px 12px;font-size:0.88rem;font-weight:600;white-space:nowrap;}
+.imp-goods{font-size:0.9rem;opacity:0.95;white-space:nowrap;}
+.imp-head .sum-icon-btn{width:38px;height:38px;border:1px solid rgba(255,255,255,0.45);background:rgba(255,255,255,0.16);color:#fff;}
+.imp-head .sum-icon-btn:hover{background:rgba(255,255,255,0.28);}
+
+/* คอม: ตารางละเอียด แบ่งรายวัน */
+.imp-table-wrap{overflow-x:auto;}
+table.imp-table{width:100%;border-collapse:collapse;font-size:0.95rem;min-width:720px;}
+.imp-table thead th{background:var(--imp-dark);color:#fff;font-weight:600;padding:8px 6px;font-size:0.88rem;line-height:1.25;}
+.imp-table td{padding:8px;text-align:center;border-bottom:1px solid #F1ECE6;font-variant-numeric:tabular-nums;}
+.imp-table td.num{text-align:right;padding-right:16px;}
+.imp-table tr.rec{cursor:pointer;}
+.imp-table tr.rec:nth-child(odd){background:var(--imp-alt);}
+.imp-table tr.rec:hover{background:var(--imp-light);}
+.imp-table{table-layout:fixed;}
+.imp-table tr.day{cursor:pointer;user-select:none;-webkit-user-select:none;}
+.imp-table tr.day td{background:var(--imp-light);color:var(--imp-dark);font-weight:700;border-bottom:2px solid var(--imp-border);padding:10px 8px;}
+.imp-table tr.day:hover td{filter:brightness(0.97);}
+.imp-table tr.day td.pos,.imp-table tfoot td.pos{color:#B91C1C;}.imp-table tr.day td.neg,.imp-table tfoot td.neg{color:#15803D;}
+.imp-table td.day-label{text-align:left;padding-left:14px;font-size:1.12rem;}
+.imp-table td.day-label small{font-size:0.85rem;font-weight:500;margin-left:4px;}
+.imp-table .chev{display:inline-block;width:8px;height:8px;margin-right:10px;border-right:2.5px solid currentColor;border-bottom:2.5px solid currentColor;
+  transform:translateY(-3px) rotate(45deg);transition:transform 0.15s;}
+.imp-table tbody.collapsed .chev{transform:translateY(0) rotate(-45deg);}
+.imp-table tbody.collapsed tr.rec{display:none;}
+.imp-table tfoot td{background:var(--imp-total);color:var(--imp-total-text);font-weight:700;font-size:1.02rem;padding:11px 8px;}
+.decl-link{color:inherit;text-decoration:underline;text-decoration-color:rgba(0,0,0,0.2);text-underline-offset:3px;}
+.pos{color:#B91C1C;}.neg{color:#15803D;}
+
+/* มือถือ: วัน → สินค้า → เลขใบขน */
+.m-list{display:none;}
+.m-grid{display:grid;grid-template-columns:minmax(0,1fr) 58px 58px 58px 46px;column-gap:4px;align-items:center;
+  padding:9px 10px;font-size:0.8rem;font-variant-numeric:tabular-nums;}
+.m-grid .n{text-align:right;white-space:nowrap;}
+.m-head{padding-top:7px;padding-bottom:7px;background:var(--imp-dark);color:#fff;font-weight:600;font-size:0.72rem;}
+.m-head span{text-align:right;}
+.m-row{cursor:pointer;list-style:none;}
+.m-row::-webkit-details-marker{display:none;}
+.m-label{display:flex;align-items:center;gap:5px;min-width:0;font-weight:700;color:var(--ink);}
+.m-label .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.m-label small{flex-shrink:0;font-size:0.68rem;font-weight:600;color:var(--imp-dark);background:var(--imp-light);border-radius:999px;padding:0 6px;line-height:1.5;}
+.m-label .chev{flex-shrink:0;width:6px;height:6px;border-right:2px solid var(--imp);border-bottom:2px solid var(--imp);transform:rotate(-45deg);transition:transform 0.15s;}
+details[open]>summary .chev{transform:rotate(45deg);}
+.m-day{border-bottom:1px solid #F1ECE6;}
+.m-day>summary{background:#fff;}
+.m-day>summary .n{font-weight:600;}
+.m-day[open]>summary{background:var(--imp-light);}
+.m-body{background:var(--imp-alt);}
+.m-goods>summary{padding-left:22px;}
+.m-goods>summary .m-label{font-weight:600;}
+.m-decl{width:100%;border:none;border-top:1px dashed #EAE3DB;background:#fff;font-family:inherit;color:var(--ink);text-align:left;padding-left:36px;cursor:pointer;}
+.m-decl .m-label{font-weight:500;}
+.m-decl .t{text-decoration:underline;text-decoration-color:rgba(0,0,0,0.2);text-underline-offset:2px;}
+.m-total{background:var(--imp-total);color:var(--imp-total-text);font-weight:700;}
+.m-total .m-label{color:var(--imp-total-text);}
+.m-total .m-label small{background:rgba(255,255,255,0.6);}
+
+.grand-card{position:relative;background:#fff;border-radius:1rem;border:1px solid var(--line);box-shadow:var(--shadow);overflow:hidden;margin-top:4px;}
+.grand-card::before{content:'';position:absolute;left:0;right:0;top:0;height:4px;background-image:linear-gradient(90deg,var(--orange-mid),var(--orange-deep));}
+.grand-head{display:flex;align-items:center;gap:10px;padding:16px 18px 4px;font-weight:700;font-size:1.1rem;color:var(--ink);}
+.grand-head .sigma{width:34px;height:34px;border-radius:10px;background:var(--orange-light);color:var(--orange-deep);display:inline-flex;align-items:center;justify-content:center;font-size:1.15rem;font-weight:700;}
+.grand-body{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;padding:10px 18px 18px;}
+.grand-stats{flex:1 1 auto;display:flex;flex-wrap:wrap;align-items:stretch;justify-content:space-evenly;}
+.g-stat{flex:0 0 auto;padding:4px 20px;text-align:center;}
+.g-stat+.g-stat{border-left:1px solid var(--line);}
+.g-stat .l,.g-diff .l{font-size:0.8rem;color:var(--ink-soft);white-space:nowrap;}
+.g-stat .v,.g-diff .v{font-size:1.55rem;font-weight:700;color:var(--orange-deep);font-variant-numeric:tabular-nums;line-height:1.25;white-space:nowrap;}
+.g-stat .v small,.g-diff .v small{font-size:0.75rem;font-weight:600;color:var(--ink-soft);}
+.g-diff{flex:0 0 auto;border-radius:14px;padding:8px 20px;background:#F7F5F2;border:1px solid var(--line);}
+.g-diff.pos{background:#FEF2F2;border-color:#FECACA;}
+.g-diff.neg{background:#F0FDF4;border-color:#BBF7D0;}
+.g-diff .v{color:var(--ink);}
+.g-diff.pos .v,.g-diff.pos .g-pct{color:#B91C1C;}.g-diff.neg .v,.g-diff.neg .g-pct{color:#15803D;}
+.g-pct{font-size:1rem;font-weight:700;margin-left:8px;}
+/* ตัวเลือกบันทึกรูป */
+.opt-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-weight:600;}
+.opt-switch{appearance:none;-webkit-appearance:none;width:46px;height:26px;border-radius:999px;background:#E5E0D8;position:relative;cursor:pointer;transition:background 0.15s;flex-shrink:0;}
+.opt-switch::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.25);transition:transform 0.15s;}
+.opt-switch:checked{background:var(--orange);}
+.opt-switch:checked::after{transform:translateX(20px);}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+.seg label{cursor:pointer;}
+.seg input{position:absolute;opacity:0;pointer-events:none;}
+.seg span{display:block;padding:7px 14px;font-size:0.92rem;font-weight:600;color:var(--ink-soft);}
+.seg input:checked+span{background:var(--orange);color:#fff;}
+.seg input:focus-visible+span{outline:2px solid var(--orange-deep);}
+.opt-chips{display:flex;flex-wrap:wrap;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--line);}
+.opt-chip{cursor:pointer;}
+.opt-chip input{position:absolute;opacity:0;pointer-events:none;}
+.opt-chip span{display:inline-block;padding:6px 14px;border-radius:999px;border:1px solid var(--line);color:var(--ink-soft);font-weight:600;}
+.opt-chip input:checked+span{background:var(--imp);border-color:var(--imp);color:#fff;}
+.opt-chip input:focus-visible+span{outline:2px solid var(--imp-dark);}
+/* นำเข้ารายงานจากสรุปผล */
+.tm-list{max-height:46vh;overflow-y:auto;border:1px solid var(--line);border-radius:12px;}
+.tm-item{display:grid;grid-template-columns:auto auto 1fr auto;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer;}
+.tm-item:last-child{border-bottom:none;}
+.tm-item input{width:20px;height:20px;accent-color:var(--orange);}
+.tm-imp{font-size:0.8rem;font-weight:700;color:#fff;background:var(--imp);border-radius:999px;padding:2px 10px;}
+.tm-no{font-variant-numeric:tabular-nums;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.tm-goods{color:var(--ink-soft);font-size:0.88rem;}
+
+/* modal */
+.sum-modal{position:fixed;inset:0;z-index:9000;background:rgba(20,12,4,0.5);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  display:flex;align-items:center;justify-content:center;padding:16px;}
+.sum-modal-card{background:#fff;border-radius:18px;width:100%;max-width:420px;max-height:calc(100vh - 32px);overflow-y:auto;padding:22px;box-shadow:0 24px 60px -16px rgba(0,0,0,0.35);}
+.sum-modal-card h3{font-size:1.15rem;font-weight:700;margin-bottom:4px;text-align:center;}
+.sum-modal-card .sub{font-size:0.9rem;color:var(--ink-soft);text-align:center;margin-bottom:16px;}
+.sum-modal-card .form-group{margin-bottom:12px;}
+.sum-modal-card .row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;}
+.sum-modal-card .form-group input,.sum-modal-card .form-group select{width:100%;min-width:0;}
+.sum-modal-actions{display:flex;gap:10px;margin-top:16px;}
+.sum-modal-actions .btn{flex:1;}
+.sum-modal-err{color:#B91C1C;font-size:0.9rem;text-align:center;min-height:1.2em;margin-top:6px;}
+.pin-input{width:100%;text-align:center;font-size:2rem!important;letter-spacing:0.6em;padding:10px 0 10px 0.6em!important;height:auto!important;border:1px solid var(--line);border-radius:14px;font-family:inherit;}
+.pin-input:focus{outline:none;border-color:var(--orange-mid);box-shadow:0 0 0 3px rgba(232,105,26,0.16);}
+.hist-item{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;padding:12px 14px;margin-bottom:8px;border:1px solid var(--line);
+  border-radius:12px;background:#fff;font-family:inherit;font-size:0.98rem;color:var(--ink);cursor:pointer;text-align:left;}
+.hist-item:hover{border-color:var(--orange-mid);}
+.hist-item.active{border-color:var(--orange);background:#FFF7F0;}
+.hist-tag{font-size:0.78rem;border-radius:999px;padding:2px 9px;background:#F3F4F6;color:#4B5563;white-space:nowrap;}
+.hist-tag.now{background:#DCFCE7;color:#166534;}
+.danger-zone{margin-top:18px;padding-top:16px;border-top:1px dashed #F2C4C4;text-align:center;}
+.sum-section-title{font-size:0.9rem;font-weight:700;color:var(--orange);margin:14px 0 8px;}
+
+@media(max-width:767px){
+  .imp-table-wrap{display:none;}
+  .m-list{display:block;}
+  .sum-title-main{font-size:1.3rem;}
+  .sum-title-sub{font-size:0.82rem;}
+  .sum-title-sub .d-full{display:none;}
+  .sum-title-sub .d-short{display:inline;}
+  .sum-topbar{gap:6px;padding:10px;}
+  .sum-actions{gap:6px;}
+  .sum-icon-btn{width:38px;height:38px;}
+  .sum-icon-btn svg{width:20px;height:20px;}
+  .imp-head{flex-wrap:nowrap;gap:8px;padding:10px 12px;}
+  .imp-name{font-size:1.15rem;margin-right:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 auto;}
+  .imp-name small{display:none;}
+  .imp-pill{padding:3px 9px;font-size:0.8rem;}
+  .imp-goods{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:0.82rem;}
+  .imp-head .sum-icon-btn{width:34px;height:34px;flex-shrink:0;}
+  .grand-stats{display:grid;grid-template-columns:1fr 1fr;row-gap:10px;width:100%;}
+  .g-stat,.g-stat:first-child{padding:4px 8px;}
+  .g-stat:nth-child(odd){border-left:none;}
+  .g-stat .v,.g-diff .v{font-size:1.25rem;}
+  .g-diff{flex:1 1 100%;text-align:center;}
+}
+@media(min-width:768px){
+  .save-area .btn{height:54px!important;min-width:210px;padding:12px 30px!important;font-size:1.12rem!important;border-radius:14px;}
+  .save-area .btn .icon{width:22px!important;height:22px!important;}
+}
+/* ── HEADER มือถือ: มีเงาเป็นชั้น ขอบซ้ายตรงกับการ์ดด้านล่าง (.main padding) ── */
+.header{justify-content:flex-start;padding:10px 24px;border-bottom:1px solid rgba(232,105,26,0.22);box-shadow:0 6px 18px -8px rgba(140,70,10,0.22);}
+@media(max-width:640px){.header{padding:10px 10px;}}
+/* ── ข้อมูลทั่วไป: grid เดียว สลับ layout ด้วย areas ── */
+.general-grid{display:grid;grid-template-columns:minmax(0,1.95fr) minmax(0,1fr);column-gap:12px;row-gap:14px;align-items:start;
+  grid-template-areas:"decl decl" "date date" "imp imp" "goods origin" "weight period";}
+.g-decl{grid-area:decl;}.g-date{grid-area:date;}.g-imp{grid-area:imp;}.g-goods{grid-area:goods;}
+.g-origin{grid-area:origin;}.g-weight{grid-area:weight;}.g-period{grid-area:period;}
+.g-decl label{text-align:center;display:block;}
+@media(min-width:1024px){
+  /* คอม: แถว 1 เลขใบขน+วันที่ · แถว 2 ผู้นำเข้า+ประเภทสินค้า+ประเทศกำเนิด · แถว 3 น้ำหนัก+ชุดที่ */
+  .general-grid{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,0.75fr);column-gap:20px;row-gap:18px;
+    grid-template-areas:"decl date date" "imp goods origin" "weight period period";}
+  .g-decl label{text-align:left;}
+  .g-decl input{text-align:left!important;}
+}
+/* ── DESKTOP SIDEBAR (≥768px แบบ tb-pt) ── */
+.desktop-sidebar{display:none;}
+@media(min-width:768px){
+  .bottom-nav,.topbar,.header{display:none!important;}
+  body{padding-left:240px;}
+  .desktop-sidebar{display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;width:240px;z-index:300;
+    background:#fff;border-right:1px solid rgba(232,105,26,0.14);box-shadow:2px 0 16px rgba(180,90,20,0.04);}
+  .sidebar-brand{padding:24px 20px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #F5ECE3;}
+  .sidebar-logo{width:38px;height:38px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;
+    background:linear-gradient(135deg,#FA9056 0%,#E4662E 100%);box-shadow:0 4px 12px rgba(228,102,46,0.3);}
+  .sidebar-logo svg{width:22px;height:22px;}
+  .sidebar-title{font-size:1.1rem;font-weight:700;color:var(--ink);line-height:1.2;}
+  .sidebar-nav{flex:1;padding:18px 12px;display:flex;flex-direction:column;gap:6px;}
+  .sidebar-item{display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;border:none;border-radius:12px;background:transparent;
+    font-family:inherit;font-size:1rem;font-weight:600;color:#6E6359;text-align:left;cursor:pointer;transition:background 0.18s,color 0.18s;}
+  .sidebar-item .mi{width:22px;height:22px;flex-shrink:0;}
+  .sidebar-item:hover{background:#FDF3EA;color:var(--orange-dark);}
+  .sidebar-item.active{background:linear-gradient(135deg,#FA9056 0%,#E4662E 100%);color:#fff;font-weight:700;box-shadow:0 6px 16px -4px rgba(228,102,46,0.45);}
+  .main{max-width:1100px;padding:28px 32px 60px;}
+}
 </style>
 </head>
 <body>
+<aside class="desktop-sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><path d="M6.5 8a2 2 0 0 0-1.905 1.46L2.1 18.5A2 2 0 0 0 4 21h16a2 2 0 0 0 1.925-2.54L19.4 9.5A2 2 0 0 0 17.48 8Z"/></svg></div>
+    <div class="sidebar-title">ระบบอ่านใบชั่ง</div>
+  </div>
+  <nav class="sidebar-nav">
+    <button class="sidebar-item active" id="desk-menu-weight" onclick="switchPage('weight')">
+      <svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><path d="M6.5 8a2 2 0 0 0-1.905 1.46L2.1 18.5A2 2 0 0 0 4 21h16a2 2 0 0 0 1.925-2.54L19.4 9.5A2 2 0 0 0 17.48 8Z"/></svg>
+      <span>ชั่งน้ำหนัก</span>
+    </button>
+    <button class="sidebar-item" id="desk-menu-summary" onclick="switchPage('summary')">
+      <svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/></svg>
+      <span>สรุปผล</span>
+    </button>
+    <button class="sidebar-item" id="desk-menu-team" onclick="switchPage('team')">
+      <svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
+      <span>รายงาน</span>
+    </button>
+  </nav>
+</aside>
 <div class="topbar"></div>
 <div class="header">
   <span class="header-badge">
     <svg id="badge-weight" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><path d="M6.5 8a2 2 0 0 0-1.905 1.46L2.1 18.5A2 2 0 0 0 4 21h16a2 2 0 0 0 1.925-2.54L19.4 9.5A2 2 0 0 0 17.48 8Z"/></svg>
+    <svg id="badge-summary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/></svg>
     <svg id="badge-team" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
   </span>
   <div class="header-title" id="headerTitle">ชั่งน้ำหนัก</div>
@@ -333,6 +582,10 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
     <button class="nav-item active" id="menu-weight" onclick="switchPage('weight')">
       <svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><path d="M6.5 8a2 2 0 0 0-1.905 1.46L2.1 18.5A2 2 0 0 0 4 21h16a2 2 0 0 0 1.925-2.54L19.4 9.5A2 2 0 0 0 17.48 8Z"/></svg>
       <span>ชั่งน้ำหนัก</span>
+    </button>
+    <button class="nav-item" id="menu-summary" onclick="switchPage('summary')">
+      <svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/></svg>
+      <span>สรุปผล</span>
     </button>
     <button class="nav-item" id="menu-team" onclick="switchPage('team')">
       <svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
@@ -394,36 +647,33 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
       <div class="step-label">ข้อมูลทั่วไป</div>
     </div>
     <div class="step-body">
-      <!-- บรรทัด 1: เลขที่ใบขน — เต็มแถว กึ่งกลาง -->
-      <div class="form-group" style="margin-bottom:14px;">
-        <label style="text-align:center;display:block;">เลขที่ใบขนสินค้า <span class="req">*</span></label>
-        <input type="text" inputmode="numeric" pattern="[0-9]*" id="f_declaration" placeholder="A000-00000-00000" onfocus="onDeclarationFocus(this)" oninput="markChanged(this);fmtDeclaration(this, event)" onblur="onDeclarationBlur(this)" style="text-align:center;font-size:16px!important;" />
-      </div>
-      <!-- บรรทัด 2: วันที่ — 3 select (วัน/เดือน/ปี พ.ศ.) -->
-      <div class="form-group" style="margin-bottom:14px;">
-        <label>วันที่ <span class="req">*</span></label>
-        <div style="display:grid;grid-template-columns:0.85fr 1.4fr 1fr;gap:8px;">
-          <select id="f_date_d" onchange="syncDate()" onblur="resetZoom()" aria-label="วัน"></select>
-          <select id="f_date_m" onchange="syncDate()" onblur="resetZoom()" aria-label="เดือน"></select>
-          <select id="f_date_y" onchange="syncDate()" onblur="resetZoom()" aria-label="ปี พ.ศ."></select>
+      <!-- ลำดับบนมือถือ: เลขใบขน / วันที่ / ผู้นำเข้า / สินค้า+ประเทศ / น้ำหนัก+ชุดที่ — บนคอมจัดเป็น 3 แถวด้วย .general-grid -->
+      <div class="general-grid">
+        <div class="form-group g-decl">
+          <label>เลขที่ใบขนสินค้า <span class="req">*</span></label>
+          <input type="text" inputmode="numeric" pattern="[0-9]*" id="f_declaration" placeholder="A000-00000-00000" onfocus="onDeclarationFocus(this)" oninput="markChanged(this);fmtDeclaration(this, event)" onblur="onDeclarationBlur(this)" style="text-align:center;font-size:16px!important;" />
         </div>
-        <input type="hidden" id="f_date" />
-      </div>
-      <!-- บรรทัด 3: ผู้นำเข้า — chips -->
-      <div class="form-group" style="margin-bottom:14px;">
-        <label>ผู้นำเข้า <span class="req">*</span></label>
-        <div class="chip-row chip-group" id="importerChips">
-          <button type="button" class="chip" data-val="ดิเรก" data-color="c-blue" onclick="pickImporter(this)">ดิเรก</button>
-          <button type="button" class="chip" data-val="ติก๊ะ" data-color="c-green" onclick="pickImporter(this)">ติก๊ะ</button>
-          <button type="button" class="chip" data-val="ก๊ะลี" data-color="c-orange" onclick="pickImporter(this)">ก๊ะลี</button>
-          <button type="button" class="chip" data-val="__other__" data-color="c-pink" onclick="pickImporter(this)">อื่นๆ</button>
+        <div class="form-group g-date">
+          <label>วันที่ <span class="req">*</span></label>
+          <div style="display:grid;grid-template-columns:0.85fr 1.4fr 1fr;gap:8px;">
+            <select id="f_date_d" onchange="syncDate()" onblur="resetZoom()" aria-label="วัน"></select>
+            <select id="f_date_m" onchange="syncDate()" onblur="resetZoom()" aria-label="เดือน"></select>
+            <select id="f_date_y" onchange="syncDate()" onblur="resetZoom()" aria-label="ปี พ.ศ."></select>
+          </div>
+          <input type="hidden" id="f_date" />
         </div>
-        <input type="hidden" id="f_importer" />
-        <input type="text" id="f_importer_other" placeholder="ระบุผู้นำเข้า" oninput="markChanged(this);onImporterOtherInput(this)" onblur="resetZoom()" style="display:none;margin-top:8px;" />
-      </div>
-      <!-- บรรทัด 4: ประเภทสินค้า (chips) | ประเทศกำเนิด -->
-      <div class="form-grid" style="grid-template-columns:1.95fr 1fr;gap:12px;margin-bottom:14px;align-items:start;">
-        <div class="form-group">
+        <div class="form-group g-imp">
+          <label>ผู้นำเข้า <span class="req">*</span></label>
+          <div class="chip-row chip-group" id="importerChips">
+            <button type="button" class="chip" data-val="ดิเรก" data-color="c-blue" onclick="pickImporter(this)">ดิเรก</button>
+            <button type="button" class="chip" data-val="ติก๊ะ" data-color="c-green" onclick="pickImporter(this)">ติก๊ะ</button>
+            <button type="button" class="chip" data-val="ก๊ะลี" data-color="c-orange" onclick="pickImporter(this)">ก๊ะลี</button>
+            <button type="button" class="chip" data-val="__other__" data-color="c-pink" onclick="pickImporter(this)">อื่นๆ</button>
+          </div>
+          <input type="hidden" id="f_importer" />
+          <input type="text" id="f_importer_other" placeholder="ระบุผู้นำเข้า" oninput="markChanged(this);onImporterOtherInput(this)" onblur="resetZoom()" style="display:none;margin-top:8px;" />
+        </div>
+        <div class="form-group g-goods">
           <label>ประเภทสินค้า <span class="req">*</span></label>
           <div class="chip-row chip-group" id="goodsChips" style="flex-wrap:nowrap;gap:6px;">
             <button type="button" class="chip" data-val="หอม" data-color="c-orange" onclick="pickGoods(this)">หอม</button>
@@ -433,7 +683,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
           <input type="hidden" id="f_goods_type" />
           <input type="text" id="f_goods_other" placeholder="ระบุประเภทสินค้า" oninput="markChanged(this);onGoodsOtherInput(this)" onblur="resetZoom()" style="display:none;margin-top:8px;" />
         </div>
-        <div class="form-group">
+        <div class="form-group g-origin">
           <label>ประเทศกำเนิด <span class="req">*</span></label>
           <select id="f_origin_select" onchange="onOriginSelectChange(this);markChanged(this)" onblur="resetZoom()">
             <option value="">เลือก</option>
@@ -445,14 +695,11 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
           <input type="hidden" id="f_origin" />
           <input type="text" id="f_origin_other" placeholder="ระบุประเทศกำเนิด" oninput="markChanged(this);onOriginOtherInput(this)" onblur="resetZoom()" style="display:none;margin-top:8px;" />
         </div>
-      </div>
-      <!-- บรรทัด 5: น้ำหนักหน้าใบขน (ตัวเลข) | ชุดที่ -->
-      <div class="form-grid" style="grid-template-columns:1.95fr 1fr;gap:12px;">
-        <div class="form-group">
+        <div class="form-group g-weight">
           <label>น้ำหนักหน้าใบขน (KG) <span class="req">*</span></label>
           <input type="text" inputmode="numeric" id="f_declared_weight" placeholder="เช่น 15,000" oninput="fmtNumberWithComma(this);markChanged(this);calcSummary()" onblur="resetZoom()" style="font-size:16px!important;" />
         </div>
-        <div class="form-group">
+        <div class="form-group g-period">
           <label>ชุดที่</label>
           <input type="text" id="f_period" placeholder="เช่น ชุดที่ 1" oninput="markChanged(this)" onblur="resetZoom()" />
         </div>
@@ -538,6 +785,10 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
     </div>
     <div class="result-img-wrap">
       <img id="resultImg" src="" alt="รายงานน้ำหนัก" />
+      <label class="send-summary">
+        <input type="checkbox" id="chkSendSummary" checked />
+        <span>ส่งข้อมูลเข้าเมนูสรุปผล</span>
+      </label>
       <div class="save-area">
         <button class="btn btn-danger" id="btnClearWeight" onclick="clearAllData()" style="flex:1;padding:10px 24px;font-size:1rem;touch-action:manipulation;">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
@@ -552,6 +803,57 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
   </div>
 </div><!-- /main -->
 </div><!-- /page-weight -->
+
+<!-- PAGE: สรุปผล (ข้อมูลจาก Firestore ผ่าน /api/summary) -->
+<div class="page" id="page-summary">
+<div class="main">
+  <div class="sum-topbar">
+    <button type="button" class="sum-icon-btn" onclick="openHistoryModal()" title="ข้อมูลย้อนหลัง" aria-label="ข้อมูลย้อนหลัง">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+    </button>
+    <div class="sum-title">
+      <div class="sum-title-main">งานพิธีการ</div>
+      <div class="sum-title-sub" id="sumRange">&nbsp;</div>
+    </div>
+    <div class="sum-actions">
+      <button type="button" class="sum-icon-btn primary" onclick="openRecordModal()" title="เพิ่มใบขนสินค้า (Manual)" aria-label="เพิ่มใบขนสินค้า">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <button type="button" class="sum-icon-btn primary" onclick="openSaveImageModal()" title="บันทึกรูปสรุปรวมทั้งหมด" aria-label="บันทึกรูปสรุปรวมทั้งหมด">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </button>
+      <div class="sum-menu-wrap">
+        <button type="button" class="sum-icon-btn primary" id="sumMenuBtn" onclick="toggleSumMenu(event)" aria-label="เมนู" aria-haspopup="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+        </button>
+        <div class="sum-menu" id="sumMenu" hidden>
+          <button type="button" onclick="closeSumMenu();openShiftEditModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>แก้ไข
+          </button>
+          <button type="button" onclick="closeSumMenu();openNewShiftModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4"/></svg>ตั้งเวรใหม่
+          </button>
+          <button type="button" onclick="closeSumMenu();exportSummaryExcel()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg>ส่งออก Excel
+          </button>
+          <button type="button" class="danger" onclick="closeSumMenu();openDeleteShiftConfirm()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>ลบข้อมูลทั้งเวร
+          </button>
+          <button type="button" onclick="closeSumMenu();logoutSummary()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>ออกจากระบบ
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="sumNotices"></div>
+  <div id="sumBody"><div class="sum-loading">กำลังโหลด...</div></div>
+</div>
+</div><!-- /page-summary -->
+
+<div class="sum-modal" id="sumModal" hidden onclick="if(event.target===this)closeSumModal()">
+  <div class="sum-modal-card" id="sumModalCard" role="dialog" aria-modal="true"></div>
+</div>
 
 <!-- PAGE: รายงานตรวจทีม -->
 <div class="page" id="page-team">
@@ -578,6 +880,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
             อ่านข้อมูลด้วย Gemini
           </button>
+          <button class="btn btn-secondary" id="teamManualOpenBtn" onclick="openTeamManual()" title="นำเข้าใบขนจากเมนูสรุปผล">Manual</button>
           <button class="btn btn-secondary" id="teamClearBtn" onclick="clearTeamFiles()" style="display:none;padding:10px 14px;">✕ ล้างรูป</button>
         </div>
         <div id="teamLoadingArea" style="display:none;margin-top:14px;">
@@ -651,6 +954,7 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
 
 <script>
 let uploadedFiles=[], rowIdx=0, lastFilename='weight_report.png';
+let lastSummaryRecord=null;
 const STEP1_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
 
 // ── THEME ─────────────────────────────────────────────────
@@ -1069,6 +1373,12 @@ function rebuildDayOptions(preferDay){
   for(let dd=1;dd<=max;dd++)dSel.add(new Option(dd,dd));
   dSel.value=Math.min(keep,max);
 }
+function getFormDateIso(){
+  const y=+document.getElementById('f_date_y').value-543;
+  const m=+document.getElementById('f_date_m').value;
+  const d=+document.getElementById('f_date_d').value;
+  return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
 function syncDate(){
   rebuildDayOptions();
   const d=+document.getElementById('f_date_d').value;
@@ -1345,6 +1655,13 @@ function doGenerateImage(){
   });
   const diff=tN-decl, pct=decl>0?((diff/decl)*100).toFixed(2):0;
 
+  // ข้อมูลที่จะส่งเข้าเมนูสรุปผลตอนกดบันทึกรูป — วันที่เป็น ISO เสมอ (ห้ามใช้ f_date ที่เป็นข้อความไทย)
+  lastSummaryRecord={
+    importer:im, goodsType:gt, origin:og, declarationNo:dn, period:pd,
+    dateIso:getFormDateIso(), declaredWeight:decl, netWeight:tN,
+    vehicles:vrows.map(r=>({plate:r.plate,empty:r.empty,gross:r.gross,net:r.net}))
+  };
+
   // ── Canvas 1200px ───────────────────────────────────────
   const W=1200, M=48, rowH=56;
   const infoH= og ? 168 : 140;
@@ -1565,7 +1882,22 @@ function doGenerateImage(){
 async function saveImage(){
   const img=document.getElementById('resultImg').src;
   if(!img||img===''){showToast('ยังไม่มีรูปรายงาน','error');return;}
+  // ส่งก่อนเปิด share sheet — กดยกเลิกบันทึกรูปแล้วข้อมูลก็ยังเข้า (ส่งซ้ำ = อัปเดตรายการเดิม)
+  if(document.getElementById('chkSendSummary')?.checked && lastSummaryRecord) submitToSummary(lastSummaryRecord);
+  await saveDataUrl(img,lastFilename);
+}
 
+async function submitToSummary(rec){
+  try{
+    const o=await sumApi('submit',rec);
+    showToast(o.shiftId?'ส่งเข้าเมนูสรุปผลแล้ว ✓':'ส่งแล้ว — รอเข้าเวรใหม่ ✓','success');
+  }catch(e){
+    showToast('ส่งเข้าสรุปผลไม่สำเร็จ: '+e.message,'error');
+  }
+}
+
+// บันทึกรูป: iPhone ใช้ share sheet, Android/คอมดาวน์โหลด
+async function saveDataUrl(img,filename,type='image/png'){
   const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
 
   if(isIOS){
@@ -1573,7 +1905,7 @@ async function saveImage(){
       // แปลง dataURL → Blob → File
       const res=await fetch(img);
       const blob=await res.blob();
-      const file=new File([blob], lastFilename, {type:'image/png'});
+      const file=new File([blob], filename, {type});
 
       // Web Share API with files — iOS จะขึ้น Share Sheet
       // ผู้ใช้กด "Save Image" ได้เลย ไม่ต้องกดค้าง
@@ -1601,8 +1933,8 @@ async function saveImage(){
 
   // Android / Desktop
   const a=document.createElement('a');
-  a.href=img; a.download=lastFilename; a.click();
-  showToast('บันทึกรูปแล้ว ✓','success');
+  a.href=img; a.download=filename; a.click();
+  showToast(type==='image/png'?'บันทึกรูปแล้ว ✓':'บันทึกไฟล์แล้ว ✓','success');
 }
 
 function showSaveInstructions(img){
@@ -1664,6 +1996,8 @@ function clearAllData(){
   if(document.getElementById('card-summary-section')) document.getElementById('card-summary-section').style.display='none';
   if(document.getElementById('tableActionRow')) document.getElementById('tableActionRow').style.display='flex';
   document.getElementById('card-result').style.display='none';
+  lastSummaryRecord=null;
+  const chk=document.getElementById('chkSendSummary'); if(chk) chk.checked=true;
   // reset step indicator
   document.getElementById('num-1').className='step-num';
   document.getElementById('num-1').innerHTML=STEP1_ICON;
@@ -1703,15 +2037,20 @@ function scrollBelowHeader(el){
 
 // ── NAV ───────────────────────────────────────────────────
 function switchPage(page){
+  // เมนูสรุปผลต้องมี token (จำ 15 วัน) — ไม่มีก็ขอ PIN ก่อน แล้วค่อยสลับหน้า
+  if(page==='summary' && !sumToken()){ openPinModal(); return; }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+  document.querySelectorAll('.nav-item,.sidebar-item').forEach(i=>i.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   document.getElementById('menu-'+page).classList.add('active');
-  const titles={weight:'ชั่งน้ำหนัก',team:'รายงาน'};
+  document.getElementById('desk-menu-'+page).classList.add('active');
+  const titles={weight:'ชั่งน้ำหนัก',summary:'สรุปผล',team:'รายงาน'};
   document.getElementById('headerTitle').textContent=titles[page]||'';
   // สลับไอคอนบน badge ของ header ตามหน้าที่เลือก
   document.getElementById('badge-weight').style.display=(page==='weight')?'':'none';
   document.getElementById('badge-team').style.display=(page==='team')?'':'none';
+  document.getElementById('badge-summary').style.display=(page==='summary')?'':'none';
+  if(page==='summary') loadSummary();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -2283,6 +2622,837 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeSlipModal();
 });
 </script>
+<script>
+// ══ เมนูสรุปผล ══════════════════════════════════════════════
+// ข้อมูลทั้งหมดอยู่ Firestore เข้าถึงผ่าน /api/summary เท่านั้น (GRILL_PLAN_V17.md)
+// localStorage เก็บแค่ token ที่ server ลงชื่อไว้ — แก้ค่าเองก็เข้าไม่ได้ เพราะ server ตรวจทุกครั้ง
+
+const SUM_TOKEN_KEY='weight_summary_token';
+const IMPORTER_ORDER=['ดิเรก','ติก๊ะ','ก๊ะลี'];
+const GOODS_ORDER=['หอม','กระเทียม'];
+let sumState=null;          // ผลล่าสุดจาก action load
+let sumViewShiftId=null;    // null = เวรล่าสุด
+let sumLoadSeq=0;
+
+function sumToken(){
+  try{
+    const t=JSON.parse(localStorage.getItem(SUM_TOKEN_KEY)||'null');
+    if(t && t.token && t.expiresAt>Date.now()) return t.token;
+  }catch(e){}
+  return null;
+}
+function clearSumToken(){ try{localStorage.removeItem(SUM_TOKEN_KEY);}catch(e){} }
+
+async function sumApi(action,data={}){
+  const token=sumToken();
+  let res,body={};
+  try{
+    res=await fetch('/api/summary',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},
+      body:JSON.stringify({action,...data})
+    });
+  }catch(e){ throw new Error('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'); }
+  try{ body=await res.json(); }catch(e){}
+  if(!res.ok){
+    if(body.auth){ clearSumToken(); openPinModal(); }
+    const err=new Error(body.error||('เกิดข้อผิดพลาด ('+res.status+')'));
+    err.auth=!!body.auth;
+    throw err;
+  }
+  return body;
+}
+
+// ── helpers ────────────────────────────────────────────────
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function fmtKg(n){return (Number(n)||0).toLocaleString('en-US',{maximumFractionDigits:2});}
+function fmtDiff(n){n=Number(n)||0;return (n>0?'+':'')+fmtKg(n);}
+function pctOf(diff,decl){return decl>0?(diff/decl*100):0;}
+function fmtPct(p){return (p>0?'+':'')+p.toFixed(2)+'%';}
+function diffCls(n){return n>0?'pos':n<0?'neg':'';}
+function thaiDate(iso){
+  const m=String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m?`${+m[3]} ${THAI_MONTHS_FULL[+m[2]-1]} ${+m[1]+543}`:'-';
+}
+const THAI_MONTHS_SHORT=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function thaiDateShort(iso){
+  const m=String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m?`${+m[3]} ${THAI_MONTHS_SHORT[+m[2]-1]} ${String(+m[1]+543).slice(-2)}`:'-';
+}
+function addDaysIso(iso,n){const d=new Date(iso+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
+function localTodayIso(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function shortDecl(no){const p=String(no||'').split('-');return p.length>=3?p.slice(-2).join('-'):String(no||'-');}
+function totals(recs){
+  const t={count:recs.length,decl:0,net:0,diff:0};
+  recs.forEach(r=>{t.decl+=+r.declaredWeight||0;t.net+=+r.netWeight||0;t.diff+=+r.diffWeight||0;});
+  t.pct=pctOf(t.diff,t.decl);
+  return t;
+}
+function groupBy(recs,keyFn,order=[]){
+  const map=new Map();
+  recs.forEach(r=>{const k=keyFn(r);if(!map.has(k))map.set(k,[]);map.get(k).push(r);});
+  const rank=k=>{const i=order.indexOf(k);return i<0?order.length:i;};
+  return [...map.entries()].sort((a,b)=>rank(a[0])-rank(b[0])||String(a[0]).localeCompare(String(b[0]),'th'));
+}
+function sortedRecs(recs){return [...recs].sort((a,b)=>a.dateIso.localeCompare(b.dateIso)||(a.createdAt||0)-(b.createdAt||0));}
+function impStyle(name){
+  const T=getTheme(name);
+  return `--imp:${T.primary};--imp-dark:${T.dark};--imp-light:${T.light};--imp-border:${T.border};--imp-alt:${T.rowAlt};--imp-total:${T.totalBg};--imp-total-text:${T.totalTxt};`;
+}
+function viewedShift(){return sumState&&sumState.shift;}
+function isLatestShift(){return sumState&&sumState.shift&&sumState.shifts[0]&&sumState.shift.id===sumState.shifts[0].id;}
+
+// ── load + render ──────────────────────────────────────────
+async function loadSummary(shiftId){
+  if(shiftId!==undefined) sumViewShiftId=shiftId;
+  const seq=++sumLoadSeq;
+  if(!sumState) document.getElementById('sumBody').innerHTML='<div class="sum-loading">กำลังโหลด...</div>';
+  try{
+    const data=await sumApi('load',{shiftId:sumViewShiftId});
+    if(seq!==sumLoadSeq) return;
+    sumState=data;
+    renderSummary();
+  }catch(e){
+    if(seq!==sumLoadSeq||e.auth) return;
+    document.getElementById('sumBody').innerHTML=`<div class="sum-empty"><b>โหลดข้อมูลไม่สำเร็จ</b>${esc(e.message)}<br><button class="btn btn-secondary" onclick="loadSummary()">ลองใหม่</button></div>`;
+  }
+}
+
+function renderSummary(){
+  const st=sumState, shift=st.shift;
+  // มือถือใช้วันที่แบบย่อ ไม่ให้ช่วงวันที่ตกบรรทัด
+  document.getElementById('sumRange').innerHTML=shift
+    ?`<span class="d-full">${thaiDate(shift.startDate)} — ${thaiDate(shift.endDate)}</span><span class="d-short">${thaiDateShort(shift.startDate)} — ${thaiDateShort(shift.endDate)}</span>`
+    :'ยังไม่มีเวรทำงาน';
+
+  const notices=[];
+  if(shift && !isLatestShift()){
+    notices.push(`<div class="sum-notice info"><span>กำลังดูข้อมูลย้อนหลัง</span><button class="btn btn-secondary" onclick="loadSummary(null)">กลับเวรล่าสุด</button></div>`);
+  }else if(shift && st.today>shift.endDate){
+    notices.push(`<div class="sum-notice"><span>เวรนี้สิ้นสุดแล้ว ใบขนที่ส่งหลังจากนี้จะรอเข้าเวรใหม่</span><button class="btn btn-primary" onclick="openNewShiftModal()">ตั้งเวรใหม่</button></div>`);
+  }
+  if(st.pendingCount>0 && shift){
+    notices.push(`<div class="sum-notice"><span>มีใบขน ${st.pendingCount} ใบรอเข้าเวรใหม่</span></div>`);
+  }
+  document.getElementById('sumNotices').innerHTML=notices.join('');
+
+  const body=document.getElementById('sumBody');
+  if(!shift){
+    body.innerHTML=`<div class="sum-empty"><b>ยังไม่มีเวรทำงาน</b>${st.pendingCount>0?`มีใบขน ${st.pendingCount} ใบรออยู่ จะเข้าเวรแรกที่ตั้ง`:'ตั้งเวรเพื่อเริ่มสรุปผล'}<br><button class="btn btn-primary" onclick="openNewShiftModal()">ตั้งเวรใหม่</button></div>`;
+    return;
+  }
+  if(!st.records.length){
+    body.innerHTML=`<div class="sum-empty"><b>ยังไม่มีข้อมูลในเวรนี้</b>ชั่งน้ำหนักแล้วติ๊ก "ส่งข้อมูลเข้าเมนูสรุปผล" ก่อนกดบันทึกรูป</div>`;
+    return;
+  }
+  const groups=groupBy(st.records,r=>r.importer,IMPORTER_ORDER);
+  body.innerHTML=groups.map(([name,recs])=>renderImporterCard(name,sortedRecs(recs))).join('')+renderGrand(st.records,groups.length);
+}
+
+// สถานะยุบ/กางของวัน (V18 Q1/Q4) — แค่การดูบนจอ ไม่มีผลกับรูป (V19 Q6)
+// ไม่จำข้ามการโหลดหน้า: คอมเริ่มกาง, มือถือเริ่มยุบ
+const sumDeskCollapsed=new Set();   // key วันที่ยุบในตารางคอม
+const sumMobileOpen=new Set();      // key ของ <details> ที่แตะกางไว้บนมือถือ
+function dayKey(name,day){return name+'|'+day;}
+function toggleDeskDay(tbody){
+  const k=tbody.dataset.key;
+  if(sumDeskCollapsed.has(k)) sumDeskCollapsed.delete(k); else sumDeskCollapsed.add(k);
+  tbody.classList.toggle('collapsed',sumDeskCollapsed.has(k));
+}
+function onMobileToggle(el){
+  if(el.open) sumMobileOpen.add(el.dataset.key); else sumMobileOpen.delete(el.dataset.key);
+}
+
+function renderImporterCard(name,recs){
+  const t=totals(recs);
+  const goods=groupBy(recs,r=>r.goodsType,GOODS_ORDER).map(g=>g[0]).join(' / ');
+  const days=groupBy(recs,r=>r.dateIso).sort((a,b)=>a[0].localeCompare(b[0]));
+
+  // คอม: แถววันที่ = ช่องลำดับ+สินค้า+เลขที่รวมกัน + ยอดรวมวันในคอลัมน์ตัวเลข (Q2/Q6)
+  let n=0;
+  const bodies=days.map(([day,drecs])=>{
+    const dt=totals(drecs), k=dayKey(name,day);
+    const recRows=drecs.map(r=>{
+      const p=pctOf(r.diffWeight,r.declaredWeight);
+      return `<tr class="rec" onclick="openRecordModal('${esc(r.id)}')">
+        <td>${++n}</td><td>${esc(r.goodsType)}</td>
+        <td><span class="decl-link">${esc(r.declarationNo)}</span>${r.period?` <small style="color:var(--ink-soft)">(${esc(r.period)})</small>`:''}</td>
+        <td class="num">${fmtKg(r.declaredWeight)}</td><td class="num">${fmtKg(r.netWeight)}</td>
+        <td class="num ${diffCls(r.diffWeight)}">${fmtDiff(r.diffWeight)}</td><td class="num ${diffCls(r.diffWeight)}">${fmtPct(p)}</td></tr>`;
+    }).join('');
+    return `<tbody class="day-group ${sumDeskCollapsed.has(k)?'collapsed':''}" data-key="${esc(k)}">
+      <tr class="day" onclick="toggleDeskDay(this.parentElement)" title="กดเพื่อยุบ/กาง">
+        <td colspan="3" class="day-label"><span class="chev"></span>${thaiDate(day)} <small>· ${drecs.length} ใบขน</small></td>
+        <td class="num">${fmtKg(dt.decl)}</td><td class="num">${fmtKg(dt.net)}</td>
+        <td class="num ${diffCls(dt.diff)}">${fmtDiff(dt.diff)}</td><td class="num ${diffCls(dt.diff)}">${fmtPct(dt.pct)}</td>
+      </tr>${recRows}</tbody>`;
+  }).join('');
+  const table=`<div class="imp-table-wrap"><table class="imp-table">
+    <colgroup><col style="width:7%"><col style="width:11%"><col style="width:22%"><col style="width:15%"><col style="width:15%"><col style="width:15%"><col style="width:15%"></colgroup>
+    <thead><tr><th>ลำดับ</th><th>สินค้า</th><th>เลขที่ใบขนสินค้า</th><th>น้ำหนักสำแดง (KG)</th><th>น้ำหนักชั่งจริง (KG)</th><th>ผลต่าง (KG)</th><th>ร้อยละ</th></tr></thead>
+    ${bodies}
+    <tfoot><tr><td colspan="2">รวม ${esc(name)}</td><td>${t.count} ใบขน</td><td class="num">${fmtKg(t.decl)}</td><td class="num">${fmtKg(t.net)}</td>
+      <td class="num ${diffCls(t.diff)}">${fmtDiff(t.diff)}</td><td class="num ${diffCls(t.diff)}">${fmtPct(t.pct)}</td></tr></tfoot>
+  </table></div>`;
+
+  // มือถือ: ตารางย่อ 4 คอลัมน์ วัน → สินค้า → ใบขน (V20 Q2) — เริ่มยุบ
+  const nums=(decl,net,diff,pct)=>`<span class="n">${fmtKg(decl)}</span><span class="n">${fmtKg(net)}</span>
+    <span class="n ${diffCls(diff)}">${fmtDiff(diff)}</span><span class="n ${diffCls(diff)}">${(pct>0?'+':'')+pct.toFixed(2)}</span>`;
+  const mobile=`<div class="m-list">
+    <div class="m-grid m-head"><span></span><span>สำแดง</span><span>ชั่งจริง</span><span>ผลต่าง</span><span>%</span></div>
+    ${days.map(([day,drecs])=>{
+      const dt=totals(drecs), k=dayKey(name,day);
+      const goodsHtml=groupBy(drecs,r=>r.goodsType,GOODS_ORDER).map(([g,grecs])=>{
+        const gt=totals(grecs), gk=k+'|'+g;
+        return `<details class="m-goods" data-key="${esc(gk)}" ${sumMobileOpen.has(gk)?'open':''} ontoggle="onMobileToggle(this)">
+          <summary class="m-grid m-row"><span class="m-label"><i class="chev"></i><span class="t">${esc(g)}</span><small>${grecs.length}</small></span>${nums(gt.decl,gt.net,gt.diff,gt.pct)}</summary>
+          ${grecs.map(r=>`<button type="button" class="m-grid m-decl" onclick="openRecordModal('${esc(r.id)}')">
+            <span class="m-label"><span class="t">${esc(String(r.declarationNo||'').split('-').pop())}</span></span>${nums(r.declaredWeight,r.netWeight,r.diffWeight,pctOf(r.diffWeight,r.declaredWeight))}</button>`).join('')}
+        </details>`;
+      }).join('');
+      return `<details class="m-day" data-key="${esc(k)}" ${sumMobileOpen.has(k)?'open':''} ontoggle="onMobileToggle(this)">
+        <summary class="m-grid m-row"><span class="m-label"><i class="chev"></i><span class="t">${thaiDateShort(day)}</span><small>${drecs.length}</small></span>${nums(dt.decl,dt.net,dt.diff,dt.pct)}</summary>
+        <div class="m-body">${goodsHtml}</div></details>`;
+    }).join('')}
+    <div class="m-grid m-total"><span class="m-label"><span class="t">รวม</span><small>${t.count} ใบขน</small></span>${nums(t.decl,t.net,t.diff,t.pct)}</div>
+  </div>`;
+
+  return `<section class="imp-card" style="${impStyle(name)}">
+    <div class="imp-head">
+      <div class="imp-name"><small>ผู้นำเข้า :</small>${esc(name)}</div>
+      <span class="imp-pill">${t.count} ใบขน</span>
+      <span class="imp-goods">${esc(goods)}</span>
+      <button type="button" class="sum-icon-btn" data-importer="${esc(name)}" onclick="openSaveImageModal(this.dataset.importer)" title="บันทึกรูป ${esc(name)}" aria-label="บันทึกรูป ${esc(name)}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </button>
+    </div>
+    ${table}${mobile}
+  </section>`;
+}
+
+// การ์ดสรุปรวม: พื้นขาวเด่น ส้มเป็นแค่ accent (Q7)
+function renderGrand(recs,importerCount){
+  const t=totals(recs);
+  const stat=(l,v,u)=>`<div class="g-stat"><div class="l">${l}</div><div class="v">${v} <small>${u}</small></div></div>`;
+  return `<div class="grand-card">
+    <div class="grand-head"><span class="sigma">Σ</span><span>สรุปรวมทั้งหมด</span></div>
+    <div class="grand-body">
+      <div class="grand-stats">
+        ${stat('ผู้นำเข้า',importerCount,'ราย')}${stat('ใบขนสินค้า',t.count,'ใบขน')}
+        ${stat('น้ำหนักสำแดงรวม',fmtKg(t.decl),'KG')}${stat('น้ำหนักชั่งจริงรวม',fmtKg(t.net),'KG')}
+      </div>
+      <div class="g-diff ${diffCls(t.diff)}">
+        <div class="l">ผลต่างรวม</div>
+        <div class="v">${fmtDiff(t.diff)} <small>KG</small><span class="g-pct">${fmtPct(t.pct)}</span></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── menu ☰ ─────────────────────────────────────────────────
+function toggleSumMenu(e){e.stopPropagation();const m=document.getElementById('sumMenu');m.hidden=!m.hidden;}
+function closeSumMenu(){document.getElementById('sumMenu').hidden=true;}
+document.addEventListener('click',e=>{if(!e.target.closest('.sum-menu-wrap'))closeSumMenu();});
+
+// ── modal shell ────────────────────────────────────────────
+function openSumModal(html,focusSel){
+  document.getElementById('sumModalCard').innerHTML=html;
+  document.getElementById('sumModal').hidden=false;
+  if(focusSel) setTimeout(()=>document.querySelector('#sumModalCard '+focusSel)?.focus(),50);
+}
+function closeSumModal(){document.getElementById('sumModal').hidden=true;document.getElementById('sumModalCard').innerHTML='';}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!document.getElementById('sumModal').hidden)closeSumModal();});
+function modalErr(msg){const el=document.getElementById('sumModalErr');if(el)el.textContent=msg||'';}
+async function modalBusy(btn,fn){
+  if(btn.disabled) return;
+  btn.disabled=true;modalErr('');
+  try{await fn();}catch(e){if(!e.auth)modalErr(e.message);}finally{btn.disabled=false;}
+}
+
+// ── PIN ────────────────────────────────────────────────────
+let pinAfterLogin=null;
+function openPinModal(after){
+  pinAfterLogin=typeof after==='function'?after:null;
+  openSumModal(`<h3>เข้าเมนูสรุปผล</h3><div class="sub">กรอกรหัส 4 หลัก (จำไว้ 15 วัน)</div>
+    <input class="pin-input" id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
+      oninput="this.value=this.value.replace(/\\D/g,'');if(this.value.length===4)submitPin()" onkeydown="if(event.key==='Enter')submitPin()">
+    <div class="sum-modal-err" id="sumModalErr"></div>
+    <div class="sum-modal-actions"><button class="btn btn-secondary" onclick="closeSumModal()">ยกเลิก</button>
+      <button class="btn btn-primary" id="pinBtn" onclick="submitPin()">เข้าสู่ระบบ</button></div>`,'#pinInput');
+}
+async function submitPin(){
+  const inp=document.getElementById('pinInput'), btn=document.getElementById('pinBtn');
+  if(!inp||inp.value.length!==4){modalErr('กรุณากรอกรหัสให้ครบ 4 หลัก');return;}
+  await modalBusy(btn,async()=>{
+    try{
+      const o=await sumApi('login',{pin:inp.value});
+      try{localStorage.setItem(SUM_TOKEN_KEY,JSON.stringify(o));}catch(e){}
+      closeSumModal();
+      showToast('เข้าสู่ระบบแล้ว ✓','success');
+      const after=pinAfterLogin; pinAfterLogin=null;
+      if(after) after();
+      else if(document.getElementById('page-summary').classList.contains('active')) loadSummary();
+      else switchPage('summary');
+    }catch(e){ inp.value=''; inp.focus(); throw e; }
+  });
+}
+function logoutSummary(){
+  clearSumToken(); sumState=null; sumViewShiftId=null;
+  switchPage('weight');
+  showToast('ออกจากระบบสรุปผลแล้ว','success');
+}
+
+// ── history ────────────────────────────────────────────────
+function openHistoryModal(){
+  if(!sumState) return;
+  const st=sumState;
+  const items=st.shifts.map((s,i)=>{
+    const tag=i===0&&st.today<=s.endDate?'<span class="hist-tag now">เวรปัจจุบัน</span>':i===0?'<span class="hist-tag">สิ้นสุดแล้ว</span>':'';
+    return `<button class="hist-item ${st.shift&&st.shift.id===s.id?'active':''}" onclick="closeSumModal();loadSummary(${i===0?'null':`'${esc(s.id)}'`})">
+      <span>${shiftRangeText(s.startDate,s.endDate)}</span>${tag}</button>`;
+  }).join('');
+  openSumModal(`<h3>ข้อมูลย้อนหลัง</h3><div class="sub">เลือกเวรที่ต้องการดู</div>
+    ${items||'<div class="sum-empty">ยังไม่มีเวร</div>'}
+    <div class="sum-modal-actions"><button class="btn btn-secondary" onclick="closeSumModal()">ปิด</button></div>`);
+}
+
+// ── shift: new / edit / delete ─────────────────────────────
+// ช่วงเวร 1–7 วัน (V19 Q5)
+const SHIFT_MAX_DAYS=7;
+function shiftRangeText(start,end){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(start||'')||!/^\d{4}-\d{2}-\d{2}$/.test(end||'')) return '-';
+  const days=Math.round((new Date(end+'T00:00:00Z')-new Date(start+'T00:00:00Z'))/86400000)+1;
+  return `${thaiDate(start)} — ${thaiDate(end)} · ${days} วัน`;
+}
+function shiftRangeFields(start,end){
+  return `<div class="row2">
+      <div class="form-group"><label>วันเริ่มเวร</label><input type="date" id="shiftStart" value="${start}" oninput="onShiftStartInput()"></div>
+      <div class="form-group"><label>วันสิ้นสุด</label><input type="date" id="shiftEnd" value="${end}" min="${start}" max="${addDaysIso(start,SHIFT_MAX_DAYS-1)}" oninput="onShiftEndInput()"></div>
+    </div>
+    <div class="sub" id="shiftRange" style="margin-bottom:6px;">${shiftRangeText(start,end)}</div>`;
+}
+// เลื่อนวันเริ่มแล้วดึงวันสิ้นสุดให้อยู่ในช่วง 1–7 วันเสมอ
+function onShiftStartInput(){
+  const s=document.getElementById('shiftStart').value, e=document.getElementById('shiftEnd');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return;
+  const max=addDaysIso(s,SHIFT_MAX_DAYS-1);
+  e.min=s; e.max=max;
+  if(!e.value||e.value<s||e.value>max) e.value=max;
+  onShiftEndInput();
+}
+function onShiftEndInput(){
+  document.getElementById('shiftRange').textContent=shiftRangeText(document.getElementById('shiftStart').value,document.getElementById('shiftEnd').value);
+}
+function shiftRangeValue(){
+  const startDate=document.getElementById('shiftStart').value, endDate=document.getElementById('shiftEnd').value;
+  if(!startDate||!endDate) throw new Error('กรุณาเลือกวันเริ่มและวันสิ้นสุด');
+  if(endDate<startDate) throw new Error('วันสิ้นสุดต้องไม่ก่อนวันเริ่มเวร');
+  if(endDate>addDaysIso(startDate,SHIFT_MAX_DAYS-1)) throw new Error(`เวรยาวได้ไม่เกิน ${SHIFT_MAX_DAYS} วัน`);
+  return {startDate,endDate};
+}
+
+function openNewShiftModal(){
+  const today=(sumState&&sumState.today)||localTodayIso();
+  const pending=sumState?sumState.pendingCount:0;
+  openSumModal(`<h3>ตั้งเวรใหม่</h3><div class="sub">เลือกช่วงวันที่ได้ 1–7 วัน</div>
+    ${shiftRangeFields(today,addDaysIso(today,SHIFT_MAX_DAYS-1))}
+    ${pending>0?`<div class="sum-notice info" style="margin:0;"><span>ใบขน ${pending} ใบที่รออยู่จะเข้าเวรนี้</span></div>`:''}
+    <div class="sum-modal-err" id="sumModalErr"></div>
+    <div class="sum-modal-actions"><button class="btn btn-secondary" onclick="closeSumModal()">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="submitNewShift(this)">ตั้งเวร</button></div>`);
+}
+function submitNewShift(btn){
+  return modalBusy(btn,async()=>{
+    const o=await sumApi('createShift',shiftRangeValue());
+    closeSumModal();
+    showToast(o.attached?`ตั้งเวรแล้ว — ย้ายใบขนที่รอ ${o.attached} ใบเข้าเวร ✓`:'ตั้งเวรใหม่แล้ว ✓','success');
+    await loadSummary(null);
+  });
+}
+
+function openShiftEditModal(){
+  const s=viewedShift();
+  if(!s){openNewShiftModal();return;}
+  const importers=groupBy(sumState.records,r=>r.importer,IMPORTER_ORDER).map(g=>g[0]);
+  openSumModal(`<h3>แก้ไขเวรทำงาน</h3><div class="sub">เลือกช่วงวันที่ได้ 1–7 วัน</div>
+    ${shiftRangeFields(s.startDate,s.endDate)}
+    <button class="btn btn-primary" style="width:100%;" onclick="submitShiftEdit(this)">บันทึกช่วงวันที่</button>
+    ${importers.length?`<div class="sum-section-title">แก้ไขชื่อผู้นำเข้า (ทุกใบขนในเวรนี้)</div>
+    <div class="row2"><div class="form-group"><select id="renameFrom">${importers.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')}</select></div>
+      <div class="form-group"><input type="text" id="renameTo" placeholder="ชื่อใหม่" maxlength="80"></div></div>
+    <button class="btn btn-secondary" style="width:100%;margin-top:8px;" onclick="submitRename(this)">เปลี่ยนชื่อ</button>`:''}
+    <div class="sum-modal-err" id="sumModalErr"></div>
+    <div class="sum-modal-actions"><button class="btn btn-secondary" onclick="closeSumModal()">ปิด</button></div>`);
+}
+function submitShiftEdit(btn){
+  return modalBusy(btn,async()=>{
+    await sumApi('updateShift',{id:viewedShift().id,...shiftRangeValue()});
+    closeSumModal(); showToast('บันทึกช่วงวันที่เวรแล้ว ✓','success'); await loadSummary();
+  });
+}
+function submitRename(btn){
+  const from=document.getElementById('renameFrom').value, to=document.getElementById('renameTo').value.trim();
+  if(!to){modalErr('กรุณาระบุชื่อใหม่');return;}
+  return modalBusy(btn,async()=>{
+    const o=await sumApi('renameImporter',{shiftId:viewedShift().id,from,to});
+    closeSumModal(); showToast(`เปลี่ยนชื่อแล้ว ${o.renamed} ใบขน ✓`,'success'); await loadSummary();
+  });
+}
+function openDeleteShiftConfirm(){
+  const s=viewedShift();
+  if(!s){showToast('ยังไม่มีเวรให้ลบ','error');return;}
+  const count=sumState.records.length;
+  openSumModal(`<h3 style="color:#B91C1C;">ลบข้อมูลทั้งเวร</h3>
+    <div class="sub">${shiftRangeText(s.startDate,s.endDate)}<br>ใบขน ${count} ใบในเวรนี้จะถูกลบถาวร<br><b>กรอกรหัส 4 หลักเพื่อยืนยัน</b></div>
+    <input class="pin-input" id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
+      oninput="this.value=this.value.replace(/\\D/g,'')" onkeydown="if(event.key==='Enter')document.getElementById('delShiftBtn').click()">
+    <div class="sum-modal-err" id="sumModalErr"></div>
+    <div class="sum-modal-actions"><button class="btn btn-secondary" onclick="closeSumModal()">ยกเลิก</button>
+      <button class="btn btn-danger" id="delShiftBtn" onclick="submitDeleteShift(this)">ยืนยันลบ</button></div>`,'#pinInput');
+}
+function submitDeleteShift(btn){
+  const pin=document.getElementById('pinInput').value;
+  if(pin.length!==4){modalErr('กรุณากรอกรหัสให้ครบ 4 หลัก');return;}
+  return modalBusy(btn,async()=>{
+    try{
+      const o=await sumApi('deleteShift',{id:viewedShift().id,pin});
+      closeSumModal(); showToast(`ลบเวรแล้ว (${o.deletedRecords} ใบขน)`,'success'); await loadSummary(null);
+    }catch(e){ document.getElementById('pinInput').value=''; throw e; }
+  });
+}
+
+// ── record add / edit / delete ─────────────────────────────
+// ปุ่มเลือกแบบเดียวกับหน้าชั่ง (V20) — ค่าที่ไม่อยู่ในปุ่ม = "อื่นๆ" + ช่องพิมพ์
+const REC_IMPORTER_CHIPS=[['ดิเรก','c-blue'],['ติก๊ะ','c-green'],['ก๊ะลี','c-orange']];
+const REC_GOODS_CHIPS=[['หอม','c-orange'],['กระเทียม','c-orange']];
+function recChipGroup(label,idAttr,chips,value,placeholder){
+  const isOther=!!value&&!chips.some(([v])=>v===value);
+  const chip=(val,color,text)=>{
+    const on=val==='__other__'?isOther:val===value;
+    return `<button type="button" class="chip ${on?'active '+color:''}" data-val="${esc(val)}" data-color="${color}" onclick="pickRecChip(this)">${esc(text)}</button>`;
+  };
+  return `<div class="form-group"><label>${label}</label>
+    <div class="chip-row" id="${idAttr}Chips">${chips.map(([v,c])=>chip(v,c,v)).join('')}${chip('__other__','c-pink','อื่นๆ')}</div>
+    <input type="text" id="${idAttr}Other" maxlength="80" placeholder="${placeholder}" value="${isOther?esc(value):''}" ${isOther?'':'hidden'} style="margin-top:8px;"></div>`;
+}
+function pickRecChip(btn){
+  const row=btn.parentElement;
+  row.querySelectorAll('.chip').forEach(c=>c.classList.remove('active','c-blue','c-green','c-orange','c-pink'));
+  btn.classList.add('active',btn.dataset.color);
+  const other=document.getElementById(row.id.replace(/Chips$/,'Other'));
+  other.hidden=btn.dataset.val!=='__other__';
+  if(!other.hidden) other.focus();
+}
+function recChipValue(idAttr){
+  const on=document.querySelector(`#${idAttr}Chips .chip.active`);
+  if(!on) return '';
+  return on.dataset.val==='__other__'?document.getElementById(idAttr+'Other').value.trim():on.dataset.val;
+}
+// id ว่าง = เพิ่มใบขน Manual เข้าเวรที่กำลังดู (V19 Q3/Q4)
+function openRecordModal(id){
+  const isNew=!id;
+  const shift=viewedShift();
+  if(isNew&&!shift){showToast('ตั้งเวรก่อนเพิ่มใบขน','error');openNewShiftModal();return;}
+  const r=isNew
+    ?{importer:'',goodsType:'',origin:'จีน',declarationNo:'',period:'',
+      dateIso:(sumState.today>=shift.startDate&&sumState.today<=shift.endDate)?sumState.today:shift.startDate,declaredWeight:'',netWeight:''}
+    :sumState&&sumState.records.find(x=>x.id===id);
+  if(!r) return;
+  const field=(label,idAttr,value,type='text',extra='')=>`<div class="form-group"><label>${label}</label><input type="${type}" id="${idAttr}" value="${esc(value)}" ${extra}></div>`;
+  openSumModal(`<h3>${isNew?'เพิ่มใบขนสินค้า':'แก้ไขรายการใบขน'}</h3>
+    <div class="sub">${isNew?`เข้าเวร ${shiftRangeText(shift.startDate,shift.endDate)}`:esc(r.declarationNo)}</div>
+    ${recChipGroup('ผู้นำเข้า','recImporter',REC_IMPORTER_CHIPS,r.importer,'ระบุผู้นำเข้า')}
+    ${recChipGroup('ประเภทสินค้า','recGoods',REC_GOODS_CHIPS,r.goodsType,'ระบุประเภทสินค้า')}
+    ${field('ประเทศกำเนิด','recOrigin',r.origin,'text','maxlength="80"')}
+    <div class="row2" style="grid-template-columns:minmax(0,2fr) minmax(0,1fr);">${field('เลขที่ใบขนสินค้า','recDecl',r.declarationNo,'text','maxlength="40" placeholder="A000-00000-00000"')}${field('ชุดที่','recPeriod',r.period,'text','maxlength="40"')}</div>
+    ${field('วันที่','recDate',r.dateIso,'date')}
+    <div class="row2">${field('น้ำหนักสำแดง (KG)','recDeclW',r.declaredWeight===''?'':fmtKg(r.declaredWeight),'text','inputmode="numeric" oninput="fmtNumberWithComma(this)"')}${field('น้ำหนักชั่งจริง (KG)','recNetW',r.netWeight===''?'':fmtKg(r.netWeight),'text','inputmode="numeric" oninput="fmtNumberWithComma(this)"')}</div>
+    <div class="sum-modal-err" id="sumModalErr"></div>
+    <div class="sum-modal-actions"><button class="btn btn-secondary" onclick="closeSumModal()">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="submitRecordEdit(this,'${isNew?'':esc(r.id)}')">${isNew?'เพิ่มใบขน':'บันทึก'}</button></div>
+    ${isNew?'':`<div class="danger-zone"><button class="btn btn-danger" style="padding:10px 20px;" onclick="submitRecordDelete(this,'${esc(r.id)}')">ลบรายการนี้</button></div>`}`,
+    null);
+}
+function submitRecordEdit(btn,id){
+  const v=i=>document.getElementById(i).value;
+  const data={importer:recChipValue('recImporter'),goodsType:recChipValue('recGoods'),origin:v('recOrigin'),declarationNo:v('recDecl'),
+    period:v('recPeriod'),dateIso:v('recDate'),declaredWeight:v('recDeclW'),netWeight:v('recNetW')};
+  return modalBusy(btn,async()=>{
+    if(id) await sumApi('updateRecord',{id,...data});
+    else await sumApi('createRecord',{shiftId:viewedShift().id,...data});
+    closeSumModal(); showToast(id?'บันทึกการแก้ไขแล้ว ✓':'เพิ่มใบขนแล้ว ✓','success'); await loadSummary();
+  });
+}
+function submitRecordDelete(btn,id){
+  if(!confirm('ลบรายการใบขนนี้ใช่ไหม?')) return;
+  return modalBusy(btn,async()=>{
+    await sumApi('deleteRecord',{id});
+    closeSumModal(); showToast('ลบรายการแล้ว','success'); await loadSummary();
+  });
+}
+
+// ── บันทึกรูปสรุปผล: ถามตัวเลือกก่อน (V19 Q6) ───────────────────
+function openSaveImageModal(onlyImporter){
+  const st=sumState;
+  if(!st||!st.shift||!st.records.length){showToast('ยังไม่มีข้อมูลให้บันทึก','error');return;}
+  const names=groupBy(st.records,r=>r.importer,IMPORTER_ORDER).map(g=>g[0]);
+  const toggle=(idAttr,label,checked)=>`<label class="opt-row"><span>${label}</span><input type="checkbox" class="opt-switch" id="${idAttr}" ${checked?'checked':''}></label>`;
+  openSumModal(`<h3>บันทึกรูป${onlyImporter?` ${esc(onlyImporter)}`:'สรุปผล'}</h3>
+    <div class="sub">${shiftRangeText(st.shift.startDate,st.shift.endDate)}</div>
+    ${toggle('imgHeader','หัวรายงาน',!onlyImporter)}
+    <div class="opt-row"><span>รูปแบบ</span>
+      <div class="seg" role="radiogroup">
+        <label><input type="radio" name="imgMode" value="expanded" checked><span>ขยาย</span></label>
+        <label><input type="radio" name="imgMode" value="daily"><span>แค่รายวัน</span></label>
+      </div></div>
+    ${onlyImporter?`<input type="hidden" id="imgOnly" value="${esc(onlyImporter)}">`:`
+    <div class="sum-section-title">ผู้นำเข้า</div>
+    <div class="opt-chips">${names.map(n=>`<label class="opt-chip" style="${impStyle(n)}"><input type="checkbox" class="imgImporter" value="${esc(n)}" checked><span>${esc(n)}</span></label>`).join('')}</div>
+    ${toggle('imgGrand','สรุปรวมทั้งหมด',true)}`}
+    <div class="sum-modal-err" id="sumModalErr"></div>
+    <div class="sum-modal-actions"><button class="btn btn-secondary" onclick="closeSumModal()">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="submitSaveImage()">บันทึกรูป</button></div>`);
+}
+function submitSaveImage(){
+  const st=sumState;
+  const only=document.getElementById('imgOnly')?.value;
+  const importers=only?[only]:[...document.querySelectorAll('#sumModalCard .imgImporter:checked')].map(i=>i.value);
+  if(!importers.length){modalErr('เลือกผู้นำเข้าอย่างน้อย 1 ราย');return;}
+  const opts={
+    header:document.getElementById('imgHeader').checked,
+    expanded:document.querySelector('#sumModalCard input[name=imgMode]:checked').value==='expanded',
+    grand:!only&&document.getElementById('imgGrand').checked,
+  };
+  const groups=groupBy(st.records.filter(r=>importers.includes(r.importer)),r=>r.importer,IMPORTER_ORDER).map(([n,rs])=>[n,sortedRecs(rs)]);
+  const img=drawSummaryCanvas(st.shift,groups,opts);
+  closeSumModal();
+  const allCount=new Set(st.records.map(r=>r.importer)).size;
+  const who=(only||(importers.length===allCount?'รวมทุกผู้นำเข้า':importers.join('_'))).replace(/\s+/g,'_');
+  saveDataUrl(img,`summary_${who}_${st.shift.startDate}.png`);
+}
+
+// opts: { header, expanded, grand } — ขยาย/หดใช้เหมือนกันทุกผู้นำเข้า (V19 Q6)
+function drawSummaryCanvas(shift,groups,opts){
+  const {header=true,expanded=true,grand=false}=opts||{};
+  const SCALE=2; // วาดละเอียด 2 เท่าให้รูปคมชัด
+  const W=1200,M=40,FONT="'IBM Plex Sans Thai',Sarabun,sans-serif";
+  const TITLE_H=124,BANNER_H=62,HEAD_H=44,DAY_H=48,ROW_H=42,TOT_H=50,GAP=22,GRAND_H=196;
+  const cols=[80,130,240,170,170,160,170]; // รวม 1120 = W-2M
+  const ORANGE_DEEP='#C9550E',INK='#2B2A28',SOFT='#8A857D',LINE='#ECE6DF';
+  const daysOf=recs=>groupBy(recs,r=>r.dateIso).sort((a,b)=>a[0].localeCompare(b[0]));
+  const blockHeight=recs=>BANNER_H+HEAD_H+TOT_H+daysOf(recs)
+    .reduce((h,[,drecs])=>h+DAY_H+(expanded?drecs.length*ROW_H:0),0);
+
+  let H=M;
+  if(header) H+=TITLE_H+GAP;
+  groups.forEach(([,recs])=>{H+=blockHeight(recs)+GAP;});
+  if(grand) H+=GRAND_H+GAP;
+  H+=M-GAP;
+
+  const cv=document.createElement('canvas');cv.width=W*SCALE;cv.height=H*SCALE;
+  const c=cv.getContext('2d');
+  c.scale(SCALE,SCALE);
+  c.fillStyle='#FFFFFF';c.fillRect(0,0,W,H);
+  const rr=(x,y,w,h,r)=>{c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();};
+  const txt=(s,x,y,font,color,align='left')=>{c.font=font;c.fillStyle=color;c.textAlign=align;c.textBaseline='middle';c.fillText(s,x,y);};
+  const measure=(s,font)=>{c.font=font;return c.measureText(s).width;};
+  const grad=(x,y,w,a,b)=>{const g=c.createLinearGradient(x,y,x+w,y);g.addColorStop(0,a);g.addColorStop(1,b);return g;};
+  const cellX=i=>M+cols.slice(0,i).reduce((a,b)=>a+b,0);
+  const cellText=(i,s,y,font,color,align)=>{
+    const x=align==='right'?cellX(i)+cols[i]-16:align==='left'?cellX(i)+14:cellX(i)+cols[i]/2;
+    txt(s,x,y,font,color,align||'center');
+  };
+  const whiteCard=(x,y,w,h)=>{
+    c.save();c.shadowColor='rgba(140,70,10,0.10)';c.shadowBlur=18;c.shadowOffsetY=6;
+    rr(x,y,w,h,18);c.fillStyle='#FFFFFF';c.fill();c.restore();
+    rr(x,y,w,h,18);c.strokeStyle=LINE;c.lineWidth=1.5;c.stroke();
+    c.save();rr(x,y,w,h,18);c.clip();c.fillStyle=grad(x,y,w,'#F5A623',ORANGE_DEEP);c.fillRect(x,y,w,6);c.restore();
+  };
+  const dc=n=>n>0?'#B91C1C':n<0?'#15803D':'#374151';
+
+  let y=M;
+  if(header){
+    whiteCard(M,y,W-2*M,TITLE_H);
+    txt('รายงานสรุปน้ำหนักหอม – กระเทียม',W/2,y+50,`bold 38px ${FONT}`,ORANGE_DEEP,'center');
+    txt(`งานพิธีการ  ·  ${thaiDate(shift.startDate)} — ${thaiDate(shift.endDate)}`,W/2,y+94,`24px ${FONT}`,SOFT,'center');
+    y+=TITLE_H+GAP;
+  }
+
+  groups.forEach(([name,recs])=>{
+    const T=getTheme(name), t=totals(recs), top=y, blockH=blockHeight(recs);
+    rr(M,top,W-2*M,blockH,16);c.fillStyle='#FFFFFF';c.fill();c.strokeStyle=T.border;c.lineWidth=2;c.stroke();
+    c.save();rr(M,top,W-2*M,blockH,16);c.clip();
+
+    c.fillStyle=grad(M,y,W-2*M,T.dark,T.primary);c.fillRect(M,y,W-2*M,BANNER_H);
+    txt(`ผู้นำเข้า : ${name}`,M+22,y+BANNER_H/2,`bold 30px ${FONT}`,'#FFFFFF');
+    const goods=groupBy(recs,r=>r.goodsType,GOODS_ORDER).map(g=>g[0]).join(' / ');
+    const pill=`${t.count} ใบขน · ${goods}`, pw=measure(pill,`bold 22px ${FONT}`)+36;
+    rr(W-M-22-pw,y+13,pw,36,18);c.fillStyle='#FFFFFF';c.fill();
+    txt(pill,W-M-22-pw/2,y+31,`bold 22px ${FONT}`,T.dark,'center');
+    y+=BANNER_H;
+
+    c.fillStyle=T.dark;c.fillRect(M,y,W-2*M,HEAD_H);
+    ['ลำดับ','สินค้า','เลขที่ใบขนสินค้า','น้ำหนักสำแดง (KG)','น้ำหนักชั่งจริง (KG)','ผลต่าง (KG)','ร้อยละ']
+      .forEach((h,i)=>cellText(i,h,y+HEAD_H/2,`bold 17px ${FONT}`,'#FFFFFF'));
+    y+=HEAD_H;
+
+    let n=0;
+    daysOf(recs).forEach(([day,drecs])=>{
+      const dt=totals(drecs), mid=y+DAY_H/2, F=`bold 21px ${FONT}`;
+      c.fillStyle=T.light;c.fillRect(M,y,W-2*M,DAY_H);
+      c.fillStyle=T.border;c.fillRect(M,y+DAY_H-2,W-2*M,2);
+      txt(thaiDate(day),M+18,mid,`bold 24px ${FONT}`,T.dark);
+      txt(`· ${drecs.length} ใบขน`,M+18+measure(thaiDate(day),`bold 24px ${FONT}`)+10,mid,`19px ${FONT}`,T.dark);
+      cellText(3,fmtKg(dt.decl),mid,F,T.dark,'right');
+      cellText(4,fmtKg(dt.net),mid,F,T.dark,'right');
+      cellText(5,fmtDiff(dt.diff),mid,F,dc(dt.diff),'right');
+      cellText(6,fmtPct(dt.pct),mid,F,dc(dt.diff),'right');
+      y+=DAY_H;
+      if(!expanded) return;
+      drecs.forEach((r,i)=>{
+        if(i%2===1){c.fillStyle=T.rowAlt;c.fillRect(M,y,W-2*M,ROW_H);}
+        const p=pctOf(r.diffWeight,r.declaredWeight), RF=`20px ${FONT}`, rm=y+ROW_H/2;
+        cellText(0,String(++n),rm,RF,'#222');
+        cellText(1,r.goodsType,rm,RF,'#222');
+        cellText(2,r.declarationNo,rm,RF,'#222');
+        cellText(3,fmtKg(r.declaredWeight),rm,RF,'#222','right');
+        cellText(4,fmtKg(r.netWeight),rm,RF,'#222','right');
+        cellText(5,fmtDiff(r.diffWeight),rm,`bold 20px ${FONT}`,dc(r.diffWeight),'right');
+        cellText(6,fmtPct(p),rm,RF,dc(r.diffWeight),'right');
+        c.fillStyle='#EFEAE4';c.fillRect(M,y+ROW_H-1,W-2*M,1);
+        y+=ROW_H;
+      });
+    });
+
+    c.fillStyle=T.totalBg;c.fillRect(M,y,W-2*M,TOT_H);
+    const F=`bold 23px ${FONT}`, tm=y+TOT_H/2;
+    txt(`รวม ${name}`,cellX(0)+(cols[0]+cols[1])/2,tm,F,T.totalTxt,'center');
+    cellText(2,`${t.count} ใบขน`,tm,F,T.totalTxt);
+    cellText(3,fmtKg(t.decl),tm,F,T.totalTxt,'right');
+    cellText(4,fmtKg(t.net),tm,F,T.totalTxt,'right');
+    cellText(5,fmtDiff(t.diff),tm,F,dc(t.diff),'right');
+    cellText(6,fmtPct(t.pct),tm,F,dc(t.diff),'right');
+    y+=TOT_H;
+    c.restore();
+    y+=GAP;
+  });
+
+  if(grand){
+    const all=groups.flatMap(g=>g[1]), t=totals(all), gx=M, gw=W-2*M;
+    whiteCard(gx,y,gw,GRAND_H);
+    rr(gx+22,y+24,44,44,12);c.fillStyle='#FDF0E6';c.fill();
+    txt('Σ',gx+44,y+47,`bold 26px ${FONT}`,ORANGE_DEEP,'center');
+    txt('สรุปรวมทั้งหมด',gx+80,y+47,`bold 28px ${FONT}`,INK);
+    // ช่องกว้างตามเนื้อหา ตัวเลขสีส้ม (V19) กระจายเต็มแถว + % หลัง KG (V20)
+    const LF=`19px ${FONT}`, VF=`bold 34px ${FONT}`, UF=`bold 18px ${FONT}`, PF=`bold 21px ${FONT}`, sy=y+92;
+    const col=dc(t.diff), dv=fmtDiff(t.diff), pct=fmtPct(t.pct);
+    const dw=measure(dv,VF)+8+measure('KG',UF)+12+measure(pct,PF)+48;
+    const dx=gx+gw-22-dw;
+    const stats=[['ผู้นำเข้า',`${groups.length}`,'ราย'],['ใบขนสินค้า',`${t.count}`,'ใบขน'],['น้ำหนักสำแดงรวม',fmtKg(t.decl),'KG'],['น้ำหนักชั่งจริงรวม',fmtKg(t.net),'KG']]
+      .map(([l,v,u])=>({l,v,u,w:Math.max(measure(l,LF),measure(v,VF)+8+measure(u,UF))}));
+    const areaX=gx+22, areaW=dx-18-areaX, slack=(areaW-stats.reduce((a,s)=>a+s.w,0))/stats.length;
+    let sx=areaX;
+    stats.forEach((s,i)=>{
+      const cw=s.w+slack;
+      if(i>0){c.fillStyle=LINE;c.fillRect(sx,sy+2,1.5,80);}
+      const cx=sx+cw/2, vw=measure(s.v,VF), uw=measure(s.u,UF), vx=cx-(vw+8+uw)/2;
+      txt(s.l,cx,sy+16,LF,SOFT,'center');
+      txt(s.v,vx,sy+58,VF,ORANGE_DEEP);
+      txt(s.u,vx+vw+8,sy+62,UF,SOFT);
+      sx+=cw;
+    });
+    rr(dx,sy-8,dw,98,14);c.fillStyle=t.diff<0?'#F0FDF4':t.diff>0?'#FEF2F2':'#F7F5F2';c.fill();
+    c.strokeStyle=t.diff<0?'#BBF7D0':t.diff>0?'#FECACA':LINE;c.lineWidth=1.5;c.stroke();
+    txt('ผลต่างรวม',dx+24,sy+16,LF,SOFT);
+    const vw=measure(dv,VF);
+    txt(dv,dx+24,sy+58,VF,col);
+    txt('KG',dx+24+vw+8,sy+62,UF,col);
+    txt(pct,dx+24+vw+8+measure('KG',UF)+12,sy+60,PF,col);
+  }
+  return cv.toDataURL('image/png');
+}
+
+// ── รายงานตรวจทีมแบบ Manual: ดึงใบขนจากเมนูสรุปผล (V19 Q1/Q2) ─────
+function openTeamManual(){
+  if(!sumToken()){ openPinModal(openTeamManual); return; }
+  const today=localTodayIso();
+  openSumModal(`<h3>นำเข้าจากเมนูสรุปผล</h3><div class="sub">เลือกวันที่ แล้วเลือกใบขนที่จะใส่ในรายงาน</div>
+    <div class="form-group"><label>วันที่</label><input type="date" id="teamManualDate" value="${today}" onchange="loadTeamManualList()"></div>
+    <div id="teamManualList" class="tm-list"><div class="sum-loading">กำลังโหลด...</div></div>
+    <div class="sum-modal-err" id="sumModalErr"></div>
+    <div class="sum-modal-actions"><button class="btn btn-secondary" onclick="closeSumModal()">ยกเลิก</button>
+      <button class="btn btn-primary" id="teamManualBtn" onclick="importTeamManual()" disabled>นำเข้า</button></div>`);
+  loadTeamManualList();
+}
+
+let teamManualRecs=[], teamManualSeq=0;
+async function loadTeamManualList(){
+  const dateIso=document.getElementById('teamManualDate').value, list=document.getElementById('teamManualList');
+  const seq=++teamManualSeq;
+  teamManualRecs=[]; updateTeamManualBtn(); modalErr('');
+  if(!dateIso){list.innerHTML='';return;}
+  list.innerHTML='<div class="sum-loading">กำลังโหลด...</div>';
+  try{
+    const o=await sumApi('recordsByDate',{dateIso});
+    if(seq!==teamManualSeq||!document.getElementById('teamManualList')) return;
+    teamManualRecs=groupBy(o.records,r=>r.importer,IMPORTER_ORDER).flatMap(([,rs])=>sortedRecs(rs));
+    list.innerHTML=teamManualRecs.length
+      ?teamManualRecs.map((r,i)=>`<label class="tm-item"><input type="checkbox" class="tmChk" value="${i}" checked onchange="updateTeamManualBtn()">
+          <span class="tm-imp" style="${impStyle(r.importer)}">${esc(r.importer)}</span>
+          <span class="tm-no">${esc(r.declarationNo)}</span><span class="tm-goods">${esc(r.goodsType)}</span></label>`).join('')
+      :`<div class="sum-empty" style="padding:20px;">ไม่มีใบขนวันที่ ${thaiDate(dateIso)}</div>`;
+    updateTeamManualBtn();
+  }catch(e){
+    if(seq===teamManualSeq&&!e.auth){ list.innerHTML=''; modalErr(e.message); }
+  }
+}
+function updateTeamManualBtn(){
+  const btn=document.getElementById('teamManualBtn');
+  if(!btn) return;
+  const n=document.querySelectorAll('#teamManualList .tmChk:checked').length;
+  btn.disabled=n===0;
+  btn.textContent=n?`นำเข้า ${n} ใบขน`:'นำเข้า';
+}
+// ข้อความรูปแบบเดียวกับที่ api/gemini.js สร้าง (type team) — จำนวนกระสอบเว้นว่างให้เติมเอง
+function importTeamManual(){
+  const picked=[...document.querySelectorAll('#teamManualList .tmChk:checked')].map(c=>teamManualRecs[+c.value]);
+  if(!picked.length) return;
+  const dateIso=document.getElementById('teamManualDate').value;
+  let text=`${thaiDate(dateIso)}\n`;
+  text+=`เจ้าหน้าที่งานพิธีการ ร่วมกับเจ้าหน้าที่งานสืบสวนและปราบปราม เปิดตรวจสินค้าเป็นทีม สินค้าเกษตร ใบขนสินค้าขาเข้าจำนวน ${picked.length} ใบขน ดังนี้`;
+  picked.forEach((r,i)=>{
+    text+=`\n\n${i+1}.${r.declarationNo}`;
+    text+=`\nสินค้า ${r.goodsType||''}`;
+    text+=`\nเมืองกำเนิด ${r.origin||''}`;
+    text+=`\nจำนวน  กระสอบ`;
+    text+=`\nน้ำหนัก ${fmtKg(r.declaredWeight)} กิโลกรัม`;
+  });
+  closeSumModal();
+  document.getElementById('teamChatBubble').value=text;
+  const noOrigin=picked.filter(r=>!r.origin).map(r=>r.declarationNo);
+  const warnings=[`ยังไม่มีจำนวนกระสอบ ${picked.length} ใบขน — เติมในข้อความก่อนคัดลอก`];
+  if(noOrigin.length) warnings.push(`ไม่มีเมืองกำเนิด: ${noOrigin.join(', ')}`);
+  document.getElementById('teamWarningBox').style.display='block';
+  document.getElementById('teamWarningList').innerHTML=warnings.map(w=>`• ${esc(w)}`).join('<br>');
+  document.getElementById('teamResultCard').style.display='block';
+  document.getElementById('teamClearBtnArea').style.display='block';
+  autoGrowTeam();
+  setTimeout(()=>scrollBelowHeader(document.getElementById('teamWarningBox')),60);
+  showToast(`นำเข้า ${picked.length} ใบขนแล้ว ✓`,'success');
+}
+
+// ── ส่งออก Excel (V18 Q5/Q6) — ExcelJS โหลดตอนใช้ครั้งแรก ──────────
+let excelJsPromise=null;
+function loadExcelJs(){
+  if(window.ExcelJS) return Promise.resolve(window.ExcelJS);
+  if(!excelJsPromise){
+    excelJsPromise=new Promise((resolve,reject)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+      s.integrity='sha512-dlPw+ytv/6JyepmelABrgeYgHI0O+frEwgfnPdXDTOIZz+eDgfW07QXG02/O8COfivBdGNINy+Vex+lYmJ5rxw==';
+      s.crossOrigin='anonymous';
+      s.onload=()=>resolve(window.ExcelJS);
+      s.onerror=()=>{excelJsPromise=null;reject(new Error('โหลดตัวสร้างไฟล์ Excel ไม่ได้'));};
+      document.head.appendChild(s);
+    });
+  }
+  return excelJsPromise;
+}
+
+async function exportSummaryExcel(){
+  const st=sumState;
+  if(!st||!st.shift||!st.records.length){showToast('ยังไม่มีข้อมูลให้ส่งออก','error');return;}
+  let ExcelJS;
+  try{ ExcelJS=await loadExcelJs(); }catch(e){ showToast(e.message,'error'); return; }
+  const shift=st.shift, wb=new ExcelJS.Workbook();
+  wb.creator='ระบบอ่านใบชั่ง';
+  const NUM='#,##0', DIFF='+#,##0;-#,##0;0', PCT='+0.00%;-0.00%;0.00%';
+  const argb=hex=>'FF'+hex.replace('#','').toUpperCase();
+  const fill=hex=>({type:'pattern',pattern:'solid',fgColor:{argb:argb(hex)}});
+  const thin={style:'thin',color:{argb:'FFE5E0D8'}};
+  const border={top:thin,bottom:thin,left:thin,right:thin};
+  const groups=groupBy(st.records,r=>r.importer,IMPORTER_ORDER).map(([n,rs])=>[n,sortedRecs(rs)]);
+  const range=`${thaiDate(shift.startDate)} — ${thaiDate(shift.endDate)}`;
+
+  // ชีต "สรุป": ผู้นำเข้า → แถววันที่ (ยอดรวม) → ใบขน (outline ยุบได้)
+  const ws=wb.addWorksheet('สรุป',{properties:{outlineProperties:{summaryBelow:false}},views:[{state:'frozen',ySplit:4}]});
+  ws.columns=[{width:8},{width:12},{width:24},{width:18},{width:18},{width:16},{width:12}];
+  ws.mergeCells('A1:G1'); ws.getCell('A1').value='รายงานสรุปน้ำหนักหอม – กระเทียม';
+  ws.getCell('A1').font={bold:true,size:16,color:{argb:argb('#C9550E')}};
+  ws.mergeCells('A2:G2'); ws.getCell('A2').value=`งานพิธีการ · ${range}`;
+  ws.getCell('A2').font={size:12,color:{argb:argb('#8A857D')}};
+  const head=ws.getRow(4);
+  head.values=['ลำดับ','สินค้า','เลขที่ใบขนสินค้า','น้ำหนักสำแดง (KG)','น้ำหนักชั่งจริง (KG)','ผลต่าง (KG)','ร้อยละ'];
+  head.eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill=fill('#C9550E');cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};cell.border=border;});
+  head.height=30;
+
+  const numCells=(row,decl,net,diff,pct,bold,color)=>{
+    [[4,decl,NUM],[5,net,NUM],[6,diff,DIFF],[7,pct,PCT]].forEach(([col,v,fmt])=>{
+      const cell=row.getCell(col); cell.value=v; cell.numFmt=fmt; cell.border=border;
+      cell.font={bold,color:{argb:argb(col>=6?(diff>0?'#C81E1E':diff<0?'#15803D':'#374151'):color)}};
+    });
+  };
+  let r=6;
+  groups.forEach(([name,recs])=>{
+    const T=getTheme(name), t=totals(recs);
+    const imp=ws.getRow(r); ws.mergeCells(r,1,r,3);
+    imp.getCell(1).value=`ผู้นำเข้า : ${name} · ${t.count} ใบขน`;
+    imp.getCell(1).font={bold:true,size:13,color:{argb:'FFFFFFFF'}};
+    for(let col=1;col<=7;col++) imp.getCell(col).fill=fill(T.primary);
+    numCells(imp,t.decl,t.net,t.diff,t.pct/100,true,'#FFFFFF');
+    [6,7].forEach(col=>imp.getCell(col).font={bold:true,color:{argb:'FFFFFFFF'}});
+    imp.height=24; r++;
+    let n=0;
+    groupBy(recs,x=>x.dateIso).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([day,drecs])=>{
+      const dt=totals(drecs), dr=ws.getRow(r); ws.mergeCells(r,1,r,3);
+      dr.getCell(1).value=`${thaiDate(day)} · ${drecs.length} ใบขน`;
+      dr.getCell(1).font={bold:true,size:13,color:{argb:argb(T.dark)}};
+      for(let col=1;col<=7;col++){dr.getCell(col).fill=fill(T.light);dr.getCell(col).border=border;}
+      numCells(dr,dt.decl,dt.net,dt.diff,dt.pct/100,true,T.dark);
+      dr.height=22; r++;
+      drecs.forEach(rec=>{
+        const row=ws.getRow(r);
+        row.getCell(1).value=++n; row.getCell(2).value=rec.goodsType; row.getCell(3).value=rec.declarationNo+(rec.period?` (${rec.period})`:'');
+        [1,2,3].forEach(col=>{row.getCell(col).border=border;row.getCell(col).alignment={horizontal:col===3?'left':'center'};});
+        numCells(row,rec.declaredWeight,rec.netWeight,rec.diffWeight,pctOf(rec.diffWeight,rec.declaredWeight)/100,false,'#222222');
+        row.outlineLevel=1; r++;
+      });
+    });
+    r++;
+  });
+  const all=totals(st.records), gr=ws.getRow(r); ws.mergeCells(r,1,r,3);
+  gr.getCell(1).value=`สรุปรวมทั้งหมด · ${groups.length} ราย · ${all.count} ใบขน`;
+  gr.getCell(1).font={bold:true,size:13,color:{argb:argb('#C9550E')}};
+  for(let col=1;col<=7;col++){gr.getCell(col).fill=fill('#FDF0E6');gr.getCell(col).border={top:{style:'medium',color:{argb:argb('#E8691A')}}};}
+  numCells(gr,all.decl,all.net,all.diff,all.pct/100,true,'#2B2A28');
+  gr.height=26;
+
+  // ชีต "รายละเอียด": ใบขนละแถว ตัวเลขจริง กรองได้
+  const wd=wb.addWorksheet('รายละเอียด',{views:[{state:'frozen',ySplit:1}]});
+  wd.columns=[
+    {header:'ผู้นำเข้า',key:'imp',width:14},{header:'วันที่',key:'date',width:13},{header:'สินค้า',key:'goods',width:11},
+    {header:'ประเทศกำเนิด',key:'origin',width:13},{header:'เลขที่ใบขนสินค้า',key:'decl',width:20},{header:'ชุดที่',key:'period',width:10},
+    {header:'น้ำหนักสำแดง (KG)',key:'dw',width:17,style:{numFmt:NUM}},{header:'น้ำหนักชั่งจริง (KG)',key:'nw',width:17,style:{numFmt:NUM}},
+    {header:'ผลต่าง (KG)',key:'diff',width:14,style:{numFmt:DIFF}},{header:'ร้อยละ',key:'pct',width:11,style:{numFmt:PCT}},
+    {header:'ทะเบียนรถ',key:'plates',width:22}
+  ];
+  groups.forEach(([,recs])=>recs.forEach(rec=>{
+    const [yy,mm,dd]=rec.dateIso.split('-').map(Number);
+    wd.addRow({imp:rec.importer,date:new Date(Date.UTC(yy,mm-1,dd)),goods:rec.goodsType,origin:rec.origin||'',decl:rec.declarationNo,
+      period:rec.period||'',dw:rec.declaredWeight,nw:rec.netWeight,diff:rec.diffWeight,pct:pctOf(rec.diffWeight,rec.declaredWeight)/100,
+      plates:(rec.vehicles||[]).map(v=>v.plate).filter(Boolean).join(', ')});
+  }));
+  wd.getColumn('date').numFmt='dd/mm/yyyy';
+  wd.getRow(1).eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill=fill('#C9550E');cell.alignment={vertical:'middle',horizontal:'center'};});
+  wd.autoFilter={from:'A1',to:{row:1,column:11}};
+
+  const buf=await wb.xlsx.writeBuffer();
+  const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const dataUrl=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(blob);});
+  await saveDataUrl(dataUrl,`สรุปผล_${shift.startDate}_${shift.endDate}.xlsx`,blob.type);
+}
+</script>
+
 <!-- POPUP MODAL: แจ้งเตือนวันที่ห่างเกิน 10 วัน -->
 <div id="dateConfirmModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:16px;">
   <div style="background:white;border-radius:18px;max-width:360px;width:100%;padding:24px;box-shadow:0 20px 40px rgba(0,0,0,0.25);text-align:center;">
