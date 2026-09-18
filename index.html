@@ -931,7 +931,7 @@ details[open]>summary .chev{transform:rotate(45deg);}
               box-shadow:0 2px 12px rgba(0,0,0,0.08);border:1px solid var(--gray-200);
               font-size:16px;line-height:1.85;color:var(--gray-800);
               font-family:inherit;resize:none;outline:none;overflow:hidden;
-              min-height:120px;display:block;
+              min-height:120px;display:block;field-sizing:content;overflow-anchor:none;
             "></textarea>
           </div>
           <!-- ปุ่มคัดลอก — ใต้ข้อความ -->
@@ -2177,7 +2177,7 @@ async function runReadTeam(isFinal=false){
     }
     document.getElementById('teamResultCard').style.display='block';
     document.getElementById('teamClearBtnArea').style.display='block';
-    autoGrowTeam();
+    autoGrowTeam(true);
     if(result.is_fallback || (result.model_used && result.model_used !== 'gemini-2.5-flash')){
       showToast(`อ่านข้อมูลทีมสำเร็จ ✓ (สลับใช้โมเดลสำรอง: ${result.model_used})`,'warn');
     }else{
@@ -2238,10 +2238,28 @@ async function readTeamImages(){
   await readTeamWithRetry();
 }
 
-function autoGrowTeam(){
+function autoGrowTeam(force){
   const el=document.getElementById('teamChatBubble');
+  if(!el) return;
+  if(window.CSS&&CSS.supports&&CSS.supports('field-sizing','content')){
+    el.style.height='';
+    return;
+  }
+  const len=el.value.length;
+  const lastLen=el._lastLen||0;
+  el._lastLen=len;
+  if(!force&&len>=lastLen&&el.clientHeight>0){
+    if(el.scrollHeight>el.clientHeight){
+      el.style.height=el.scrollHeight+'px';
+    }
+    return;
+  }
+  const prevScroll=window.scrollY;
   el.style.height='auto';
   el.style.height=el.scrollHeight+'px';
+  if(window.scrollY!==prevScroll){
+    window.scrollTo(window.scrollX,prevScroll);
+  }
 }
 
 function copyTeamReport(){
@@ -2256,8 +2274,8 @@ function clearTeamAll(){
   teamFiles=[];document.getElementById('teamFileInput').value='';renderTeamPreview();updateTeamReadBtn();
   document.getElementById('teamResultCard').style.display='none';
   document.getElementById('teamClearBtnArea').style.display='none';
-  document.getElementById('teamChatBubble').value='';
-  document.getElementById('teamChatBubble').style.height='';
+  const bubble=document.getElementById('teamChatBubble');
+  if(bubble){bubble.value='';bubble.style.height='';bubble._lastLen=0;}
   document.getElementById('teamWarningBox').style.display='none';
   document.getElementById('teamWarningList').innerHTML='';
   window.scrollTo({top:0,behavior:'smooth'});
@@ -3436,7 +3454,7 @@ function importTeamManual(){
   document.getElementById('teamWarningList').innerHTML=warnings.map(w=>`• ${esc(w)}`).join('<br>');
   document.getElementById('teamResultCard').style.display='block';
   document.getElementById('teamClearBtnArea').style.display='block';
-  autoGrowTeam();
+  autoGrowTeam(true);
   setTimeout(()=>scrollBelowHeader(document.getElementById('teamWarningBox')),60);
   showToast(`นำเข้า ${picked.length} ใบขนแล้ว ✓`,'success');
 }
