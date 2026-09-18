@@ -724,7 +724,7 @@ details[open]>summary .chev{transform:rotate(45deg);}
         </div>
         <div class="form-group g-period">
           <label>ชุดที่</label>
-          <input type="text" id="f_period" placeholder="เช่น ชุดที่ 1" oninput="markChanged(this)" onblur="resetZoom()" />
+          <input type="text" inputmode="numeric" pattern="[0-9]*" id="f_period" placeholder="เช่น 1" oninput="onlyDigits(this);markChanged(this)" onblur="resetZoom()" style="font-size:16px!important;" />
         </div>
       </div>
     </div>
@@ -905,7 +905,7 @@ details[open]>summary .chev{transform:rotate(45deg);}
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
             อ่านข้อมูลด้วย Gemini
           </button>
-          <button class="btn btn-secondary" id="teamManualOpenBtn" onclick="openTeamManual()" title="นำเข้าใบขนจากเมนูสรุปผล">Manual</button>
+          <button class="btn btn-secondary" id="teamManualOpenBtn" onclick="openTeamManual()" title="นำเข้าใบขนจากเมนูสรุปผล">ดึงจากสรุปผล</button>
           <button class="btn btn-secondary" id="teamClearBtn" onclick="clearTeamFiles()" style="display:none;padding:10px 14px;">✕ ล้างรูป</button>
         </div>
         <div id="teamLoadingArea" style="display:none;margin-top:14px;">
@@ -1238,7 +1238,8 @@ function populateForm(data){
   // ประเภทสินค้า → เลือก chip
   selectGoods(matchGoods(data.goods_type)||data.goods_type||'');
   selectOrigin(data.origin||'');
-  setF('f_period',data.period);
+  const rawPeriod = (data.period != null ? String(data.period).replace(/[^0-9]/g, '') : '');
+  setF('f_period', rawPeriod);
   document.getElementById('vehicleBody').innerHTML='';rowIdx=0;
   const vs=data.vehicles||[];
   if(vs.length===0)addRow();else vs.forEach(v=>addRow(v));
@@ -3155,7 +3156,7 @@ function openRecordModal(id){
     ${recChipGroup('ผู้นำเข้า','recImporter',REC_IMPORTER_CHIPS,r.importer,'ระบุผู้นำเข้า')}
     ${recChipGroup('ประเภทสินค้า','recGoods',REC_GOODS_CHIPS,r.goodsType,'ระบุประเภทสินค้า')}
     ${field('ประเทศกำเนิด','recOrigin',r.origin,'text','maxlength="80"')}
-    <div class="row2" style="grid-template-columns:minmax(0,2fr) minmax(0,1fr);">${field('เลขที่ใบขนสินค้า','recDecl',r.declarationNo,'text','maxlength="40" placeholder="A000-00000-00000"')}${field('ชุดที่','recPeriod',r.period,'text','maxlength="40"')}</div>
+    <div class="row2" style="grid-template-columns:minmax(0,2fr) minmax(0,1fr);">${field('เลขที่ใบขนสินค้า','recDecl',r.declarationNo,'text','maxlength="40" placeholder="A000-00000-00000"')}${field('ชุดที่','recPeriod',r.period,'text','inputmode="numeric" pattern="[0-9]*" maxlength="20" placeholder="เช่น 1" oninput="onlyDigits(this)"')}</div>
     ${field('วันที่','recDate',r.dateIso,'date')}
     <div class="row2">${field('น้ำหนักสำแดง (KG)','recDeclW',r.declaredWeight===''?'':fmtKg(r.declaredWeight),'text','inputmode="numeric" oninput="fmtNumberWithComma(this)"')}${field('น้ำหนักชั่งจริง (KG)','recNetW',r.netWeight===''?'':fmtKg(r.netWeight),'text','inputmode="numeric" oninput="fmtNumberWithComma(this)"')}</div>
     <div class="sum-modal-err" id="sumModalErr"></div>
