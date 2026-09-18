@@ -372,7 +372,7 @@ table.imp-table{width:100%;border-collapse:collapse;font-size:0.95rem;min-width:
 .imp-table tr.rec:hover{background:var(--imp-light);}
 .imp-table{table-layout:fixed;}
 .imp-table tr.day{cursor:pointer;user-select:none;-webkit-user-select:none;}
-.imp-table tr.day td{background:var(--imp-light);color:var(--imp-dark);font-weight:700;border-bottom:2px solid var(--imp-border);padding:10px 8px;}
+.imp-table tr.day td{background:var(--imp-light);color:var(--imp-dark);font-weight:700;border-top:2px solid var(--imp-border);border-bottom:1px solid #F1ECE6;padding:10px 8px;}
 .imp-table tr.day:hover td{filter:brightness(0.97);}
 .imp-table tr.day td.pos,.imp-table tfoot td.pos{color:#B91C1C;}.imp-table tr.day td.neg,.imp-table tfoot td.neg{color:#15803D;}
 .imp-table td.day-label{text-align:left;padding-left:14px;font-size:1.12rem;}
@@ -381,7 +381,7 @@ table.imp-table{width:100%;border-collapse:collapse;font-size:0.95rem;min-width:
   transform:translateY(-3px) rotate(45deg);transition:transform 0.15s;}
 .imp-table tbody.collapsed .chev{transform:translateY(0) rotate(-45deg);}
 .imp-table tbody.collapsed tr.rec{display:none;}
-.imp-table tfoot td{background:var(--imp-total);color:var(--imp-total-text);font-weight:700;font-size:1.02rem;padding:11px 8px;}
+.imp-table tfoot td{background:var(--imp-total);color:var(--imp-total-text);font-weight:700;font-size:1.02rem;padding:11px 8px;border-top:2px solid var(--imp-border);}
 .decl-link{border:none;background:none;padding:2px 4px;margin:-2px -4px;border-radius:6px;font:inherit;color:inherit;cursor:pointer;
   text-decoration:underline;text-decoration-color:rgba(0,0,0,0.25);text-underline-offset:3px;}
 .decl-link:hover{background:var(--imp-light);text-decoration-color:currentColor;}
@@ -3277,7 +3277,7 @@ function drawSummaryCanvas(shift,groups,opts){
 
   groups.forEach(([name,recs])=>{
     const T=getTheme(name), t=totals(recs), top=y, blockH=blockHeight(recs);
-    rr(M,top,W-2*M,blockH,16);c.fillStyle='#FFFFFF';c.fill();c.strokeStyle=T.border;c.lineWidth=2;c.stroke();
+    rr(M,top,W-2*M,blockH,16);c.fillStyle='#FFFFFF';c.fill();
     c.save();rr(M,top,W-2*M,blockH,16);c.clip();
 
     c.fillStyle=grad(M,y,W-2*M,T.dark,T.primary);c.fillRect(M,y,W-2*M,BANNER_H);
@@ -3297,7 +3297,8 @@ function drawSummaryCanvas(shift,groups,opts){
     daysOf(recs).forEach(([day,drecs])=>{
       const dt=totals(drecs), mid=y+DAY_H/2, F=`bold 21px ${FONT}`;
       c.fillStyle=T.light;c.fillRect(M,y,W-2*M,DAY_H);
-      c.fillStyle=T.border;c.fillRect(M,y+DAY_H-2,W-2*M,2);
+      c.fillStyle=T.border;c.fillRect(M,y,W-2*M,2);
+      c.fillStyle='#EFEAE4';c.fillRect(M,y+DAY_H-1,W-2*M,1);
       txt(thaiDate(day),M+18,mid,`bold 24px ${FONT}`,T.dark);
       txt(`· ${drecs.length} ใบขน`,M+18+measure(thaiDate(day),`bold 24px ${FONT}`)+10,mid,`19px ${FONT}`,T.dark);
       cellText(3,fmtKg(dt.decl),mid,F,T.dark,'right');
@@ -3322,6 +3323,7 @@ function drawSummaryCanvas(shift,groups,opts){
     });
 
     c.fillStyle=T.totalBg;c.fillRect(M,y,W-2*M,TOT_H);
+    c.fillStyle=T.border;c.fillRect(M,y,W-2*M,2);
     const F=`bold 23px ${FONT}`, tm=y+TOT_H/2;
     txt(`รวม ${name}`,cellX(0)+(cols[0]+cols[1])/2,tm,F,T.totalTxt,'center');
     cellText(2,`${t.count} ใบขน`,tm,F,T.totalTxt);
@@ -3331,6 +3333,7 @@ function drawSummaryCanvas(shift,groups,opts){
     cellText(6,fmtPct(t.pct),tm,F,dc(t.diff),'right');
     y+=TOT_H;
     c.restore();
+    rr(M,top,W-2*M,blockH,16);c.strokeStyle=T.border;c.lineWidth=2;c.stroke();
     y+=GAP;
   });
 
