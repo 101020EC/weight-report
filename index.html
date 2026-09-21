@@ -890,7 +890,11 @@ details[open]>summary .chev{transform:rotate(45deg);}
         <div class="step-label" style="display:flex;align-items:center;justify-content:center;gap:8px;"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg> รายงานตรวจทีม</div>
       </div>
       <div class="step-body">
-        <p style="font-size:14px;color:var(--gray-600);margin-bottom:10px;">อัปโหลดภาพใบขนสินค้า หรือรายงานใบชั่งน้ำหนักได้หลายไฟล์</p>
+        <p style="font-size:14px;color:var(--gray-600);margin-bottom:12px;">อัปโหลดภาพใบขนสินค้า หรือรายงานใบชั่งน้ำหนักได้หลายไฟล์</p>
+        <div style="max-width:260px;margin:0 auto 14px auto;text-align:left;">
+          <label for="teamReportDate" style="display:block;font-size:13px;font-weight:700;color:var(--gray-700);margin-bottom:5px;">วันที่ในรายงาน</label>
+          <input type="date" id="teamReportDate" onchange="updateTeamDatePreview()" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--gray-200);border-radius:10px;font-size:15px;font-family:inherit;background:#fff;outline:none;" />
+        </div>
         <!-- upload zone — ใช้ label เพื่อให้ iOS file picker ทำงานได้แน่นอน -->
         <label for="teamFileInput" style="display:block;border:2px dashed var(--gray-200);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;touch-action:manipulation;" id="teamDropZone">
           <input type="file" id="teamFileInput" accept="image/*" multiple style="display:none;" onchange="handleTeamFiles(this.files)" />
@@ -2112,6 +2116,7 @@ function switchPage(page){
   document.getElementById('badge-team').style.display=(page==='team')?'':'none';
   document.getElementById('badge-summary').style.display=(page==='summary')?'':'none';
   if(page==='summary') loadSummary();
+  if(page==='team'){ const trd=document.getElementById('teamReportDate'); if(trd&&!trd.value) trd.value=localTodayIso(); }
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -2153,10 +2158,11 @@ async function runReadTeam(isFinal=false){
       imagesData.push(encoded);
     }
     document.getElementById('teamLoadingText').textContent='กำลังส่งไปยัง Gemini AI...';
+    const reportDate = document.getElementById('teamReportDate')?.value || localTodayIso();
     const resp=await fetch('/api/gemini',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({type:'team',images:imagesData})
+      body:JSON.stringify({type:'team',images:imagesData,date:reportDate})
     });
     if(!resp.ok){
       const t=await resp.text();
@@ -2171,7 +2177,7 @@ async function runReadTeam(isFinal=false){
     document.getElementById('teamChatBubble').value=result.text;
     if(result.warnings&&result.warnings.length>0){
       document.getElementById('teamWarningBox').style.display='block';
-      document.getElementById('teamWarningList').innerHTML=result.warnings.map(w=>`• ${w}`).join('<br>');
+      document.getElementById('teamWarningList').innerHTML=result.warnings.map(w=>`• ${esc(w)}`).join('<br>');
     } else {
       document.getElementById('teamWarningBox').style.display='none';
     }
@@ -2270,6 +2276,18 @@ function copyTeamReport(){
   });
 }
 
+function updateTeamDatePreview(){
+  const trd=document.getElementById('teamReportDate');
+  const bubble=document.getElementById('teamChatBubble');
+  if(!trd||!bubble||!bubble.value) return;
+  const lines=bubble.value.split('\n');
+  if(lines.length>1 && lines[1].startsWith('เจ้าหน้าที่งานพิธีการ')){
+    lines[0]=thaiDate(trd.value);
+    bubble.value=lines.join('\n');
+    autoGrowTeam();
+  }
+}
+
 function clearTeamAll(){
   teamFiles=[];document.getElementById('teamFileInput').value='';renderTeamPreview();updateTeamReadBtn();
   document.getElementById('teamResultCard').style.display='none';
@@ -2278,6 +2296,8 @@ function clearTeamAll(){
   if(bubble){bubble.value='';bubble.style.height='';bubble._lastLen=0;}
   document.getElementById('teamWarningBox').style.display='none';
   document.getElementById('teamWarningList').innerHTML='';
+  const trd=document.getElementById('teamReportDate');
+  if(trd) trd.value=localTodayIso();
   window.scrollTo({top:0,behavior:'smooth'});
   showToast('ล้างข้อมูลแล้ว ✓','success');
 }
@@ -2302,6 +2322,8 @@ function showToast(msg,type=''){
 window.addEventListener('DOMContentLoaded',()=>{
   updateReadBtn();
   initDateSelects();
+  const trd=document.getElementById('teamReportDate');
+  if(trd&&!trd.value) trd.value=localTodayIso();
 
   // อัปโหลด: ใช้ <label for="fileInput"> แบบ native (แตะครั้งเดียวติดทุกเบราว์เซอร์)
   // ไม่ต้องผูก JS click แล้ว — เลี่ยงปัญหา iOS ต้องแตะหลายครั้ง
@@ -3417,12 +3439,18 @@ async function loadTeamManualList(){
     list.innerHTML=teamManualRecs.length
       ?teamManualRecs.map((r,i)=>`<label class="tm-item"><input type="checkbox" class="tmChk" value="${i}" checked onchange="updateTeamManualBtn()">
           <span class="tm-imp" style="${impStyle(r.importer)}">${esc(r.importer)}</span>
-          <span class="tm-no">${esc(r.declarationNo)}</span><span class="tm-goods">${esc(r.goodsType)}</span></label>`).join('')
+          <span class="tm-no">${esc(r.declarationNo)}</span><span class="tm-goods">${esc(teamGoodsName(r.goodsType))}</span></label>`).join('')
       :`<div class="sum-empty" style="padding:20px;">ไม่มีใบขนวันที่ ${thaiDate(dateIso)}</div>`;
     updateTeamManualBtn();
   }catch(e){
     if(seq===teamManualSeq&&!e.auth){ list.innerHTML=''; modalErr(e.message); }
   }
+}
+function teamGoodsName(gt){
+  const s=String(gt||'').trim();
+  if(s==='หอม') return 'หอมหัวใหญ่';
+  if(s==='กระเทียม') return 'กระเทียมสด';
+  return s;
 }
 function updateTeamManualBtn(){
   const btn=document.getElementById('teamManualBtn');
@@ -3440,7 +3468,7 @@ function importTeamManual(){
   text+=`เจ้าหน้าที่งานพิธีการ ร่วมกับเจ้าหน้าที่งานสืบสวนและปราบปราม เปิดตรวจสินค้าเป็นทีม สินค้าเกษตร ใบขนสินค้าขาเข้าจำนวน ${picked.length} ใบขน ดังนี้`;
   picked.forEach((r,i)=>{
     text+=`\n\n${i+1}.${r.declarationNo}`;
-    text+=`\nสินค้า ${r.goodsType||''}`;
+    text+=`\nสินค้า ${teamGoodsName(r.goodsType)}`;
     text+=`\nเมืองกำเนิด ${r.origin||''}`;
     text+=`\nจำนวน  กระสอบ`;
     text+=`\nน้ำหนัก ${fmtKg(r.declaredWeight)} กิโลกรัม`;

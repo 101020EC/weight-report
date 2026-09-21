@@ -159,12 +159,14 @@ function shiftRange(body) {
   return { startDate, endDate };
 }
 
-// เวรล่าสุด = เวรที่เปิดอยู่ ถ้ายังไม่เลยวันสิ้นสุด (D2)
+// เวรล่าสุด = เวรที่เปิดอยู่ ในช่วงวันเริ่มเวร–วันสิ้นสุด (D2)
 async function openShift() {
-  const snap = await db().collection('shifts').orderBy('createdAt', 'desc').limit(1).get();
+  const snap = await db().collection('shifts').orderBy('createdAt', 'desc').limit(10).get();
   if (snap.empty) return null;
-  const s = { id: snap.docs[0].id, ...snap.docs[0].data() };
-  return todayBangkok() <= s.endDate ? s : null;
+  const today = todayBangkok();
+  const shifts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const active = shifts.find(s => (s.startDate ? today >= s.startDate : true) && today <= s.endDate);
+  return active || null;
 }
 
 async function recordsOf(shiftId) {
