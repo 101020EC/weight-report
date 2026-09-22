@@ -382,6 +382,16 @@ table.imp-table{width:100%;border-collapse:collapse;font-size:0.95rem;min-width:
 .imp-table tbody.collapsed .chev{transform:translateY(0) rotate(-45deg);}
 .imp-table tbody.collapsed tr.rec{display:none;}
 .imp-table tfoot td{background:var(--imp-total);color:var(--imp-total-text);font-weight:700;font-size:1.02rem;padding:11px 8px;border-top:2px solid var(--imp-border);}
+.imp-table tfoot tr.tot-row{cursor:pointer;user-select:none;-webkit-user-select:none;}
+.imp-table tfoot tr.tot-row:hover td{filter:brightness(0.97);}
+.imp-table tfoot .chev{transform:translateY(0) rotate(-45deg);}
+.imp-table tfoot.open .chev{transform:translateY(-3px) rotate(45deg);}
+.imp-table tfoot:not(.open) tr.tot-sub-row{display:none;}
+.imp-table tfoot tr.tot-sub-row td{background:var(--imp-light);color:var(--imp-dark);font-weight:600;font-size:0.95rem;padding:8px 8px;border-top:1px dashed var(--imp-border);}
+.imp-table tfoot tr.tot-sub-row td.pos{color:#B91C1C;}
+.imp-table tfoot tr.tot-sub-row td.neg{color:#15803D;}
+.imp-table tfoot td.tot-sub-label{text-align:left;padding-left:26px;}
+.imp-table tfoot .sub-arrow{display:inline-block;margin-right:6px;color:var(--imp);font-weight:700;}
 .decl-link{border:none;background:none;padding:2px 4px;margin:-2px -4px;border-radius:6px;font:inherit;color:inherit;cursor:pointer;
   text-decoration:underline;text-decoration-color:rgba(0,0,0,0.25);text-underline-offset:3px;}
 .decl-link:hover{background:var(--imp-light);text-decoration-color:currentColor;}
@@ -425,6 +435,13 @@ details[open]>summary .chev{transform:rotate(45deg);}
 .m-total{background:var(--imp-total);color:var(--imp-total-text);font-weight:700;}
 .m-total .m-label{color:var(--imp-total-text);}
 .m-total .m-label small{background:rgba(255,255,255,0.6);}
+.m-total .chev{border-right-color:var(--imp-total-text);border-bottom-color:var(--imp-total-text);transform:rotate(-45deg);}
+details[open]>.m-total .chev{transform:rotate(45deg);}
+.m-total-breakdown{background:var(--imp-alt);border-top:1px dashed var(--imp-border);}
+.m-total-sub{padding:7px 10px;font-size:0.78rem;background:var(--imp-light);color:var(--imp-dark);border-bottom:1px solid #F1ECE6;}
+.m-total-sub .m-label{color:var(--imp-dark);font-weight:600;padding-left:14px;}
+.m-total-sub .sub-arrow{margin-right:4px;color:var(--imp);font-weight:700;}
+.m-total-sub .n{font-weight:600;}
 
 .grand-card{position:relative;background:#fff;border-radius:1rem;border:1px solid var(--line);box-shadow:var(--shadow);overflow:hidden;margin-top:4px;}
 .grand-card::before{content:'';position:absolute;left:0;right:0;top:0;height:4px;background-image:linear-gradient(90deg,var(--orange-mid),var(--orange-deep));}
@@ -2882,6 +2899,7 @@ function renderSummary(){
 // ไม่จำข้ามการโหลดหน้า: คอมเริ่มกาง, มือถือเริ่มยุบ
 const sumDeskCollapsed=new Set();   // key วันที่ยุบในตารางคอม
 const sumMobileOpen=new Set();      // key ของ <details> ที่แตะกางไว้บนมือถือ
+const sumTotalOpen=new Set();       // ชื่อผู้นำเข้าที่กางช่องรวมแยกหอม/กระเทียม
 function dayKey(name,day){return name+'|'+day;}
 // เลขใบขนบนมือถือ: เต็มถ้าช่องพอ ไม่พอย่อเป็น A016…09708 (V22) — ตัวจางทั้งเลข
 function mobileDecl(no){
@@ -2907,11 +2925,26 @@ function toggleDeskDay(tbody){
 function onMobileToggle(el){
   if(el.open){ sumMobileOpen.add(el.dataset.key); fitDecls(el); } else sumMobileOpen.delete(el.dataset.key);
 }
+function toggleDeskImpTotal(tfoot){
+  const name=tfoot.dataset.importer;
+  if(sumTotalOpen.has(name)) sumTotalOpen.delete(name); else sumTotalOpen.add(name);
+  tfoot.classList.toggle('open',sumTotalOpen.has(name));
+  const mob=[...document.querySelectorAll('.m-total-group')].find(el=>el.dataset.importer===name);
+  if(mob) mob.open=sumTotalOpen.has(name);
+}
+function onMobileTotalToggle(el){
+  const name=el.dataset.importer;
+  if(el.open) sumTotalOpen.add(name); else sumTotalOpen.delete(name);
+  const tf=[...document.querySelectorAll('tfoot.imp-tfoot')].find(e=>e.dataset.importer===name);
+  if(tf) tf.classList.toggle('open',el.open);
+}
 
 function renderImporterCard(name,recs){
   const t=totals(recs);
-  const goods=groupBy(recs,r=>r.goodsType,GOODS_ORDER).map(g=>g[0]).join(' / ');
+  const goodsGroups=groupBy(recs,r=>r.goodsType,GOODS_ORDER);
+  const goods=goodsGroups.map(g=>g[0]).join(' / ');
   const days=groupBy(recs,r=>r.dateIso).sort((a,b)=>a[0].localeCompare(b[0]));
+  const isTotOpen=sumTotalOpen.has(name);
 
   // คอม: แถววันที่ = ช่องลำดับ+สินค้า+เลขที่รวมกัน + ยอดรวมวันในคอลัมน์ตัวเลข (Q2/Q6)
   let n=0;
@@ -2932,17 +2965,48 @@ function renderImporterCard(name,recs){
         <td class="num ${diffCls(dt.diff)}">${fmtDiff(dt.diff)}</td><td class="num ${diffCls(dt.diff)}">${fmtPct(dt.pct)}</td>
       </tr>${recRows}</tbody>`;
   }).join('');
+
+  const subRows=goodsGroups.map(([g,grecs])=>{
+    const gt=totals(grecs);
+    return `<tr class="tot-sub-row">
+      <td colspan="2" class="tot-sub-label"><span class="sub-arrow">↳</span>${esc(g)}</td>
+      <td>${gt.count} ใบขน</td>
+      <td class="num">${fmtKg(gt.decl)}</td>
+      <td class="num">${fmtKg(gt.net)}</td>
+      <td class="num ${diffCls(gt.diff)}">${fmtDiff(gt.diff)}</td>
+      <td class="num ${diffCls(gt.diff)}">${fmtPct(gt.pct)}</td>
+    </tr>`;
+  }).join('');
+
   const table=`<div class="imp-table-wrap"><table class="imp-table">
     <colgroup><col style="width:7%"><col style="width:11%"><col style="width:22%"><col style="width:15%"><col style="width:15%"><col style="width:15%"><col style="width:15%"></colgroup>
     <thead><tr><th>ลำดับ</th><th>สินค้า</th><th>เลขที่ใบขนสินค้า</th><th>น้ำหนักสำแดง (KG)</th><th>น้ำหนักชั่งจริง (KG)</th><th>ผลต่าง (KG)</th><th>ร้อยละ</th></tr></thead>
     ${bodies}
-    <tfoot><tr><td colspan="2">รวม ${esc(name)}</td><td>${t.count} ใบขน</td><td class="num">${fmtKg(t.decl)}</td><td class="num">${fmtKg(t.net)}</td>
-      <td class="num ${diffCls(t.diff)}">${fmtDiff(t.diff)}</td><td class="num ${diffCls(t.diff)}">${fmtPct(t.pct)}</td></tr></tfoot>
+    <tfoot class="imp-tfoot ${isTotOpen?'open':''}" data-importer="${esc(name)}">
+      <tr class="tot-row" onclick="toggleDeskImpTotal(this.closest('tfoot'))" title="กดเพื่อแยกหอม/กระเทียม">
+        <td colspan="2"><span class="chev"></span>รวม ${esc(name)}</td>
+        <td>${t.count} ใบขน</td>
+        <td class="num">${fmtKg(t.decl)}</td>
+        <td class="num">${fmtKg(t.net)}</td>
+        <td class="num ${diffCls(t.diff)}">${fmtDiff(t.diff)}</td>
+        <td class="num ${diffCls(t.diff)}">${fmtPct(t.pct)}</td>
+      </tr>
+      ${subRows}
+    </tfoot>
   </table></div>`;
 
   // มือถือ: ตารางย่อ 4 คอลัมน์ วัน → สินค้า → ใบขน (V20 Q2) — เริ่มยุบ
   const nums=(decl,net,diff,pct)=>`<span class="n">${fmtKg(decl)}</span><span class="n">${fmtKg(net)}</span>
     <span class="n ${diffCls(diff)}">${fmtDiff(diff)}</span><span class="n ${diffCls(diff)}">${(pct>0?'+':'')+pct.toFixed(2)}</span>`;
+
+  const mobileSubHtml=goodsGroups.map(([g,grecs])=>{
+    const gt=totals(grecs);
+    return `<div class="m-grid m-total-sub">
+      <span class="m-label"><span class="sub-arrow">↳</span><span class="t">${esc(g)}</span><small>${gt.count} ใบขน</small></span>
+      ${nums(gt.decl,gt.net,gt.diff,gt.pct)}
+    </div>`;
+  }).join('');
+
   const mobile=`<div class="m-list">
     <div class="m-grid m-head"><span></span><span>สำแดง</span><span>ชั่งจริง</span><span>ผลต่าง</span><span>%</span></div>
     ${days.map(([day,drecs])=>{
@@ -2959,7 +3023,13 @@ function renderImporterCard(name,recs){
         <summary class="m-grid m-row"><span class="m-label"><i class="chev"></i><span class="t">${thaiDateShort(day)}</span><small>${drecs.length}</small></span>${nums(dt.decl,dt.net,dt.diff,dt.pct)}</summary>
         <div class="m-body">${goodsHtml}</div></details>`;
     }).join('')}
-    <div class="m-grid m-total"><span class="m-label"><span class="t">รวม</span><small>${t.count} ใบขน</small></span>${nums(t.decl,t.net,t.diff,t.pct)}</div>
+    <details class="m-total-group" data-importer="${esc(name)}" ${isTotOpen?'open':''} ontoggle="onMobileTotalToggle(this)">
+      <summary class="m-grid m-total m-row">
+        <span class="m-label"><i class="chev"></i><span class="t">รวม</span><small>${t.count} ใบขน</small></span>
+        ${nums(t.decl,t.net,t.diff,t.pct)}
+      </summary>
+      <div class="m-total-breakdown">${mobileSubHtml}</div>
+    </details>
   </div>`;
 
   return `<section class="imp-card" style="${impStyle(name)}">
@@ -3261,6 +3331,7 @@ function openSaveImageModal(onlyImporter){
         <label><input type="radio" name="imgMode" value="expanded" checked><span>ขยาย</span></label>
         <label><input type="radio" name="imgMode" value="daily"><span>แค่รายวัน</span></label>
       </div></div>
+    ${toggle('imgSplitGoods','แยกหอม–กระเทียมช่องรวม',false)}
     ${onlyImporter?`<input type="hidden" id="imgOnly" value="${esc(onlyImporter)}">`:`
     <div class="sum-section-title">ผู้นำเข้า</div>
     <div class="opt-chips">${names.map(n=>`<label class="opt-chip" style="${impStyle(n)}"><input type="checkbox" class="imgImporter" value="${esc(n)}" checked><span>${esc(n)}</span></label>`).join('')}</div>
@@ -3277,6 +3348,7 @@ function submitSaveImage(){
   const opts={
     header:document.getElementById('imgHeader').checked,
     expanded:document.querySelector('#sumModalCard input[name=imgMode]:checked').value==='expanded',
+    splitGoods:document.getElementById('imgSplitGoods')?.checked||false,
     grand:!only&&document.getElementById('imgGrand').checked,
   };
   const groups=groupBy(st.records.filter(r=>importers.includes(r.importer)),r=>r.importer,IMPORTER_ORDER).map(([n,rs])=>[n,sortedRecs(rs)]);
@@ -3287,16 +3359,17 @@ function submitSaveImage(){
   saveDataUrl(img,`summary_${who}_${st.shift.startDate}.png`);
 }
 
-// opts: { header, expanded, grand } — ขยาย/หดใช้เหมือนกันทุกผู้นำเข้า (V19 Q6)
+// opts: { header, expanded, splitGoods, grand } — ขยาย/หดใช้เหมือนกันทุกผู้นำเข้า (V19 Q6)
 function drawSummaryCanvas(shift,groups,opts){
-  const {header=true,expanded=true,grand=false}=opts||{};
+  const {header=true,expanded=true,splitGoods=false,grand=false}=opts||{};
   const SCALE=2; // วาดละเอียด 2 เท่าให้รูปคมชัด
   const W=1200,M=40,FONT="'IBM Plex Sans Thai',Sarabun,sans-serif";
-  const TITLE_H=124,BANNER_H=62,HEAD_H=44,DAY_H=48,ROW_H=42,TOT_H=50,GAP=22,GRAND_H=196;
+  const TITLE_H=124,BANNER_H=62,HEAD_H=44,DAY_H=48,ROW_H=42,TOT_H=50,TOT_SUB_H=40,GAP=22,GRAND_H=196;
   const cols=[80,130,240,170,170,160,170]; // รวม 1120 = W-2M
   const ORANGE_DEEP='#C9550E',INK='#2B2A28',SOFT='#8A857D',LINE='#ECE6DF';
   const daysOf=recs=>groupBy(recs,r=>r.dateIso).sort((a,b)=>a[0].localeCompare(b[0]));
-  const blockHeight=recs=>BANNER_H+HEAD_H+TOT_H+daysOf(recs)
+  const goodsOf=recs=>groupBy(recs,r=>r.goodsType,GOODS_ORDER);
+  const blockHeight=recs=>BANNER_H+HEAD_H+TOT_H+(splitGoods?goodsOf(recs).length*TOT_SUB_H:0)+daysOf(recs)
     .reduce((h,[,drecs])=>h+DAY_H+(expanded?drecs.length*ROW_H:0),0);
 
   let H=M;
@@ -3396,6 +3469,23 @@ function drawSummaryCanvas(shift,groups,opts){
     cellText(5,fmtDiff(t.diff),tm,F,dc(t.diff),'right');
     cellText(6,fmtPct(t.pct),tm,F,dc(t.diff),'right');
     y+=TOT_H;
+
+    if(splitGoods){
+      goodsOf(recs).forEach(([g,grecs])=>{
+        const gt=totals(grecs), sm=y+TOT_SUB_H/2;
+        c.fillStyle=T.light;c.fillRect(M,y,W-2*M,TOT_SUB_H);
+        c.fillStyle='#EFEAE4';c.fillRect(M,y,W-2*M,1);
+        const SF=`bold 19px ${FONT}`;
+        txt(`↳ ${g}`,cellX(0)+36,sm,SF,T.dark);
+        cellText(2,`${gt.count} ใบขน`,sm,SF,T.dark);
+        cellText(3,fmtKg(gt.decl),sm,SF,T.dark,'right');
+        cellText(4,fmtKg(gt.net),sm,SF,T.dark,'right');
+        cellText(5,fmtDiff(gt.diff),sm,SF,dc(gt.diff),'right');
+        cellText(6,fmtPct(gt.pct),sm,SF,dc(gt.diff),'right');
+        y+=TOT_SUB_H;
+      });
+    }
+
     c.restore();
     rr(M,top,W-2*M,blockH,16);c.strokeStyle=T.border;c.lineWidth=2;c.stroke();
     y+=GAP;
