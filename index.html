@@ -461,6 +461,30 @@ details[open]>.m-total .chev{transform:rotate(45deg);}
 .g-diff.pos .v,.g-diff.pos .g-pct{color:#B91C1C;}.g-diff.neg .v,.g-diff.neg .g-pct{color:#15803D;}
 .g-pct{font-size:1rem;font-weight:700;margin-left:8px;}
 .grand-head .g-mini,.grand-head .chev{display:none;}
+.g-detail-btn{border:1px solid var(--line);background:#FDF8F3;color:var(--orange-deep);font-family:inherit;font-size:0.82rem;font-weight:600;padding:3px 10px;border-radius:8px;cursor:pointer;margin-left:4px;transition:all 0.15s;}
+.g-detail-btn:hover{background:var(--orange-light);border-color:var(--orange-mid);}
+.g-detail-btn.active{background:var(--orange-deep);color:#fff;border-color:var(--orange-deep);}
+.grand-breakdown{border-top:1px dashed var(--line);padding:14px 18px 18px;}
+.g-breakdown-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.g-sub-card{background:#FAF8F5;border:1px solid var(--line);border-radius:12px;padding:12px 14px;}
+.g-sub-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.g-sub-title{display:flex;align-items:center;gap:6px;font-weight:700;font-size:1.02rem;color:var(--ink);}
+.g-sub-dot{width:8px;height:8px;border-radius:50%;background:var(--orange-deep);}
+.g-sub-badge{font-size:0.75rem;font-weight:600;background:#fff;border:1px solid var(--line);border-radius:999px;padding:2px 8px;color:var(--ink-soft);}
+.g-sub-body{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;}
+.g-sub-stats{display:flex;gap:12px;flex:1 1 auto;justify-content:space-around;}
+.g-sub-stat{text-align:center;}
+.g-sub-stat .l{font-size:0.75rem;color:var(--ink-soft);white-space:nowrap;}
+.g-sub-stat .v{font-size:1.18rem;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.g-sub-stat .v small{font-size:0.7rem;color:var(--ink-soft);font-weight:600;}
+.g-sub-diff{border-radius:10px;padding:6px 12px;background:#F7F5F2;border:1px solid var(--line);text-align:center;flex:0 0 auto;}
+.g-sub-diff.pos{background:#FEF2F2;border-color:#FECACA;}
+.g-sub-diff.neg{background:#F0FDF4;border-color:#BBF7D0;}
+.g-sub-diff .l{font-size:0.72rem;color:var(--ink-soft);}
+.g-sub-diff .v{font-size:1.08rem;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
+.g-sub-diff.pos .v,.g-sub-diff.pos .g-pct{color:#B91C1C;}
+.g-sub-diff.neg .v,.g-sub-diff.neg .g-pct{color:#15803D;}
+.g-sub-diff .g-pct{font-size:0.88rem;margin-left:6px;}
 /* ตัวเลือกบันทึกรูป */
 .opt-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-weight:600;}
 .opt-switch{appearance:none;-webkit-appearance:none;width:46px;height:26px;border-radius:999px;background:#E5E0D8;position:relative;cursor:pointer;transition:background 0.15s;flex-shrink:0;}
@@ -541,6 +565,11 @@ details[open]>.m-total .chev{transform:rotate(45deg);}
   .grand-head .chev{display:inline-block;flex-shrink:0;width:8px;height:8px;margin:0 2px 4px 6px;border-right:2px solid var(--orange-deep);border-bottom:2px solid var(--orange-deep);transform:rotate(45deg);transition:transform 0.15s;}
   .grand-card.open .grand-head .chev{transform:translateY(3px) rotate(-135deg);}
   .grand-card:not(.open) .grand-body{display:none;}
+  .grand-card:not(.open) .grand-breakdown{display:none;}
+  .grand-breakdown{padding:12px 14px 14px;}
+  .g-breakdown-grid{grid-template-columns:1fr;gap:10px;}
+  .g-sub-stats{width:100%;}
+  .g-sub-diff{width:100%;}
   .grand-card.open .grand-head .g-mini{display:none;}
   .grand-card.open .grand-head .chev{margin-left:auto;}
 }
@@ -3047,18 +3076,59 @@ function renderImporterCard(name,recs){
 
 // การ์ดสรุปรวม: พื้นขาวเด่น ส้มเป็นแค่ accent (Q7)
 let sumGrandOpen=false;
+let sumGrandDetailOpen=false;
 function toggleGrand(card){
   if(!window.matchMedia('(max-width:767px)').matches) return;
   sumGrandOpen=!sumGrandOpen;
   card.classList.toggle('open',sumGrandOpen);
 }
+function toggleGrandDetail(e){
+  e.stopPropagation();
+  sumGrandDetailOpen=!sumGrandDetailOpen;
+  const card=document.querySelector('.grand-card');
+  if(!card) return;
+  if(window.matchMedia('(max-width:767px)').matches && !sumGrandOpen){
+    sumGrandOpen=true;
+    card.classList.add('open');
+  }
+  const el=card.querySelector('.grand-breakdown');
+  if(el) el.hidden=!sumGrandDetailOpen;
+  const btn=card.querySelector('.g-detail-btn');
+  if(btn) btn.classList.toggle('active',sumGrandDetailOpen);
+}
 function renderGrand(recs,importerCount){
   const t=totals(recs);
   const stat=(l,v,u)=>`<div class="g-stat"><div class="l">${l}</div><div class="v">${v} <small>${u}</small></div></div>`;
+  const subStat=(l,v,u)=>`<div class="g-sub-stat"><div class="l">${l}</div><div class="v">${v} <small>${u}</small></div></div>`;
+
+  const goodsBlocks=GOODS_ORDER.map(g=>{
+    const grecs=recs.filter(r=>r.goodsType===g);
+    if(!grecs.length) return '';
+    const gt=totals(grecs);
+    const impCount=new Set(grecs.map(r=>r.importer)).size;
+    return `<div class="g-sub-card">
+      <div class="g-sub-head">
+        <span class="g-sub-title"><span class="g-sub-dot"></span>${esc(g)}</span>
+        <span class="g-sub-badge">${gt.count} ใบขน (${impCount} ราย)</span>
+      </div>
+      <div class="g-sub-body">
+        <div class="g-sub-stats">
+          ${subStat('สำแดงรวม',fmtKg(gt.decl),'KG')}
+          ${subStat('ชั่งจริงรวม',fmtKg(gt.net),'KG')}
+        </div>
+        <div class="g-sub-diff ${diffCls(gt.diff)}">
+          <div class="l">ผลต่าง</div>
+          <div class="v">${fmtDiff(gt.diff)} <small>KG</small><span class="g-pct">${fmtPct(gt.pct)}</span></div>
+        </div>
+      </div>
+    </div>`;
+  }).filter(Boolean).join('');
+
   // มือถือเริ่มยุบ เห็นแค่ชื่อ + ผลต่างรวม แตะเพื่อกาง · คอมกางเสมอ (V21)
   return `<div class="grand-card ${sumGrandOpen?'open':''}">
     <div class="grand-head" onclick="toggleGrand(this.parentElement)">
       <span class="sigma">Σ</span><span>สรุปรวมทั้งหมด</span>
+      <button type="button" class="g-detail-btn ${sumGrandDetailOpen?'active':''}" onclick="toggleGrandDetail(event)" title="แสดงรายละเอียดแยกหอมและกระเทียม">รายละเอียด</button>
       <span class="g-mini ${diffCls(t.diff)}">${fmtDiff(t.diff)} <small>KG</small> <b>${fmtPct(t.pct)}</b></span>
       <i class="chev"></i>
     </div>
@@ -3071,6 +3141,9 @@ function renderGrand(recs,importerCount){
         <div class="l">ผลต่างรวม</div>
         <div class="v">${fmtDiff(t.diff)} <small>KG</small><span class="g-pct">${fmtPct(t.pct)}</span></div>
       </div>
+    </div>
+    <div class="grand-breakdown" ${sumGrandDetailOpen?'':'hidden'}>
+      <div class="g-breakdown-grid">${goodsBlocks}</div>
     </div>
   </div>`;
 }
@@ -3364,7 +3437,7 @@ function drawSummaryCanvas(shift,groups,opts){
   const {header=true,expanded=true,splitGoods=false,grand=false}=opts||{};
   const SCALE=2; // วาดละเอียด 2 เท่าให้รูปคมชัด
   const W=1200,M=40,FONT="'IBM Plex Sans Thai',Sarabun,sans-serif";
-  const TITLE_H=124,BANNER_H=62,HEAD_H=44,DAY_H=48,ROW_H=42,TOT_H=50,TOT_SUB_H=40,GAP=22,GRAND_H=196;
+  const TITLE_H=124,BANNER_H=62,HEAD_H=44,DAY_H=48,ROW_H=42,TOT_H=50,TOT_SUB_H=40,GAP=22,GRAND_H=196,GRAND_SUB_H=146;
   const cols=[80,130,240,170,170,160,170]; // รวม 1120 = W-2M
   const ORANGE_DEEP='#C9550E',INK='#2B2A28',SOFT='#8A857D',LINE='#ECE6DF';
   const daysOf=recs=>groupBy(recs,r=>r.dateIso).sort((a,b)=>a[0].localeCompare(b[0]));
@@ -3375,14 +3448,14 @@ function drawSummaryCanvas(shift,groups,opts){
   let H=M;
   if(header) H+=TITLE_H+GAP;
   groups.forEach(([,recs])=>{H+=blockHeight(recs)+GAP;});
-  if(grand) H+=GRAND_H+GAP;
+  if(grand) H+=(GRAND_H+(splitGoods?GRAND_SUB_H:0))+GAP;
   H+=M-GAP;
 
   const cv=document.createElement('canvas');cv.width=W*SCALE;cv.height=H*SCALE;
   const c=cv.getContext('2d');
   c.scale(SCALE,SCALE);
   c.fillStyle='#FFFFFF';c.fillRect(0,0,W,H);
-  const rr=(x,y,w,h,r)=>{c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();};
+  const rr=(x,y,w,h,r)=>{c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y,x+w,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();};
   // จัดกึ่งกลาง/ชิดขวาเองด้วย measureText — Safari บน iPhone วาด textAlign 'center' เป็นชิดซ้าย (V21)
   const txt=(s,x,y,font,color,align='left')=>{
     c.font=font;c.fillStyle=color;c.textAlign='left';c.textBaseline='middle';
@@ -3493,7 +3566,8 @@ function drawSummaryCanvas(shift,groups,opts){
 
   if(grand){
     const all=groups.flatMap(g=>g[1]), t=totals(all), gx=M, gw=W-2*M;
-    whiteCard(gx,y,gw,GRAND_H);
+    const curGrandH=GRAND_H+(splitGoods?GRAND_SUB_H:0);
+    whiteCard(gx,y,gw,curGrandH);
     rr(gx+22,y+24,44,44,12);c.fillStyle='#FDF0E6';c.fill();
     txt('Σ',gx+44,y+47,`bold 26px ${FONT}`,ORANGE_DEEP,'center');
     txt('สรุปรวมทั้งหมด',gx+80,y+47,`bold 28px ${FONT}`,INK);
@@ -3522,6 +3596,41 @@ function drawSummaryCanvas(shift,groups,opts){
     txt(dv,dx+24,sy+58,VF,col);
     txt('KG',dx+24+vw+8,sy+62,UF,col);
     txt(pct,dx+24+vw+8+measure('KG',UF)+12,sy+60,PF,col);
+
+    if(splitGoods){
+      c.fillStyle=LINE; c.fillRect(gx+22,y+GRAND_H-14,gw-44,1.5);
+      const subW=(gw-44-16)/2, subY=y+GRAND_H-4;
+      GOODS_ORDER.forEach((g,i)=>{
+        const grecs=all.filter(r=>r.goodsType===g);
+        if(!grecs.length) return;
+        const gt=totals(grecs), impCount=new Set(grecs.map(r=>r.importer)).size;
+        const subX=gx+22+i*(subW+16);
+        rr(subX,subY,subW,124,12); c.fillStyle='#FAF8F5'; c.fill();
+        rr(subX,subY,subW,124,12); c.strokeStyle=LINE; c.lineWidth=1; c.stroke();
+
+        c.beginPath(); c.arc(subX+22,subY+24,4.5,0,Math.PI*2); c.fillStyle=ORANGE_DEEP; c.fill();
+        txt(g,subX+34,subY+24,`bold 21px ${FONT}`,INK);
+        const badge=`${gt.count} ใบขน (${impCount} ราย)`;
+        const bw=measure(badge,`bold 15px ${FONT}`)+18;
+        rr(subX+subW-16-bw,subY+12,bw,24,12); c.fillStyle='#FFFFFF'; c.fill();
+        rr(subX+subW-16-bw,subY+12,bw,24,12); c.strokeStyle=LINE; c.lineWidth=1; c.stroke();
+        txt(badge,subX+subW-16-bw/2,subY+24,`bold 15px ${FONT}`,SOFT,'center');
+
+        txt('สำแดงรวม',subX+20,subY+60,`15px ${FONT}`,SOFT);
+        txt(`${fmtKg(gt.decl)} KG`,subX+20,subY+90,`bold 20px ${FONT}`,INK);
+
+        txt('ชั่งจริงรวม',subX+170,subY+60,`15px ${FONT}`,SOFT);
+        txt(`${fmtKg(gt.net)} KG`,subX+170,subY+90,`bold 20px ${FONT}`,INK);
+
+        const diffW=164, diffX=subX+subW-16-diffW, gcol=dc(gt.diff);
+        rr(diffX,subY+50,diffW,58,10);
+        c.fillStyle=gt.diff<0?'#F0FDF4':gt.diff>0?'#FEF2F2':'#FFFFFF'; c.fill();
+        rr(diffX,subY+50,diffW,58,10);
+        c.strokeStyle=gt.diff<0?'#BBF7D0':gt.diff>0?'#FECACA':LINE; c.lineWidth=1; c.stroke();
+        txt('ผลต่าง',diffX+diffW/2,subY+64,`14px ${FONT}`,SOFT,'center');
+        txt(`${fmtDiff(gt.diff)} KG ${fmtPct(gt.pct)}`,diffX+diffW/2,subY+92,`bold 15px ${FONT}`,gcol,'center');
+      });
+    }
   }
   return cv.toDataURL('image/png');
 }
