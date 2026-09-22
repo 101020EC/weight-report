@@ -3456,7 +3456,18 @@ function drawSummaryCanvas(shift,groups,opts){
   const c=cv.getContext('2d');
   c.scale(SCALE,SCALE);
   c.fillStyle='#FFFFFF';c.fillRect(0,0,W,H);
-  const rr=(x,y,w,h,r)=>{c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y,x+w,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();};
+  const rr=(x,y,w,h,r)=>{
+    if(c.roundRect){
+      c.beginPath();c.roundRect(x,y,w,h,r);
+    }else{
+      c.beginPath();c.moveTo(x+r,y);
+      c.arcTo(x+w,y,x+w,y+h,r);
+      c.arcTo(x+w,y+h,x,y+h,r);
+      c.arcTo(x,y+h,x,y,r);
+      c.arcTo(x,y,x+w,y,r);
+      c.closePath();
+    }
+  };
   // จัดกึ่งกลาง/ชิดขวาเองด้วย measureText — Safari บน iPhone วาด textAlign 'center' เป็นชิดซ้าย (V21)
   const txt=(s,x,y,font,color,align='left')=>{
     c.font=font;c.fillStyle=color;c.textAlign='left';c.textBaseline='middle';
