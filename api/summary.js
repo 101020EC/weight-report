@@ -6,7 +6,8 @@
 //   login { pin }     — ตรวจ PIN คืน token อายุ 15 วัน
 //   ที่เหลือต้องมี header  Authorization: Bearer <token>
 //   load { shiftId? } · createShift · updateShift { startDate, endDate } · deleteShift { pin } ·
-//   createRecord { shiftId } · updateRecord · deleteRecord · renameImporter · recordsByDate { dateIso }
+//   createRecord { shiftId } · updateRecord · deleteRecord · renameImporter · recordsByDate { dateIso } ·
+//   exportUnlock { pin } (EXPORT_PIN) · exportSaveSettings { exportToken, settings }
 
 const crypto = require('crypto');
 const { initializeApp, cert, getApps } = require('firebase-admin/app');
@@ -14,6 +15,8 @@ const { getFirestore } = require('firebase-admin/firestore');
 
 const TOKEN_TTL_MS = 15 * 24 * 60 * 60 * 1000;
 const LOCK_MAX_FAILS = 8;
+const LOCK_MAX_FAILS_IP = 30;
+const EXPORT_TOKEN_TTL_MS = 10 * 60 * 1000;
 const LOCK_WINDOW_MS = 15 * 60 * 1000;
 const SHIFT_MAX_DAYS = 7;
 
@@ -61,31 +64,95 @@ function verifyToken(req) {
   }
 }
 
-function clientKey(req) {
-  const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
-  return crypto.createHash('sha256').update(ip).digest('hex').slice(0, 32);
+// ล็อกต่อ IP + เครื่อง (V24 Q4c): คนที่ใส่ผิดถูกล็อกคนเดียว ไม่ใช่ทั้งที่ทำงานที่ใช้ IP เดียวกัน
+// เพดานรวมต่อ IP กันสุ่มรหัสด้วยการเปลี่ยน device id · ตัวนับแยกตามชนิดรหัส (summary / export) (Q4a)
+function clientIp(req) {
+  return String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
 }
+function deviceId(req) {
+  const d = String(req.headers['x-device-id'] || '');
+  return /^[\w-]{8,64}$/.test(d) ? d : 'none';
+}
+const hashKey = s => crypto.createHash('sha256').update(s).digest('hex').slice(0, 32);
 
-// ตรวจ PIN พร้อมล็อก 15 นาทีเมื่อผิดครบ 8 ครั้ง (PIN มีแค่ 10,000 แบบ)
-async function checkPin(req, pin) {
-  const expected = pinConfig();
-  const ref = db().collection('pin_attempts').doc(clientKey(req));
+// ตรวจ PIN: ผิดครบ 8 ครั้งต่อเครื่อง หรือ 30 ครั้งต่อ IP ภายใน 15 นาที = ล็อก 15 นาที · บอกจำนวนครั้งที่เหลือ (Q4b)
+async function checkPin(req, pin, kind = 'summary') {
+  const expected = kind === 'export' ? exportPinConfig() : pinConfig();
+  const ip = clientIp(req);
+  const col = db().collection('pin_attempts');
+  const counters = [
+    { ref: col.doc(`${kind}_dev_${hashKey(`${ip}|${deviceId(req)}`)}`), max: LOCK_MAX_FAILS },
+    { ref: col.doc(`${kind}_ip_${hashKey(ip)}`), max: LOCK_MAX_FAILS_IP },
+  ];
   const now = Date.now();
-  const snap = await ref.get();
-  let { fails = 0, windowStart = now } = snap.exists ? snap.data() : {};
-  if (now - windowStart > LOCK_WINDOW_MS) { fails = 0; windowStart = now; }
-  if (fails >= LOCK_MAX_FAILS) {
-    const mins = Math.ceil((windowStart + LOCK_WINDOW_MS - now) / 60000);
-    throw new HttpError(429, `ใส่รหัสผิดหลายครั้ง กรุณารอ ${mins} นาที`);
+  const snaps = await Promise.all(counters.map(c => c.ref.get()));
+  counters.forEach((c, i) => {
+    let { fails = 0, windowStart = now } = snaps[i].exists ? snaps[i].data() : {};
+    if (now - windowStart > LOCK_WINDOW_MS) { fails = 0; windowStart = now; }
+    Object.assign(c, { fails, windowStart, exists: snaps[i].exists });
+  });
+  const locked = counters.filter(c => c.fails >= c.max);
+  if (locked.length) {
+    const until = Math.max(...locked.map(c => c.windowStart + LOCK_WINDOW_MS));
+    throw new HttpError(429, `ใส่รหัสผิดหลายครั้ง กรุณารอ ${Math.ceil((until - now) / 60000)} นาที`);
   }
   const a = Buffer.from(String(pin || ''));
   const b = Buffer.from(expected);
   if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
-    if (snap.exists) await ref.delete();
+    await Promise.all(counters.filter(c => c.exists).map(c => c.ref.delete()));
     return;
   }
-  await ref.set({ fails: fails + 1, windowStart });
-  throw new HttpError(401, 'รหัสไม่ถูกต้อง');
+  await Promise.all(counters.map(c => c.ref.set({ fails: c.fails + 1, windowStart: c.windowStart })));
+  const left = Math.min(...counters.map(c => c.max - c.fails - 1));
+  throw new HttpError(401, left > 0
+    ? `รหัสไม่ถูกต้อง เหลืออีก ${left} ครั้ง`
+    : `รหัสไม่ถูกต้อง — ล็อก ${LOCK_WINDOW_MS / 60000} นาที`);
+}
+
+// ── ส่งออก Excel (V24) — รหัสแยก EXPORT_PIN · token อายุสั้นใช้บันทึกค่าตั้งค่า ──
+function exportPinConfig() {
+  const pin = (process.env.EXPORT_PIN || '').trim();
+  if (!/^\d{4}$/.test(pin)) throw new HttpError(500, 'ยังไม่ได้ตั้งค่า EXPORT_PIN (ตัวเลข 4 หลัก)');
+  return pin;
+}
+function signExportToken(exp) {
+  const secret = crypto.createHash('sha256').update(`export-token|${process.env.FIREBASE_SERVICE_ACCOUNT || ''}|${exportPinConfig()}`).digest();
+  return `${exp}.${crypto.createHmac('sha256', secret).update(`x1.${exp}`).digest('base64url')}`;
+}
+function verifyExportToken(token) {
+  const m = String(token || '').match(/^(\d+)\.([\w-]+)$/);
+  const ok = m && Date.now() <= Number(m[1]) && (() => {
+    const expected = Buffer.from(signExportToken(Number(m[1])).split('.')[1]);
+    const given = Buffer.from(m[2]);
+    return given.length === expected.length && crypto.timingSafeEqual(given, expected);
+  })();
+  if (!ok) throw new HttpError(403, 'หมดเวลาส่งออก กรุณากดส่งออกและใส่รหัสใหม่');
+}
+
+// ค่าเริ่มต้นของหน้าตั้งค่าส่งออก (Q5–Q7) — ค่าที่ผู้ใช้แก้เก็บที่ settings/export ใช้ร่วมทุกเครื่อง (Q6)
+const EXPORT_DEFAULTS = {
+  prices: { 'หอม': 2, 'กระเทียม': 3 },
+  ratePerDecl: 1500,
+  companies: {
+    'ดิเรก': { 'หอม': 'บริษัท โกลเด้น ไลน์ อิมพอร์ท เอ็กพอร์ท จำกัด', 'กระเทียม': 'บริษัท โกลเด้น ไลน์ อิมพอร์ท เอ็กพอร์ท จำกัด' },
+    'ติก๊ะ': { 'หอม': 'บริษัท ริสกี อินเตอร์ ฟู๊ดส์ อิมพอร์ต เอ็กซ์พอร์ต จำกัด', 'กระเทียม': 'บริษัท มาร์ฮาบัน จำกัด' },
+    'ก๊ะลี': { 'หอม': 'บริษัท เออาร์เอ็น อินเตอร์เทรด จำกัด', 'กระเทียม': 'บริษัท เออาร์เอ็น อินเตอร์เทรด จำกัด' },
+  },
+};
+
+function exportSettings(raw) {
+  const s = raw && typeof raw === 'object' ? raw : {};
+  const prices = {};
+  Object.entries(s.prices && typeof s.prices === 'object' ? s.prices : {}).slice(0, 10)
+    .forEach(([g, v]) => { prices[text(g, 'สินค้า', 40)] = num(v, `ราคา${g}`); });
+  const companies = {};
+  Object.entries(s.companies && typeof s.companies === 'object' ? s.companies : {}).slice(0, 30).forEach(([imp, m]) => {
+    const row = {};
+    Object.entries(m && typeof m === 'object' ? m : {}).slice(0, 10)
+      .forEach(([g, v]) => { row[text(g, 'สินค้า', 40)] = text(v, `ชื่อบริษัท ${imp}`, 120, false); });
+    companies[text(imp, 'ผู้นำเข้า')] = row;
+  });
+  return { prices, ratePerDecl: num(s.ratePerDecl, 'อัตราต่อใบขน'), companies };
 }
 
 // ── validation helpers ──────────────────────────────────────
@@ -319,6 +386,23 @@ const actions = {
 
   async deleteRecord(req, body) {
     await db().collection('records').doc(text(body.id, 'รายการ', 60)).delete();
+    return { ok: true };
+  },
+
+  // กดส่งออก Excel: ตรวจรหัสส่งออกทุกครั้ง (V24 Q3) คืนค่าตั้งค่าที่เก็บไว้ + ค่าเริ่มต้น
+  async exportUnlock(req, body) {
+    await checkPin(req, body.pin, 'export');
+    const snap = await db().collection('settings').doc('export').get();
+    return {
+      exportToken: signExportToken(Date.now() + EXPORT_TOKEN_TTL_MS),
+      settings: snap.exists ? snap.data().settings : null,
+      defaults: EXPORT_DEFAULTS,
+    };
+  },
+
+  async exportSaveSettings(req, body) {
+    verifyExportToken(body.exportToken);
+    await db().collection('settings').doc('export').set({ settings: exportSettings(body.settings), updatedAt: Date.now() });
     return { ok: true };
   },
 

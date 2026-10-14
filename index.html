@@ -222,6 +222,7 @@ table.dt tbody td input.changed{border-color:var(--orange-mid);background:#FFFDF
 .chip.active{color:#fff;font-weight:700!important;border-color:transparent;box-shadow:0 8px 18px -10px rgba(0,0,0,0.4);}
 .chip.active.c-blue{background-image:linear-gradient(135deg,#3B82F6,#2563EB);box-shadow:0 8px 18px -10px rgba(37,99,235,0.6);}
 .chip.active.c-green{background-image:linear-gradient(135deg,#22C55E,#16A34A);box-shadow:0 8px 18px -10px rgba(22,163,74,0.6);}
+.chip.active.c-purple{background-image:linear-gradient(135deg,#A855F7,#7C3AED);box-shadow:0 8px 18px -10px rgba(124,58,237,0.6);}
 .chip.active.c-orange{background-image:linear-gradient(135deg,var(--orange-mid),var(--orange-deep));box-shadow:0 8px 18px -10px rgba(232,105,26,0.6);}
 .chip.active.c-pink{background-image:linear-gradient(135deg,#EC4899,#DB2777);box-shadow:0 8px 18px -10px rgba(219,39,119,0.6);}
 .chip-group.invalid .chip{border-color:#E7A6A6;}
@@ -502,6 +503,16 @@ details[open]>.m-total .chev{transform:rotate(45deg);}
 .opt-chip input{position:absolute;opacity:0;pointer-events:none;}
 .opt-chip span{display:inline-block;padding:6px 14px;border-radius:999px;border:1px solid var(--line);color:var(--ink-soft);font-weight:600;}
 .opt-chip input:checked+span{background:var(--imp);border-color:var(--imp);color:#fff;}
+.exp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;padding-bottom:12px;border-bottom:1px solid var(--line);}
+.exp-field{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.exp-field label{font-size:0.82rem;font-weight:600;color:var(--ink-soft);}
+.exp-field input{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:16px;background:#fff;min-width:0;}
+.exp-field input:focus{outline:none;border-color:var(--orange);box-shadow:0 0 0 3px rgba(232,105,26,0.15);}
+.exp-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle;}
+.exp-imp-row small{font-weight:500;color:var(--ink-soft);}
+.exp-company{border-left:4px solid var(--imp);background:var(--imp-alt);border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;}
+.exp-company-name{font-weight:700;color:var(--imp-dark);}
+.exp-company[hidden],.exp-imp-row[hidden],#expCompanyTitle[hidden]{display:none;}
 .opt-chip input:focus-visible+span{outline:2px solid var(--imp-dark);}
 /* นำเข้ารายงานจากสรุปผล */
 .tm-list{max-height:46vh;overflow-y:auto;border:1px solid var(--line);border-radius:12px;}
@@ -737,7 +748,7 @@ details[open]>.m-total .chev{transform:rotate(45deg);}
           <div class="chip-row chip-group" id="importerChips">
             <button type="button" class="chip" data-val="ดิเรก" data-color="c-blue" onclick="pickImporter(this)">ดิเรก</button>
             <button type="button" class="chip" data-val="ติก๊ะ" data-color="c-green" onclick="pickImporter(this)">ติก๊ะ</button>
-            <button type="button" class="chip" data-val="ก๊ะลี" data-color="c-orange" onclick="pickImporter(this)">ก๊ะลี</button>
+            <button type="button" class="chip" data-val="ก๊ะลี" data-color="c-purple" onclick="pickImporter(this)">ก๊ะลี</button>
             <button type="button" class="chip" data-val="__other__" data-color="c-pink" onclick="pickImporter(this)">อื่นๆ</button>
           </div>
           <input type="hidden" id="f_importer" />
@@ -1048,7 +1059,7 @@ const STEP1_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 
 // ── THEME ─────────────────────────────────────────────────
 function getTheme(im){
-  if(im==='ก๊ะลี') return{primary:'#E8691A',light:'#FDF0E6',dark:'#B8520E',border:'#F5C89A',rowAlt:'#FDF8F5',totalBg:'#F5DFC0',totalTxt:'#7A3800',infoLbl:'#E8691A'};
+  if(im==='ก๊ะลี') return{primary:'#6B3FA0',light:'#F3EDFA',dark:'#4A2775',border:'#C6AEE6',rowAlt:'#F8F5FC',totalBg:'#E2D4F3',totalTxt:'#321A52',infoLbl:'#6B3FA0'};
   if(im==='ติก๊ะ') return{primary:'#1A7A3A',light:'#EDF7F1',dark:'#0F5028',border:'#90CFA8',rowAlt:'#F4FBF6',totalBg:'#C8EDD6',totalTxt:'#0A3A1E',infoLbl:'#1A7A3A'};
   if(im==='ดิเรก') return{primary:'#1A55A0',light:'#EBF2FC',dark:'#0E3570',border:'#90B8E8',rowAlt:'#F2F6FC',totalBg:'#C0D8F5',totalTxt:'#0A2550',infoLbl:'#1A55A0'};
   // อื่นๆ → ชมพูเข้ม
@@ -1327,7 +1338,7 @@ function setF(id,val){const el=document.getElementById(id);if(!el)return;el.valu
 function markChanged(el){el.classList.add('changed');}
 
 // ── CHIP SELECTORS (ผู้นำเข้า / ประเภทสินค้า) ───────────────
-function clearChips(row){row.querySelectorAll('.chip').forEach(c=>c.classList.remove('active','c-blue','c-green','c-orange','c-pink'));row.classList.remove('invalid');}
+function clearChips(row){row.querySelectorAll('.chip').forEach(c=>c.classList.remove('active','c-blue','c-green','c-orange','c-pink','c-purple'));row.classList.remove('invalid');}
 function activateChip(btn){if(btn)btn.classList.add('active',btn.dataset.color);}
 
 function pickImporter(btn){
@@ -2814,6 +2825,17 @@ function sumToken(){
   return null;
 }
 function clearSumToken(){ try{localStorage.removeItem(SUM_TOKEN_KEY);}catch(e){} }
+// id สุ่มประจำเครื่อง ให้ server ล็อกรหัสผิดเฉพาะเครื่องนี้ ไม่ใช่ทุกเครื่องที่ใช้ IP เดียวกัน (V24 Q4)
+let sumDeviceIdMem=null;
+function sumDeviceId(){
+  if(sumDeviceIdMem) return sumDeviceIdMem;
+  try{sumDeviceIdMem=localStorage.getItem('weight_device_id');}catch(e){}
+  if(!/^[\w-]{8,64}$/.test(sumDeviceIdMem||'')){
+    sumDeviceIdMem=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
+    try{localStorage.setItem('weight_device_id',sumDeviceIdMem);}catch(e){}
+  }
+  return sumDeviceIdMem;
+}
 
 async function sumApi(action,data={}){
   const token=sumToken();
@@ -2821,7 +2843,7 @@ async function sumApi(action,data={}){
   try{
     res=await fetch('/api/summary',{
       method:'POST',
-      headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},
+      headers:{'Content-Type':'application/json','X-Device-Id':sumDeviceId(),...(token?{Authorization:'Bearer '+token}:{})},
       body:JSON.stringify({action,...data})
     });
   }catch(e){ throw new Error('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'); }
@@ -3323,7 +3345,7 @@ function submitDeleteShift(btn){
 
 // ── record add / edit / delete ─────────────────────────────
 // ปุ่มเลือกแบบเดียวกับหน้าชั่ง (V20) — ค่าที่ไม่อยู่ในปุ่ม = "อื่นๆ" + ช่องพิมพ์
-const REC_IMPORTER_CHIPS=[['ดิเรก','c-blue'],['ติก๊ะ','c-green'],['ก๊ะลี','c-orange']];
+const REC_IMPORTER_CHIPS=[['ดิเรก','c-blue'],['ติก๊ะ','c-green'],['ก๊ะลี','c-purple']];
 const REC_GOODS_CHIPS=[['หอม','c-orange'],['กระเทียม','c-orange']];
 function recChipGroup(label,idAttr,chips,value,placeholder){
   const isOther=!!value&&!chips.some(([v])=>v===value);
@@ -3337,7 +3359,7 @@ function recChipGroup(label,idAttr,chips,value,placeholder){
 }
 function pickRecChip(btn){
   const row=btn.parentElement;
-  row.querySelectorAll('.chip').forEach(c=>c.classList.remove('active','c-blue','c-green','c-orange','c-pink'));
+  row.querySelectorAll('.chip').forEach(c=>c.classList.remove('active','c-blue','c-green','c-orange','c-pink','c-purple'));
   btn.classList.add('active',btn.dataset.color);
   const other=document.getElementById(row.id.replace(/Chips$/,'Other'));
   other.hidden=btn.dataset.val!=='__other__';
@@ -3745,7 +3767,7 @@ function importTeamManual(){
   showToast(`นำเข้า ${picked.length} ใบขนแล้ว ✓`,'success');
 }
 
-// ── ส่งออก Excel (V18 Q5/Q6) — ExcelJS โหลดตอนใช้ครั้งแรก ──────────
+// ── ส่งออก Excel — ExcelJS โหลดตอนใช้ครั้งแรก ──────────
 let excelJsPromise=null;
 function loadExcelJs(){
   if(window.ExcelJS) return Promise.resolve(window.ExcelJS);
@@ -3763,97 +3785,342 @@ function loadExcelJs(){
   return excelJsPromise;
 }
 
-async function exportSummaryExcel(){
+// ส่งออก Excel แบบไฟล์สรุปการนำเข้า (V24) — กดแล้วใส่รหัสส่งออก → หน้าตั้งค่า → ไฟล์
+// รหัสตรวจที่ server (EXPORT_PIN) ทุกครั้ง · ค่าตั้งค่าเก็บที่ server ใช้ร่วมทุกเครื่อง (Q6)
+let exportCtx=null; // { token, settings, defaults }
+
+function exportSummaryExcel(){
   const st=sumState;
   if(!st||!st.shift||!st.records.length){showToast('ยังไม่มีข้อมูลให้ส่งออก','error');return;}
-  let ExcelJS;
-  try{ ExcelJS=await loadExcelJs(); }catch(e){ showToast(e.message,'error'); return; }
-  const shift=st.shift, wb=new ExcelJS.Workbook();
-  wb.creator='ระบบอ่านใบชั่ง';
-  const NUM='#,##0', DIFF='+#,##0;-#,##0;0', PCT='+0.00%;-0.00%;0.00%';
-  const argb=hex=>'FF'+hex.replace('#','').toUpperCase();
-  const fill=hex=>({type:'pattern',pattern:'solid',fgColor:{argb:argb(hex)}});
-  const thin={style:'thin',color:{argb:'FFE5E0D8'}};
-  const border={top:thin,bottom:thin,left:thin,right:thin};
-  const groups=groupBy(st.records,r=>r.importer,IMPORTER_ORDER).map(([n,rs])=>[n,sortedRecs(rs)]);
-  const range=`${thaiDate(shift.startDate)} — ${thaiDate(shift.endDate)}`;
-
-  // ชีต "สรุป": ผู้นำเข้า → แถววันที่ (ยอดรวม) → ใบขน (outline ยุบได้)
-  const ws=wb.addWorksheet('สรุป',{properties:{outlineProperties:{summaryBelow:false}},views:[{state:'frozen',ySplit:4}]});
-  ws.columns=[{width:8},{width:12},{width:24},{width:18},{width:18},{width:16},{width:12}];
-  ws.mergeCells('A1:G1'); ws.getCell('A1').value='รายงานสรุปน้ำหนักหอม – กระเทียม';
-  ws.getCell('A1').font={bold:true,size:16,color:{argb:argb('#C9550E')}};
-  ws.mergeCells('A2:G2'); ws.getCell('A2').value=`สินค้าเกษตร · ${range}`;
-  ws.getCell('A2').font={size:12,color:{argb:argb('#8A857D')}};
-  const head=ws.getRow(4);
-  head.values=['ลำดับ','สินค้า','เลขที่ใบขนสินค้า','น้ำหนักสำแดง (KG)','น้ำหนักชั่งจริง (KG)','ผลต่าง (KG)','ร้อยละ'];
-  head.eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill=fill('#C9550E');cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};cell.border=border;});
-  head.height=30;
-
-  const numCells=(row,decl,net,diff,pct,bold,color)=>{
-    [[4,decl,NUM],[5,net,NUM],[6,diff,DIFF],[7,pct,PCT]].forEach(([col,v,fmt])=>{
-      const cell=row.getCell(col); cell.value=v; cell.numFmt=fmt; cell.border=border;
-      cell.font={bold,color:{argb:argb(col>=6?(diff>0?'#C81E1E':diff<0?'#15803D':'#374151'):color)}};
-    });
-  };
-  let r=6;
-  groups.forEach(([name,recs])=>{
-    const T=getTheme(name), t=totals(recs);
-    const imp=ws.getRow(r); ws.mergeCells(r,1,r,3);
-    imp.getCell(1).value=`ผู้นำเข้า : ${name} · ${t.count} ใบขน`;
-    imp.getCell(1).font={bold:true,size:13,color:{argb:'FFFFFFFF'}};
-    for(let col=1;col<=7;col++) imp.getCell(col).fill=fill(T.primary);
-    numCells(imp,t.decl,t.net,t.diff,t.pct/100,true,'#FFFFFF');
-    [6,7].forEach(col=>imp.getCell(col).font={bold:true,color:{argb:'FFFFFFFF'}});
-    imp.height=24; r++;
-    let n=0;
-    groupBy(recs,x=>x.dateIso).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([day,drecs])=>{
-      const dt=totals(drecs), dr=ws.getRow(r); ws.mergeCells(r,1,r,3);
-      dr.getCell(1).value=`${thaiDate(day)} · ${drecs.length} ใบขน`;
-      dr.getCell(1).font={bold:true,size:13,color:{argb:argb(T.dark)}};
-      for(let col=1;col<=7;col++){dr.getCell(col).fill=fill(T.light);dr.getCell(col).border=border;}
-      numCells(dr,dt.decl,dt.net,dt.diff,dt.pct/100,true,T.dark);
-      dr.height=22; r++;
-      drecs.forEach(rec=>{
-        const row=ws.getRow(r);
-        row.getCell(1).value=++n; row.getCell(2).value=rec.goodsType; row.getCell(3).value=rec.declarationNo+(rec.period?` (${rec.period})`:'');
-        [1,2,3].forEach(col=>{row.getCell(col).border=border;row.getCell(col).alignment={horizontal:col===3?'left':'center'};});
-        numCells(row,rec.declaredWeight,rec.netWeight,rec.diffWeight,pctOf(rec.diffWeight,rec.declaredWeight)/100,false,'#222222');
-        row.outlineLevel=1; r++;
-      });
-    });
-    r++;
+  openSumModal(`<h3>ส่งออก Excel</h3><div class="sub">กรอกรหัสส่งออก 4 หลัก</div>
+    <input class="pin-input" id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
+      oninput="this.value=this.value.replace(/\\D/g,'');if(this.value.length===4)submitExportPin()" onkeydown="if(event.key==='Enter')submitExportPin()">
+    <div class="sum-modal-err" id="sumModalErr"></div>
+    <div class="sum-modal-actions"><button class="btn btn-secondary" onclick="closeSumModal()">ยกเลิก</button>
+      <button class="btn btn-primary" id="exportPinBtn" onclick="submitExportPin()">ถัดไป</button></div>`,'#pinInput');
+  loadExcelJs().catch(()=>{}); // โหลดไว้ระหว่างใส่รหัส
+}
+async function submitExportPin(){
+  const inp=document.getElementById('pinInput'), btn=document.getElementById('exportPinBtn');
+  if(!inp||inp.value.length!==4){modalErr('กรุณากรอกรหัสให้ครบ 4 หลัก');return;}
+  await modalBusy(btn,async()=>{
+    try{
+      const o=await sumApi('exportUnlock',{pin:inp.value});
+      exportCtx={token:o.exportToken,settings:o.settings||o.defaults,defaults:o.defaults};
+      openExportSettingsModal();
+    }catch(e){ inp.value=''; inp.focus(); throw e; }
   });
-  const all=totals(st.records), gr=ws.getRow(r); ws.mergeCells(r,1,r,3);
-  gr.getCell(1).value=`สรุปรวมทั้งหมด · ${groups.length} ราย · ${all.count} ใบขน`;
-  gr.getCell(1).font={bold:true,size:13,color:{argb:argb('#C9550E')}};
-  for(let col=1;col<=7;col++){gr.getCell(col).fill=fill('#FDF0E6');gr.getCell(col).border={top:{style:'medium',color:{argb:argb('#E8691A')}}};}
-  numCells(gr,all.decl,all.net,all.diff,all.pct/100,true,'#2B2A28');
-  gr.height=26;
+}
 
-  // ชีต "รายละเอียด": ใบขนละแถว ตัวเลขจริง กรองได้
-  const wd=wb.addWorksheet('รายละเอียด',{views:[{state:'frozen',ySplit:1}]});
-  wd.columns=[
-    {header:'ผู้นำเข้า',key:'imp',width:14},{header:'วันที่',key:'date',width:13},{header:'สินค้า',key:'goods',width:11},
-    {header:'ประเทศกำเนิด',key:'origin',width:13},{header:'เลขที่ใบขนสินค้า',key:'decl',width:20},{header:'ชุดที่',key:'period',width:10},
-    {header:'น้ำหนักสำแดง (KG)',key:'dw',width:17,style:{numFmt:NUM}},{header:'น้ำหนักชั่งจริง (KG)',key:'nw',width:17,style:{numFmt:NUM}},
-    {header:'ผลต่าง (KG)',key:'diff',width:14,style:{numFmt:DIFF}},{header:'ร้อยละ',key:'pct',width:11,style:{numFmt:PCT}},
-    {header:'ทะเบียนรถ',key:'plates',width:22}
-  ];
-  groups.forEach(([,recs])=>recs.forEach(rec=>{
-    const [yy,mm,dd]=rec.dateIso.split('-').map(Number);
-    wd.addRow({imp:rec.importer,date:new Date(Date.UTC(yy,mm-1,dd)),goods:rec.goodsType,origin:rec.origin||'',decl:rec.declarationNo,
-      period:rec.period||'',dw:rec.declaredWeight,nw:rec.netWeight,diff:rec.diffWeight,pct:pctOf(rec.diffWeight,rec.declaredWeight)/100,
-      plates:(rec.vehicles||[]).map(v=>v.plate).filter(Boolean).join(', ')});
-  }));
-  wd.getColumn('date').numFmt='dd/mm/yyyy';
-  wd.getRow(1).eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill=fill('#C9550E');cell.alignment={vertical:'middle',horizontal:'center'};});
-  wd.autoFilter={from:'A1',to:{row:1,column:11}};
+const EXPORT_GOODS_NAME=teamGoodsName; // หอม → หอมหัวใหญ่ · กระเทียม → กระเทียมสด
+function exportGoodsList(recs){
+  return groupBy([...GOODS_ORDER.map(g=>({goodsType:g})),...recs],r=>r.goodsType,GOODS_ORDER).map(g=>g[0]).filter(Boolean);
+}
+function exportCompanyOf(settings,imp,goods){
+  return String((settings.companies[imp]||{})[goods]||'').trim()||imp;
+}
 
-  const buf=await wb.xlsx.writeBuffer();
-  const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  const dataUrl=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(blob);});
-  await saveDataUrl(dataUrl,`สรุปผล_${shift.startDate}_${shift.endDate}.xlsx`,blob.type);
+function openExportSettingsModal(){
+  const st=sumState, s=exportCtx.settings, shift=st.shift;
+  const importers=groupBy(st.records,r=>r.importer,IMPORTER_ORDER).map(g=>g[0]);
+  const goods=exportGoodsList(st.records);
+  const sw=(cls,val,label,style='')=>`<label class="opt-row"><span>${label}</span><input type="checkbox" class="opt-switch ${cls}" value="${esc(val)}" checked onchange="updateExportForm()" ${style}></label>`;
+  const companyRows=importers.map(imp=>{
+    const g=exportGoodsList(st.records.filter(r=>r.importer===imp));
+    return `<div class="exp-company" data-imp="${esc(imp)}" style="${impStyle(imp)}">
+      <div class="exp-company-name">${esc(imp)}</div>
+      ${g.map(gt=>`<div class="exp-field"><label>${esc(gt)}</label>
+        <input type="text" maxlength="120" class="expCompany" data-imp="${esc(imp)}" data-goods="${esc(gt)}" value="${esc((s.companies[imp]||{})[gt]??'')}" placeholder="${esc(imp)}"></div>`).join('')}
+    </div>`;
+  }).join('');
+  openSumModal(`<h3>ส่งออก Excel</h3>
+    <div class="sub">เวร ${shiftRangeText(shift.startDate,shift.endDate)}</div>
+    <div class="row2">
+      <div class="form-group"><label>ตั้งแต่วันที่</label><input type="date" id="expStart" value="${shift.startDate}" min="${shift.startDate}" max="${shift.endDate}" onchange="updateExportForm()"></div>
+      <div class="form-group"><label>ถึงวันที่</label><input type="date" id="expEnd" value="${shift.endDate}" min="${shift.startDate}" max="${shift.endDate}" onchange="updateExportForm()"></div>
+    </div>
+    <div class="sub" id="expRange" style="margin-bottom:4px;"></div>
+    <div class="sum-section-title">ราคาต่อกิโลกรัม (บาท)</div>
+    <div class="exp-grid">${goods.map(g=>`<div class="exp-field"><label>${esc(g)}</label>
+      <input type="text" inputmode="decimal" class="expPrice" data-goods="${esc(g)}" value="${esc(s.prices[g]??'')}" placeholder="0"></div>`).join('')}
+      <div class="exp-field"><label>อัตราต่อใบขน</label><input type="text" inputmode="decimal" id="expRate" value="${esc(s.ratePerDecl??'')}" placeholder="0"></div>
+    </div>
+    <div class="sum-section-title">ชีตที่ต้องการ</div>
+    ${importers.map(imp=>`<div class="exp-imp-row" data-imp="${esc(imp)}">${sw('expImp',imp,`<span class="exp-dot" style="background:${getTheme(imp).primary}"></span>ชีต ${esc(imp)} <small class="exp-count"></small>`)}</div>`).join('')}
+    ${sw('expSheet','summary','สรุปตามบริษัท')}
+    ${sw('expSheet','staff','จำนวนใบขนตามเจ้าหน้าที่')}
+    <div class="sum-section-title" id="expCompanyTitle">ชื่อบริษัท</div>
+    ${companyRows}
+    <div class="sum-modal-err" id="sumModalErr"></div>
+    <button class="btn btn-secondary" style="width:100%;" onclick="resetExportDefaults()">คืนค่าเริ่มต้น</button>
+    <div class="sum-modal-actions">
+      <button class="btn btn-secondary" onclick="closeSumModal()">ยกเลิก</button>
+      <button class="btn btn-primary" id="expBtn" onclick="submitExportExcel(this)">ส่งออก</button></div>`);
+  updateExportForm();
+}
+
+function exportRangeRecs(){
+  const a=document.getElementById('expStart').value, b=document.getElementById('expEnd').value;
+  return {start:a,end:b,recs:sumState.records.filter(r=>r.dateIso>=a&&r.dateIso<=b)};
+}
+// เปลี่ยนช่วงวันที่ → ซ่อนผู้นำเข้าที่ไม่มีข้อมูลในช่วงนั้น · ปิดชีตผู้นำเข้า → ซ่อนช่องชื่อบริษัท
+function updateExportForm(){
+  const card=document.getElementById('sumModalCard');
+  const {start,end,recs}=exportRangeRecs();
+  const valid=start&&end&&start<=end;
+  document.getElementById('expRange').textContent=valid?shiftRangeText(start,end):'วันที่สิ้นสุดต้องไม่ก่อนวันเริ่ม';
+  let anyCompany=false;
+  card.querySelectorAll('.exp-imp-row').forEach(row=>{
+    const imp=row.dataset.imp, n=new Set(recs.filter(r=>r.importer===imp).map(r=>normDecl(r.declarationNo))).size;
+    row.hidden=!valid||!n;
+    row.querySelector('.exp-count').textContent=n?`· ${n} ใบขน`:'';
+    const on=!row.hidden&&row.querySelector('input').checked;
+    card.querySelector(`.exp-company[data-imp="${CSS.escape(imp)}"]`).hidden=!on;
+    anyCompany=anyCompany||on;
+  });
+  document.getElementById('expCompanyTitle').hidden=!anyCompany;
+}
+function normDecl(no){return String(no||'').replace(/[^0-9A-Za-z]/g,'').toUpperCase();}
+
+function resetExportDefaults(){
+  const d=exportCtx.defaults, card=document.getElementById('sumModalCard');
+  card.querySelectorAll('.expPrice').forEach(i=>i.value=d.prices[i.dataset.goods]??'');
+  document.getElementById('expRate').value=d.ratePerDecl??'';
+  card.querySelectorAll('.expCompany').forEach(i=>i.value=(d.companies[i.dataset.imp]||{})[i.dataset.goods]??'');
+  showToast('คืนค่าเริ่มต้นแล้ว — กดส่งออกเพื่อบันทึก','success');
+}
+
+function readExportForm(){
+  const card=document.getElementById('sumModalCard');
+  const numOf=(v,label)=>{
+    const n=Number(String(v).replace(/,/g,'').trim()||'0');
+    if(!Number.isFinite(n)||n<0) throw new Error(`${label} ไม่ถูกต้อง`);
+    return n;
+  };
+  const {start,end,recs}=exportRangeRecs();
+  if(!start||!end) throw new Error('กรุณาเลือกช่วงวันที่');
+  if(end<start) throw new Error('วันที่สิ้นสุดต้องไม่ก่อนวันเริ่ม');
+  if(!recs.length) throw new Error('ไม่มีใบขนในช่วงวันที่นี้');
+  // ค่าที่ไม่ได้แสดงในหน้านี้ (ผู้นำเข้า/สินค้าอื่น) คงค่าเดิมไว้
+  const prev=exportCtx.settings;
+  const settings={prices:{...prev.prices},ratePerDecl:numOf(document.getElementById('expRate').value,'อัตราต่อใบขน'),
+    companies:Object.fromEntries(Object.entries(prev.companies||{}).map(([k,v])=>[k,{...v}]))};
+  card.querySelectorAll('.expPrice').forEach(i=>settings.prices[i.dataset.goods]=numOf(i.value,`ราคา${i.dataset.goods}`));
+  card.querySelectorAll('.expCompany').forEach(i=>{(settings.companies[i.dataset.imp]??={})[i.dataset.goods]=i.value.trim();});
+  const importers=[...card.querySelectorAll('.exp-imp-row:not([hidden]) .expImp:checked')].map(i=>i.value);
+  const sheets=new Set([...card.querySelectorAll('.expSheet:checked')].map(i=>i.value));
+  if(!importers.length) throw new Error('เลือกชีตผู้นำเข้าอย่างน้อย 1 ราย');
+  return {settings,start,end,importers,summary:sheets.has('summary'),staff:sheets.has('staff'),
+    recs:recs.filter(r=>importers.includes(r.importer))};
+}
+
+async function submitExportExcel(btn){
+  let opts;
+  try{opts=readExportForm();}catch(e){modalErr(e.message);return;}
+  await modalBusy(btn,async()=>{
+    const ExcelJS=await loadExcelJs();
+    const wb=buildImportWorkbook(ExcelJS,opts);
+    const buf=await wb.xlsx.writeBuffer();
+    // บันทึกค่าตั้งค่าก่อนเปิดหน้าบันทึกไฟล์ — ถ้าบันทึกไม่ได้ ไฟล์ยังส่งออกได้
+    let saveErr=null;
+    try{ await sumApi('exportSaveSettings',{exportToken:exportCtx.token,settings:opts.settings}); exportCtx.settings=opts.settings; }
+    catch(e){ saveErr=e; }
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const dataUrl=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(blob);});
+    closeSumModal();
+    if(saveErr) showToast('ส่งออกแล้ว แต่บันทึกค่าตั้งค่าไม่ได้: '+saveErr.message,'error');
+    await saveDataUrl(dataUrl,`หอม-กระเทียม_${exportFileRange(opts.start,opts.end)}.xlsx`,blob.type);
+  });
+}
+
+// "19 - 25 สิงหาคม 2569" · ข้ามเดือน "28 กันยายน - 4 ตุลาคม 2569" · ข้ามปีเต็มทั้งสองฝั่ง
+function exportTitleRange(a,b){
+  const [y1,m1,d1]=a.split('-').map(Number), [y2,m2,d2]=b.split('-').map(Number);
+  const M=THAI_MONTHS_FULL;
+  if(a===b) return `${d1} ${M[m1-1]} ${y1+543}`;
+  if(y1===y2&&m1===m2) return `${d1} - ${d2} ${M[m1-1]} ${y1+543}`;
+  if(y1===y2) return `${d1} ${M[m1-1]} - ${d2} ${M[m2-1]} ${y1+543}`;
+  return `${d1} ${M[m1-1]} ${y1+543} - ${d2} ${M[m2-1]} ${y2+543}`;
+}
+// ชื่อไฟล์ "19-25ส.ค.69" · ข้ามเดือน "28ก.ย.-4ต.ค.69"
+function exportFileRange(a,b){
+  const [y1,m1,d1]=a.split('-').map(Number), [y2,m2,d2]=b.split('-').map(Number);
+  const M=THAI_MONTHS_SHORT, yy=y=>String(y+543).slice(-2);
+  if(a===b) return `${d1}${M[m1-1]}${yy(y1)}`;
+  if(y1===y2&&m1===m2) return `${d1}-${d2}${M[m1-1]}${yy(y1)}`;
+  if(y1===y2) return `${d1}${M[m1-1]}-${d2}${M[m2-1]}${yy(y1)}`;
+  return `${d1}${M[m1-1]}${yy(y1)}-${d2}${M[m2-1]}${yy(y2)}`;
+}
+
+// รูปแบบตามไฟล์ตัวอย่าง หอม-กระเทียม_19-25ส.ค.69 (V24): Angsana New · หัวตาราง #1F4E78 · แถวรวม #DDEBF7 · แนวนอน
+function buildImportWorkbook(ExcelJS,opts){
+  const {settings,start,end,importers,recs}=opts;
+  const wb=new ExcelJS.Workbook(); wb.creator='ระบบอ่านใบชั่ง';
+  const FONT='Angsana New', NUM='#,##0.00', CNT='0;\\-0;\\-';
+  const NAVY='FF1F4E78', TOTAL='FFDDEBF7';
+  const thin={style:'thin',color:{argb:'FF000000'}};
+  const border={top:thin,bottom:thin,left:thin,right:thin};
+  const fill=argb=>({type:'pattern',pattern:'solid',fgColor:{argb}});
+  const font=(o={})=>({name:FONT,size:16,color:{argb:'FF000000'},...o});
+  const center={horizontal:'center',vertical:'middle'};
+  const price=g=>Number(settings.prices[g])||0;
+  const baht=r=>Math.round((+r.netWeight||0)*price(r.goodsType)*100)/100;
+  const title=`สรุปการนำเข้า หอม - กระเทียม วันที่ ${exportTitleRange(start,end)}`;
+  // ความกว้างคอลัมน์จากจำนวนตัวอักษรที่กินที่ (ไม่นับสระบน/ล่าง วรรณยุกต์)
+  const textLen=s=>String(s||'').replace(/[ัิ-ฺ็-๎]/g,'').length;
+  const sheetName=(name,used)=>{
+    let n=String(name).replace(/[\[\]:*?\/\\]/g,'').slice(0,31)||'ชีต', base=n, i=2;
+    while(used.has(n)) n=`${base.slice(0,28)} (${i++})`;
+    used.add(n); return n;
+  };
+  const ref=name=>`'${name.replace(/'/g,"''")}'`;
+  const pageSetup={orientation:'landscape',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0};
+  const styleRow=(row,cols,{f,bold,white,numFrom=99,numFmt=NUM})=>{
+    for(let c=1;c<=cols;c++){
+      const cell=row.getCell(c);
+      cell.font=font({bold:!!bold,color:{argb:white?'FFFFFFFF':'FF000000'}});
+      cell.border=border; cell.alignment=c>=numFrom?{vertical:'middle'}:center;
+      if(f) cell.fill=fill(f);
+      if(c>=numFrom) cell.numFmt=numFmt;
+    }
+  };
+  const used=new Set();
+  const impSheets=[]; // { name, sheet, last } ไว้ให้ชีตสรุปอ้างอิง
+
+  // ── ชีตผู้นำเข้า: กลุ่มตามบริษัท (บริษัทของหอมก่อน) ลำดับนับต่อเนื่องทั้งชีต
+  importers.forEach(imp=>{
+    const irecs=sortedRecs(recs.filter(r=>r.importer===imp));
+    if(!irecs.length) return;
+    const groups=groupBy(irecs,r=>exportCompanyOf(settings,imp,r.goodsType))
+      .map(([co,rs])=>[co,sortedRecs(rs),Math.min(...rs.map(r=>goodsRank(r.goodsType)))])
+      .sort((a,b)=>a[2]-b[2]||irecs.indexOf(a[1][0])-irecs.indexOf(b[1][0]));
+    const name=sheetName(imp,used);
+    const ws=wb.addWorksheet(name,{pageSetup,views:[{state:'frozen',ySplit:4,showGridLines:false}]});
+    const wC=Math.max(30,...groups.map(([co])=>textLen(co)*0.75+4));
+    ws.columns=[{width:8},{width:14},{width:Math.min(wC,60)},{width:22},{width:16},{width:15},{width:15}];
+    ws.mergeCells('A1:G1'); ws.mergeCells('A2:G2');
+    ws.getCell('A1').value=title;
+    ws.getCell('A2').value=groups.map(g=>g[0]).join(' & ');
+    ['A1','A2'].forEach(a=>{ws.getCell(a).font=font({size:20,bold:true});ws.getCell(a).alignment={...center,wrapText:true};});
+    ws.getRow(1).height=29.25; ws.getRow(2).height=Math.max(29.25,Math.ceil(textLen(ws.getCell('A2').value)/90)*29.25);
+    const head=ws.getRow(4);
+    head.values=['ลำดับ','วัน/เดือน/ปี','บริษัทฯ','เลขที่ใบขนสินค้าฯ','สินค้า','กิโลกรัม','บาท'];
+    styleRow(head,7,{f:NAVY,bold:true,white:true}); head.height=23.25;
+    let r=5, n=0; const totalRows=[]; let kgAll=0, bahtAll=0;
+    groups.forEach(([co,rs])=>{
+      const first=r;
+      rs.forEach(rec=>{
+        const row=ws.getRow(r++);
+        row.values=[++n,thaiDateShort(rec.dateIso),co,rec.declarationNo,EXPORT_GOODS_NAME(rec.goodsType),+rec.netWeight||0,baht(rec)];
+        styleRow(row,7,{numFrom:6}); row.height=23.25;
+      });
+      const kg=rs.reduce((s,x)=>s+(+x.netWeight||0),0), bt=rs.reduce((s,x)=>s+baht(x),0);
+      kgAll+=kg; bahtAll+=bt;
+      const tr=ws.getRow(r);
+      ws.mergeCells(r,1,r,5);
+      tr.getCell(1).value=`รวม ${co}`;
+      tr.getCell(6).value={formula:`SUM(F${first}:F${r-1})`,result:kg};
+      tr.getCell(7).value={formula:`SUM(G${first}:G${r-1})`,result:bt};
+      styleRow(tr,7,{f:TOTAL,bold:true,numFrom:6}); tr.height=23.25;
+      totalRows.push(r++);
+    });
+    const gr=ws.getRow(r);
+    ws.mergeCells(r,1,r,5);
+    gr.getCell(1).value='รวมทั้งสิ้น';
+    gr.getCell(6).value={formula:totalRows.map(x=>`F${x}`).join('+'),result:kgAll};
+    gr.getCell(7).value={formula:totalRows.map(x=>`G${x}`).join('+'),result:bahtAll};
+    styleRow(gr,7,{f:NAVY,bold:true,white:true,numFrom:6}); gr.height=23.25;
+    impSheets.push({name,last:r-1,recs:irecs,imp});
+  });
+
+  // ── สรุปตามบริษัท: บริษัทละแถว · สูตรอ้างชีตผู้นำเข้า (SUMIFS ตามบริษัท+สินค้า)
+  if(opts.summary){
+    const ws=wb.addWorksheet('สรุปตามบริษัท',{pageSetup,views:[{showGridLines:false}]});
+    const goodsAll=exportGoodsList(recs).filter(g=>recs.some(r=>r.goodsType===g));
+    // คอลัมน์สินค้าตามไฟล์ตัวอย่าง: กระเทียมสดก่อนหอมหัวใหญ่
+    goodsAll.sort((a,b)=>(a==='กระเทียม'?-1:b==='กระเทียม'?1:goodsRank(a)-goodsRank(b)));
+    const companies=[];
+    impSheets.forEach(s=>s.recs.forEach(r=>{const co=exportCompanyOf(settings,s.imp,r.goodsType);if(!companies.includes(co))companies.push(co);}));
+    const cols=1+goodsAll.length+3, L=c=>String.fromCharCode(64+c);
+    ws.columns=[{width:Math.min(60,Math.max(30,...companies.map(c=>textLen(c)*0.75+4)))},...goodsAll.map(()=>({width:18})),{width:16},{width:16},{width:14}];
+    ws.mergeCells(1,1,1,cols);
+    ws.getCell('A1').value='สรุปปริมาณและมูลค่า แยกตามบริษัทและสินค้า';
+    ws.getCell('A1').font=font({size:20,bold:true}); ws.getCell('A1').alignment=center; ws.getRow(1).height=29.25;
+    const head=ws.getRow(3);
+    head.values=['บริษัทฯ',...goodsAll.map(g=>`${EXPORT_GOODS_NAME(g)} (กก.)`),'รวม (กก.)','มูลค่า (บาท)','จำนวนรายการ'];
+    styleRow(head,cols,{f:NAVY,bold:true,white:true}); head.height=23.25;
+    const rng=(s,c)=>`${ref(s.name)}!$${c}$5:$${c}$${s.last}`;
+    // บริษัทเดียวอาจอยู่หลายชีต (ผู้นำเข้าต่างกัน) จึงรวมทุกชีตผู้นำเข้า
+    const sumIfs=(col,r,goodsName)=>impSheets.map(s=>`SUMIFS(${rng(s,col)},${rng(s,'C')},$A${r}${goodsName?`,${rng(s,'E')},"${goodsName}"`:''})`).join('+');
+    const countIfs=r=>impSheets.map(s=>`COUNTIFS(${rng(s,'C')},$A${r})`).join('+');
+    let r=4;
+    companies.forEach(co=>{
+      const row=ws.getRow(r);
+      const crec=impSheets.flatMap(s=>s.recs.filter(x=>exportCompanyOf(settings,s.imp,x.goodsType)===co));
+      row.getCell(1).value=co;
+      goodsAll.forEach((g,i)=>{
+        row.getCell(2+i).value={formula:sumIfs('F',r,EXPORT_GOODS_NAME(g)),result:crec.filter(x=>x.goodsType===g).reduce((s,x)=>s+(+x.netWeight||0),0)};
+      });
+      const cT=2+goodsAll.length;
+      row.getCell(cT).value={formula:`SUM(B${r}:${L(cT-1)}${r})`,result:crec.reduce((s,x)=>s+(+x.netWeight||0),0)};
+      row.getCell(cT+1).value={formula:sumIfs('G',r),result:crec.reduce((s,x)=>s+baht(x),0)};
+      row.getCell(cT+2).value={formula:countIfs(r),result:crec.length};
+      styleRow(row,cols,{numFrom:2}); row.getCell(1).alignment={vertical:'middle'}; row.getCell(cols).numFmt='#,##0';
+      row.height=23.25; r++;
+    });
+    const tr=ws.getRow(r); tr.getCell(1).value='รวมทั้งสิ้น';
+    for(let c=2;c<=cols;c++){
+      let res=0; for(let k=4;k<r;k++){const v=ws.getRow(k).getCell(c).value;res+=v&&v.result!=null?v.result:0;}
+      tr.getCell(c).value={formula:`SUM(${L(c)}4:${L(c)}${r-1})`,result:res};
+    }
+    styleRow(tr,cols,{f:NAVY,bold:true,white:true,numFrom:2}); tr.getCell(cols).numFmt='#,##0'; tr.height=23.25;
+  }
+
+  // ── จำนวนใบขนตามเจ้าหน้าที่: เลขใบขนไม่ซ้ำต่อผู้นำเข้าต่อวัน (หลายชุด = 1 ใบ) (Q2)
+  if(opts.staff){
+    const ws=wb.addWorksheet('จำนวนใบขนตามเจ้าหน้าที่',{pageSetup,views:[{showGridLines:false}]});
+    const days=[]; for(let d=start;d<=end;d=addDaysIso(d,1)) days.push(d);
+    const cols=days.length+2, L=c=>c<=26?String.fromCharCode(64+c):'A'+String.fromCharCode(64+c-26);
+    ws.columns=[{width:22},...days.map(()=>({width:13})),{width:13}];
+    ws.mergeCells(1,1,1,cols);
+    ws.getCell('A1').value=`จำนวนใบขนสินค้า แยกตามเจ้าหน้าที่ วันที่ ${exportFileRange(start,end).replace(/-/g,' - ').replace(/(\d)(?=[ก-ฮ])/g,'$1 ').replace(/\.(?=\d)/g,'. ')}`;
+    ws.getCell('A1').font=font({size:20,bold:true}); ws.getCell('A1').alignment=center; ws.getRow(1).height=29.25;
+    const head=ws.getRow(3);
+    head.values=['เจ้าหน้าที่',...days.map(thaiDateShort),'รวม'];
+    styleRow(head,cols,{f:NAVY,bold:true,white:true}); head.height=23.25;
+    let r=4; const staff=impSheets.map(s=>s.imp);
+    staff.forEach(imp=>{
+      const row=ws.getRow(r); row.getCell(1).value=imp;
+      let sum=0;
+      days.forEach((d,i)=>{
+        const n=new Set(recs.filter(x=>x.importer===imp&&x.dateIso===d).map(x=>normDecl(x.declarationNo))).size;
+        sum+=n; row.getCell(2+i).value=n||null;
+      });
+      row.getCell(cols).value={formula:`SUM(B${r}:${L(cols-1)}${r})`,result:sum};
+      styleRow(row,cols,{numFmt:CNT});
+      row.getCell(1).alignment={vertical:'middle'};
+      for(let c=2;c<cols;c++){row.getCell(c).font=font({color:{argb:'FF0000FF'}});row.getCell(c).numFmt=CNT;}
+      row.getCell(cols).numFmt=CNT;
+      row.height=23.25; r++;
+    });
+    const tr=ws.getRow(r); tr.getCell(1).value='รวม';
+    let grand=0;
+    for(let c=2;c<=cols;c++){
+      let res=0; for(let k=4;k<r;k++){const v=ws.getRow(k).getCell(c).value;res+=typeof v==='number'?v:v&&v.result!=null?v.result:0;}
+      if(c===cols) grand=res;
+      tr.getCell(c).value={formula:`SUM(${L(c)}4:${L(c)}${r-1})`,result:res};
+    }
+    styleRow(tr,cols,{f:TOTAL,bold:true,numFmt:CNT}); tr.getCell(1).alignment={vertical:'middle'}; tr.height=23.25;
+    const totalRow=r; r+=2;
+    const rate=Number(settings.ratePerDecl)||0;
+    const rr=ws.getRow(r), mr=ws.getRow(r+1);
+    rr.getCell(1).value='อัตราต่อใบขน (บาท)'; rr.getCell(2).value=rate;
+    mr.getCell(1).value='รวมเป็นเงิน (บาท)'; mr.getCell(2).value={formula:`${L(cols)}${totalRow}*B${r}`,result:grand*rate};
+    [rr,mr].forEach(x=>{x.getCell(1).font=font({bold:true});x.getCell(2).numFmt='#,##0';x.height=23.25;});
+    rr.getCell(2).font=font({color:{argb:'FF0000FF'}}); rr.getCell(2).fill=fill('FFFFE699');
+    mr.getCell(2).font=font({bold:true});
+  }
+  return wb;
 }
 </script>
 
