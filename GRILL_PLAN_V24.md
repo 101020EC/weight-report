@@ -76,7 +76,7 @@
 - ลบชีต "สรุป"/"รายละเอียด" แบบเดิมทั้งหมด
 
 ## สถานะ
-- [x] grill · [x] implement · [x] ทดสอบ · [ ] commit/push (รอผู้ใช้ดูภาพก่อน push)
+- [x] grill · [x] implement · [x] ทดสอบ · [x] commit/push — production 9d65075 (2026-10-14)
 
 ## ผลทดสอบ (2026-10-14, vercel dev + Firestore production, EXPORT_PIN ชั่วคราวในเครื่อง)
 - API: ไม่มี token → 401 auth · รหัสผิด "เหลืออีก 7/6 ครั้ง" · เครื่องอื่นนับแยก · รหัสเข้าเมนูนับแยกจากรหัสส่งออก
