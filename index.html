@@ -540,6 +540,9 @@ details[open]>.m-total .chev{transform:rotate(45deg);}
 .sum-modal-card .form-group{margin-bottom:12px;}
 .sum-modal-card .row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;}
 .sum-modal-card .form-group input,.sum-modal-card .form-group select{width:100%;min-width:0;box-sizing:border-box;}
+/* iOS Safari: ช่องวันที่ native ไม่ยอมหดตาม width → ล้นขวาในหน้าส่งออก/แก้เวร */
+.sum-modal-card input[type=date]{-webkit-appearance:none;appearance:none;display:block;max-width:100%;}
+.sum-modal-card input[type=date]::-webkit-date-and-time-value{text-align:left;min-width:0;}
 .sum-modal-actions{display:flex;gap:10px;margin-top:16px;}
 .sum-modal-actions .btn{flex:1;}
 .sum-modal-err{color:#B91C1C;font-size:0.9rem;text-align:center;min-height:1.2em;margin-top:6px;}
