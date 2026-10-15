@@ -512,7 +512,15 @@ details[open]>.m-total .chev{transform:rotate(45deg);}
 .exp-imp-row small{font-weight:500;color:var(--ink-soft);}
 .exp-company{border-left:4px solid var(--imp);background:var(--imp-alt);border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;}
 .exp-company-name{font-weight:700;color:var(--imp-dark);}
-.exp-company[hidden],.exp-imp-row[hidden],#expCompanyTitle[hidden]{display:none;}
+.exp-company[hidden],.exp-imp-row[hidden],#expCompanyTitle[hidden],#expSkipped[hidden]{display:none;}
+/* V25 Q3: ใบขนในเวรที่จะไม่อยู่ในไฟล์ */
+#expSkipped{background:#FEF9C3;border:1px solid #FACC15;border-radius:12px;padding:10px 12px;margin:12px 0 4px;font-size:0.85rem;color:#713F12;}
+#expSkipped b{display:block;margin-bottom:4px;}
+#expSkipped ul{margin:0;padding-left:18px;max-height:140px;overflow:auto;}
+#expSkipped li{margin:2px 0;}
+#expSkipped .out{color:#B91C1C;font-weight:600;}
+/* V25 Q4: วันที่อยู่นอกช่วงเวร */
+.out-shift-tag{display:inline-block;margin-left:6px;padding:0 7px;border-radius:999px;background:#DC2626;color:#fff;font-size:0.7rem;font-weight:700;line-height:1.6;vertical-align:middle;flex-shrink:0;}
 .opt-chip input:focus-visible+span{outline:2px solid var(--imp-dark);}
 /* นำเข้ารายงานจากสรุปผล */
 .tm-list{max-height:46vh;overflow-y:auto;border:1px solid var(--line);border-radius:12px;}
@@ -1691,7 +1699,11 @@ function getDaysDiffFromToday(dateStr){
   const today=new Date();
   today.setHours(0,0,0,0);
   docDate.setHours(0,0,0,0);
-  return Math.abs(Math.round((docDate-today)/(1000*60*60*24)));
+  return Math.round((docDate-today)/(1000*60*60*24)); // ลบ = ย้อนหลัง
+}
+// ป๊อปอัปเมื่อวันที่ไม่ใช่วันนี้/เมื่อวาน (V25 Q2) — ใบจริงห่างไม่เกิน 1 วันเสมอ
+function dateNoteFromToday(diff){
+  return diff>0?`ล่วงหน้า ${diff} วัน`:`ย้อนหลัง ${-diff} วัน`;
 }
 
 let dateConfirmedForCurrent=false;
@@ -1707,8 +1719,9 @@ function generateImage(){
   const dt = document.getElementById('f_date').value||'-';
   const diffDays = getDaysDiffFromToday(dt);
 
-  if(diffDays > 10 && !dateConfirmedForCurrent){
+  if(diffDays!==0 && diffDays!==-1 && !dateConfirmedForCurrent){
     document.getElementById('dateModalText').textContent = dt;
+    document.getElementById('dateModalNote').textContent = `(${dateNoteFromToday(diffDays)} — ไม่ใช่วันนี้หรือเมื่อวาน)`;
     document.getElementById('dateConfirmModal').style.display = 'flex';
     return;
   }
@@ -2997,6 +3010,8 @@ function renderImporterCard(name,recs){
   const goods=goodsGroups.map(g=>g[0]).join(' / ');
   const days=groupBy(recs,r=>r.dateIso).sort((a,b)=>a[0].localeCompare(b[0]));
   const isTotOpen=sumTotalOpen.has(name);
+  // V25 Q4: วันที่อยู่นอกช่วงเวร → ป้ายแดง
+  const sh=sumState.shift, outTag=day=>sh&&isOutOfShift({dateIso:day},sh)?'<span class="out-shift-tag" title="วันที่อยู่นอกช่วงเวร — กดเลขใบขนเพื่อแก้วันที่">นอกเวร</span>':'';
 
   // คอม: แถววันที่ = ช่องลำดับ+สินค้า+เลขที่รวมกัน + ยอดรวมวันในคอลัมน์ตัวเลข (Q2/Q6)
   let n=0;
@@ -3012,7 +3027,7 @@ function renderImporterCard(name,recs){
     }).join('');
     return `<tbody class="day-group ${sumDeskCollapsed.has(k)?'collapsed':''}" data-key="${esc(k)}">
       <tr class="day" onclick="toggleDeskDay(this.parentElement)" title="กดเพื่อยุบ/กาง">
-        <td colspan="3" class="day-label"><span class="chev"></span>${thaiDate(day)} <small>· ${drecs.length} ใบขน</small></td>
+        <td colspan="3" class="day-label"><span class="chev"></span>${thaiDate(day)} <small>· ${drecs.length} ใบขน</small>${outTag(day)}</td>
         <td class="num">${fmtKg(dt.decl)}</td><td class="num">${fmtKg(dt.net)}</td>
         <td class="num ${diffCls(dt.diff)}">${fmtDiff(dt.diff)}</td><td class="num ${diffCls(dt.diff)}">${fmtPct(dt.pct)}</td>
       </tr>${recRows}</tbody>`;
@@ -3072,7 +3087,7 @@ function renderImporterCard(name,recs){
         </details>`;
       }).join('');
       return `<details class="m-day" data-key="${esc(k)}" ${sumMobileOpen.has(k)?'open':''} ontoggle="onMobileToggle(this)">
-        <summary class="m-grid m-row"><span class="m-label"><i class="chev"></i><span class="t">${thaiDateShort(day)}</span><small>${drecs.length}</small></span>${nums(dt.decl,dt.net,dt.diff,dt.pct)}</summary>
+        <summary class="m-grid m-row"><span class="m-label"><i class="chev"></i><span class="t">${thaiDateShort(day)}</span><small>${drecs.length}</small>${outTag(day)}</span>${nums(dt.decl,dt.net,dt.diff,dt.pct)}</summary>
         <div class="m-body">${goodsHtml}</div></details>`;
     }).join('')}
     <details class="m-total-group" data-importer="${esc(name)}" ${isTotOpen?'open':''} ontoggle="onMobileTotalToggle(this)">
@@ -3851,6 +3866,7 @@ function openExportSettingsModal(){
     ${sw('expSheet','staff','จำนวนใบขนตามเจ้าหน้าที่')}
     <div class="sum-section-title" id="expCompanyTitle">ชื่อบริษัท</div>
     ${companyRows}
+    <div id="expSkipped" hidden></div>
     <div class="sum-modal-err" id="sumModalErr"></div>
     <button class="btn btn-secondary" style="width:100%;" onclick="resetExportDefaults()">คืนค่าเริ่มต้น</button>
     <div class="sum-modal-actions">
@@ -3879,6 +3895,20 @@ function updateExportForm(){
     anyCompany=anyCompany||on;
   });
   document.getElementById('expCompanyTitle').hidden=!anyCompany;
+  renderExportSkipped(valid?recs:[]);
+}
+// V25 Q3: ใบขนในเวรที่ไม่อยู่ในช่วงวันที่ที่เลือก — แสดงให้เห็นเสมอ ไม่บล็อกการส่งออก
+function isOutOfShift(r,shift){return !(r.dateIso>=shift.startDate&&r.dateIso<=shift.endDate);}
+function renderExportSkipped(inRange){
+  const box=document.getElementById('sumModalCard').querySelector('#expSkipped'), shift=sumState.shift;
+  const keep=new Set(inRange);
+  const skipped=sortedRecs(sumState.records.filter(r=>!keep.has(r)));
+  box.hidden=!skipped.length;
+  if(!skipped.length){box.innerHTML='';return;}
+  box.innerHTML=`<b>⚠️ ${skipped.length} ใบขนจะไม่อยู่ในไฟล์</b><ul>${skipped.map(r=>{
+    const out=isOutOfShift(r,shift);
+    return `<li>${esc(r.importer)} · ${esc(r.declarationNo)}${r.period?` (${esc(r.period)})`:''} · ${thaiDateShort(r.dateIso)}${out?' <span class="out">— วันที่อยู่นอกเวร ตรวจวันที่ในหน้าสรุปผล</span>':''}</li>`;
+  }).join('')}</ul>`;
 }
 function normDecl(no){return String(no||'').replace(/[^0-9A-Za-z]/g,'').toUpperCase();}
 
@@ -4124,14 +4154,14 @@ function buildImportWorkbook(ExcelJS,opts){
 }
 </script>
 
-<!-- POPUP MODAL: แจ้งเตือนวันที่ห่างเกิน 10 วัน -->
+<!-- POPUP MODAL: แจ้งเตือนวันที่ไม่ใช่วันนี้/เมื่อวาน (V25 Q2) -->
 <div id="dateConfirmModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:16px;">
   <div style="background:white;border-radius:18px;max-width:360px;width:100%;padding:24px;box-shadow:0 20px 40px rgba(0,0,0,0.25);text-align:center;">
     <div style="font-size:38px;margin-bottom:10px;">⚠️</div>
     <h3 style="margin:0 0 10px;font-size:1.15rem;font-weight:700;color:var(--gray-900);">ยืนยันวันที่เอกสาร</h3>
     <p style="margin:0 0 20px;font-size:0.95rem;color:var(--gray-600);line-height:1.5;">
       ยืนยัน วันที่ <strong id="dateModalText" style="color:var(--orange-deep);font-weight:700;">-</strong><br>
-      <span style="font-size:0.85rem;color:#777;">(วันที่ที่เลือกห่างจากปัจจุบันเกิน 10 วัน)</span>
+      <span id="dateModalNote" style="font-size:0.85rem;color:#777;"></span>
     </p>
     <div style="display:flex;gap:10px;">
       <button type="button" class="btn" onclick="closeDateModalAndEdit()" style="flex:1;background:#F3F4F6;color:#374151;border:1px solid #D1D5DB;padding:10px;font-weight:600;">แก้ไข</button>
