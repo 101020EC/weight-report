@@ -52,7 +52,7 @@
 - ค่าตั้งค่าบันทึกเข้า `settings/export` เหมือนเดิมทุกรูปแบบไฟล์ (ส่งออกสำเร็จหลังรหัสถูก)
 
 ## สถานะ
-- [x] grill · [x] implement · [x] ทดสอบ · [ ] commit/push (รอผู้ใช้ดูภาพหน้าจอ)
+- [x] grill · [x] implement · [x] ทดสอบ · [x] commit/push — production 1d40b1e (2026-10-19) md5 HTML ตรง, API ไม่มี token → 401 auth
 
 ## ผลทดสอบ (2026-10-19, ยังไม่ commit)
 - Excel ใน Node (buildImportWorkbook ตัวจริง + exceljs, snapshot Firestore อ่านอย่างเดียว 2 เวร):
