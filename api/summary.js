@@ -133,6 +133,7 @@ function verifyExportToken(token) {
 const EXPORT_DEFAULTS = {
   prices: { 'หอม': 2, 'กระเทียม': 3 },
   ratePerDecl: 1500,
+  includeNegative: false, // V26 Q4: ไม่รวมแถวที่ส่วนต่างติดลบ
   companies: {
     'ดิเรก': { 'หอม': 'บริษัท โกลเด้น ไลน์ อิมพอร์ท เอ็กพอร์ท จำกัด', 'กระเทียม': 'บริษัท โกลเด้น ไลน์ อิมพอร์ท เอ็กพอร์ท จำกัด' },
     'ติก๊ะ': { 'หอม': 'บริษัท ริสกี อินเตอร์ ฟู๊ดส์ อิมพอร์ต เอ็กซ์พอร์ต จำกัด', 'กระเทียม': 'บริษัท มาร์ฮาบัน จำกัด' },
@@ -152,7 +153,7 @@ function exportSettings(raw) {
       .forEach(([g, v]) => { row[text(g, 'สินค้า', 40)] = text(v, `ชื่อบริษัท ${imp}`, 120, false); });
     companies[text(imp, 'ผู้นำเข้า')] = row;
   });
-  return { prices, ratePerDecl: num(s.ratePerDecl, 'อัตราต่อใบขน'), companies };
+  return { prices, ratePerDecl: num(s.ratePerDecl, 'อัตราต่อใบขน'), includeNegative: s.includeNegative === true, companies };
 }
 
 // ── validation helpers ──────────────────────────────────────

@@ -512,7 +512,11 @@ details[open]>.m-total .chev{transform:rotate(45deg);}
 .exp-imp-row small{font-weight:500;color:var(--ink-soft);}
 .exp-company{border-left:4px solid var(--imp);background:var(--imp-alt);border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;}
 .exp-company-name{font-weight:700;color:var(--imp-dark);}
-.exp-company[hidden],.exp-imp-row[hidden],#expCompanyTitle[hidden],#expSkipped[hidden]{display:none;}
+.exp-company[hidden],.exp-imp-row[hidden],#expCompanyTitle[hidden],#expSkipped[hidden],#expNegRow[hidden]{display:none;}
+.exp-format{display:flex;width:100%;margin:12px 0 6px;}
+.exp-format label{flex:1;text-align:center;}
+.exp-format span{padding:9px 6px;}
+.exp-count{font-size:0.8em;font-weight:500;color:var(--ink-soft);white-space:nowrap;}
 /* V25 Q3: ใบขนในเวรที่จะไม่อยู่ในไฟล์ */
 #expSkipped{background:#FEF9C3;border:1px solid #FACC15;border-radius:12px;padding:10px 12px;margin:12px 0 4px;font-size:0.85rem;color:#713F12;}
 #expSkipped b{display:block;margin-bottom:4px;}
@@ -928,7 +932,7 @@ details[open]>.m-total .chev{transform:rotate(45deg);}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4"/></svg>ตั้งเวรใหม่
           </button>
           <button type="button" onclick="closeSumMenu();exportSummaryExcel()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg>ส่งออก Excel
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M8 17h2"/><path d="M14 17h2"/></svg>Export
           </button>
           <button type="button" class="danger" onclick="closeSumMenu();openDeleteShiftConfirm()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>ลบข้อมูลทั้งเวร
@@ -3810,13 +3814,14 @@ let exportCtx=null; // { token, settings, defaults }
 function exportSummaryExcel(){
   const st=sumState;
   if(!st||!st.shift||!st.records.length){showToast('ยังไม่มีข้อมูลให้ส่งออก','error');return;}
-  openSumModal(`<h3>ส่งออก Excel</h3><div class="sub">กรอกรหัสส่งออก 4 หลัก</div>
+  openSumModal(`<h3>Export</h3><div class="sub">กรอกรหัสส่งออก 4 หลัก</div>
     <input class="pin-input" id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
       oninput="this.value=this.value.replace(/\\D/g,'');if(this.value.length===4)submitExportPin()" onkeydown="if(event.key==='Enter')submitExportPin()">
     <div class="sum-modal-err" id="sumModalErr"></div>
     <div class="sum-modal-actions"><button class="btn btn-secondary" onclick="closeSumModal()">ยกเลิก</button>
       <button class="btn btn-primary" id="exportPinBtn" onclick="submitExportPin()">ถัดไป</button></div>`,'#pinInput');
   loadExcelJs().catch(()=>{}); // โหลดไว้ระหว่างใส่รหัส
+  if(exportFormatPref()==='pdf') loadJsPdf().catch(()=>{});
 }
 async function submitExportPin(){
   const inp=document.getElementById('pinInput'), btn=document.getElementById('exportPinBtn');
@@ -3851,8 +3856,11 @@ function openExportSettingsModal(){
         <input type="text" maxlength="120" class="expCompany" data-imp="${esc(imp)}" data-goods="${esc(gt)}" value="${esc((s.companies[imp]||{})[gt]??'')}" placeholder="${esc(imp)}"></div>`).join('')}
     </div>`;
   }).join('');
-  openSumModal(`<h3>ส่งออก Excel</h3>
+  const fmt=exportFormatPref();
+  openSumModal(`<h3>Export</h3>
     <div class="sub">เวร ${shiftRangeText(shift.startDate,shift.endDate)}</div>
+    <div class="seg exp-format" role="radiogroup" aria-label="รูปแบบไฟล์">${Object.entries(EXPORT_FORMATS).map(([k,f])=>
+      `<label><input type="radio" name="expFormat" value="${k}" ${k===fmt?'checked':''} onchange="updateExportForm()"><span>${f.label}</span></label>`).join('')}</div>
     <div class="row2">
       <div class="form-group"><label>ตั้งแต่วันที่</label><input type="date" id="expStart" value="${shift.startDate}" min="${shift.startDate}" max="${shift.endDate}" onchange="updateExportForm()"></div>
       <div class="form-group"><label>ถึงวันที่</label><input type="date" id="expEnd" value="${shift.endDate}" min="${shift.startDate}" max="${shift.endDate}" onchange="updateExportForm()"></div>
@@ -3863,6 +3871,8 @@ function openExportSettingsModal(){
       <input type="text" inputmode="decimal" class="expPrice" data-goods="${esc(g)}" value="${esc(s.prices[g]??'')}" placeholder="0"></div>`).join('')}
       <div class="exp-field"><label>อัตราต่อใบขน</label><input type="text" inputmode="decimal" id="expRate" value="${esc(s.ratePerDecl??'')}" placeholder="0"></div>
     </div>
+    <label class="opt-row" id="expNegRow"><span>รวมรายการที่ส่วนต่างติดลบ <small class="exp-count" id="expNegCount"></small></span>
+      <input type="checkbox" class="opt-switch" id="expNeg" ${s.includeNegative===true?'checked':''} onchange="updateExportForm()"></label>
     <div class="sum-section-title">ชีตที่ต้องการ</div>
     ${importers.map(imp=>`<div class="exp-imp-row" data-imp="${esc(imp)}">${sw('expImp',imp,`<span class="exp-dot" style="background:${getTheme(imp).primary}"></span>ชีต ${esc(imp)} <small class="exp-count"></small>`)}</div>`).join('')}
     ${sw('expSheet','summary','สรุปตามบริษัท')}
@@ -3874,9 +3884,23 @@ function openExportSettingsModal(){
     <button class="btn btn-secondary" style="width:100%;" onclick="resetExportDefaults()">คืนค่าเริ่มต้น</button>
     <div class="sum-modal-actions">
       <button class="btn btn-secondary" onclick="closeSumModal()">ยกเลิก</button>
-      <button class="btn btn-primary" id="expBtn" onclick="submitExportExcel(this)">ส่งออก</button></div>`);
+      <button class="btn btn-primary" id="expBtn" onclick="submitExport(this)">ส่งออก</button></div>`);
   updateExportForm();
 }
+
+// V26 Q10: รูปแบบไฟล์ — จำค่าล่าสุดต่อเครื่อง (localStorage อาจใช้ไม่ได้ใน private mode)
+const EXPORT_FORMATS={xlsx:{label:'Excel'},png:{label:'รูปภาพ'},pdf:{label:'PDF'}};
+const EXPORT_FORMAT_KEY='wr:exportFormat';
+function exportFormatPref(){
+  try{const v=localStorage.getItem(EXPORT_FORMAT_KEY);if(EXPORT_FORMATS[v])return v;}catch(e){}
+  return 'xlsx';
+}
+function exportFormatChosen(){
+  return document.querySelector('#sumModalCard input[name=expFormat]:checked')?.value||'xlsx';
+}
+// V26 Q1: Excel/รูป/PDF ใช้ส่วนต่าง (ชั่งจริง − สำแดง) ไม่ใช่น้ำหนักชั่ง
+const exportKg=r=>+r.diffWeight||0;
+const isNegativeDiff=r=>exportKg(r)<0;
 
 function exportRangeRecs(){
   const a=document.getElementById('expStart').value, b=document.getElementById('expEnd').value;
@@ -3888,30 +3912,43 @@ function updateExportForm(){
   const {start,end,recs}=exportRangeRecs();
   const valid=start&&end&&start<=end;
   document.getElementById('expRange').textContent=valid?shiftRangeText(start,end):'วันที่สิ้นสุดต้องไม่ก่อนวันเริ่ม';
-  let anyCompany=false;
+  let anyCompany=false; const onImps=[];
   card.querySelectorAll('.exp-imp-row').forEach(row=>{
     const imp=row.dataset.imp, n=new Set(recs.filter(r=>r.importer===imp).map(r=>normDecl(r.declarationNo))).size;
     row.hidden=!valid||!n;
     row.querySelector('.exp-count').textContent=n?`· ${n} ใบขน`:'';
     const on=!row.hidden&&row.querySelector('input').checked;
     card.querySelector(`.exp-company[data-imp="${CSS.escape(imp)}"]`).hidden=!on;
+    if(on) onImps.push(imp);
     anyCompany=anyCompany||on;
   });
   document.getElementById('expCompanyTitle').hidden=!anyCompany;
-  renderExportSkipped(valid?recs:[]);
+  // V26 Q4: สวิตช์ติดลบ ซ่อนเมื่อช่วงนี้ไม่มีแถวติดลบ (นับเฉพาะผู้นำเข้าที่เปิดชีต)
+  const negN=valid?recs.filter(r=>onImps.includes(r.importer)&&isNegativeDiff(r)).length:0;
+  document.getElementById('expNegRow').hidden=!negN;
+  document.getElementById('expNegCount').textContent=negN?`· ${negN} รายการ`:'';
+  const fmt=exportFormatChosen();
+  document.getElementById('expBtn').textContent=`ส่งออก ${EXPORT_FORMATS[fmt].label}`;
+  const negOut=valid&&!document.getElementById('expNeg').checked?recs.filter(r=>onImps.includes(r.importer)&&isNegativeDiff(r)):[];
+  renderExportSkipped(valid?recs:[],negOut);
 }
 // V25 Q3: ใบขนในเวรที่ไม่อยู่ในช่วงวันที่ที่เลือก — แสดงให้เห็นเสมอ ไม่บล็อกการส่งออก
+// V26 Q2: + แถวส่วนต่างติดลบที่ถูกตัดออกเมื่อปิดสวิตช์
 function isOutOfShift(r,shift){return !(r.dateIso>=shift.startDate&&r.dateIso<=shift.endDate);}
-function renderExportSkipped(inRange){
+function renderExportSkipped(inRange,negOut=[]){
   const box=document.getElementById('sumModalCard').querySelector('#expSkipped'), shift=sumState.shift;
   const keep=new Set(inRange);
   const skipped=sortedRecs(sumState.records.filter(r=>!keep.has(r)));
-  box.hidden=!skipped.length;
-  if(!skipped.length){box.innerHTML='';return;}
-  box.innerHTML=`<b>⚠️ ${skipped.length} ใบขนจะไม่อยู่ในไฟล์</b><ul>${skipped.map(r=>{
+  const neg=sortedRecs(negOut);
+  box.hidden=!skipped.length&&!neg.length;
+  if(box.hidden){box.innerHTML='';return;}
+  const line=r=>`${esc(r.importer)} · ${esc(r.declarationNo)}${r.period?` (${esc(r.period)})`:''} · ${thaiDateShort(r.dateIso)}`;
+  box.innerHTML=(skipped.length?`<b>⚠️ ${skipped.length} ใบขนจะไม่อยู่ในไฟล์</b><ul>${skipped.map(r=>{
     const out=isOutOfShift(r,shift);
-    return `<li>${esc(r.importer)} · ${esc(r.declarationNo)}${r.period?` (${esc(r.period)})`:''} · ${thaiDateShort(r.dateIso)}${out?' <span class="out">— วันที่อยู่นอกเวร ตรวจวันที่ในหน้าสรุปผล</span>':''}</li>`;
-  }).join('')}</ul>`;
+    return `<li>${line(r)}${out?' <span class="out">— วันที่อยู่นอกเวร ตรวจวันที่ในหน้าสรุปผล</span>':''}</li>`;
+  }).join('')}</ul>`:'')
+  +(neg.length?`<b${skipped.length?' style="margin-top:8px"':''}>➖ ${neg.length} รายการส่วนต่างติดลบ ไม่รวมในชีตผู้นำเข้า/สรุปตามบริษัท</b><ul>${neg.map(r=>
+    `<li>${line(r)} · ${fmtDiff(exportKg(r))} KG</li>`).join('')}</ul>`:'');
 }
 function normDecl(no){return String(no||'').replace(/[^0-9A-Za-z]/g,'').toUpperCase();}
 
@@ -3919,7 +3956,9 @@ function resetExportDefaults(){
   const d=exportCtx.defaults, card=document.getElementById('sumModalCard');
   card.querySelectorAll('.expPrice').forEach(i=>i.value=d.prices[i.dataset.goods]??'');
   document.getElementById('expRate').value=d.ratePerDecl??'';
+  document.getElementById('expNeg').checked=d.includeNegative===true;
   card.querySelectorAll('.expCompany').forEach(i=>i.value=(d.companies[i.dataset.imp]||{})[i.dataset.goods]??'');
+  updateExportForm();
   showToast('คืนค่าเริ่มต้นแล้ว — กดส่งออกเพื่อบันทึก','success');
 }
 
@@ -3937,32 +3976,50 @@ function readExportForm(){
   // ค่าที่ไม่ได้แสดงในหน้านี้ (ผู้นำเข้า/สินค้าอื่น) คงค่าเดิมไว้
   const prev=exportCtx.settings;
   const settings={prices:{...prev.prices},ratePerDecl:numOf(document.getElementById('expRate').value,'อัตราต่อใบขน'),
+    includeNegative:document.getElementById('expNeg').checked,
     companies:Object.fromEntries(Object.entries(prev.companies||{}).map(([k,v])=>[k,{...v}]))};
   card.querySelectorAll('.expPrice').forEach(i=>settings.prices[i.dataset.goods]=numOf(i.value,`ราคา${i.dataset.goods}`));
   card.querySelectorAll('.expCompany').forEach(i=>{(settings.companies[i.dataset.imp]??={})[i.dataset.goods]=i.value.trim();});
   const importers=[...card.querySelectorAll('.exp-imp-row:not([hidden]) .expImp:checked')].map(i=>i.value);
   const sheets=new Set([...card.querySelectorAll('.expSheet:checked')].map(i=>i.value));
   if(!importers.length) throw new Error('เลือกชีตผู้นำเข้าอย่างน้อย 1 ราย');
-  return {settings,start,end,importers,summary:sheets.has('summary'),staff:sheets.has('staff'),
-    recs:recs.filter(r=>importers.includes(r.importer))};
+  // V26 Q3: ชีตเจ้าหน้าที่นับทุกใบขน (staffRecs) · ชีตผู้นำเข้า/สรุปตัดแถวติดลบเมื่อปิดสวิตช์ (recs)
+  const staffRecs=recs.filter(r=>importers.includes(r.importer));
+  const kept=settings.includeNegative?staffRecs:staffRecs.filter(r=>!isNegativeDiff(r));
+  const staff=sheets.has('staff');
+  if(!kept.length&&!staff) throw new Error('ไม่มีรายการที่ส่วนต่างไม่ติดลบในช่วงนี้');
+  return {settings,start,end,importers,summary:sheets.has('summary'),staff,
+    format:exportFormatChosen(),recs:kept,staffRecs};
 }
 
-async function submitExportExcel(btn){
+async function submitExport(btn){
   let opts;
   try{opts=readExportForm();}catch(e){modalErr(e.message);return;}
+  try{localStorage.setItem(EXPORT_FORMAT_KEY,opts.format);}catch(e){}
   await modalBusy(btn,async()=>{
     const ExcelJS=await loadExcelJs();
     const wb=buildImportWorkbook(ExcelJS,opts);
-    const buf=await wb.xlsx.writeBuffer();
+    const base=`หอม-กระเทียม_${exportFileRange(opts.start,opts.end)}`;
+    let files;
+    if(opts.format==='xlsx'){
+      const buf=await wb.xlsx.writeBuffer();
+      files=[{blob:new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),name:`${base}.xlsx`}];
+    }else if(opts.format==='png'){
+      await document.fonts?.load(`16px ${SHEET_FONT}`).catch(()=>{});
+      // V26 Q8: ชีตละ 1 รูป
+      files=await Promise.all(wb.worksheets.map(async ws=>({blob:await canvasBlob(drawWorksheetCanvas(ws)),name:`${base}_${ws.name}.png`})));
+    }else{
+      const jsPDF=await loadJsPdf();
+      await document.fonts?.load(`16px ${SHEET_FONT}`).catch(()=>{});
+      files=[{blob:buildWorkbookPdf(jsPDF,wb),name:`${base}.pdf`}];
+    }
     // บันทึกค่าตั้งค่าก่อนเปิดหน้าบันทึกไฟล์ — ถ้าบันทึกไม่ได้ ไฟล์ยังส่งออกได้
     let saveErr=null;
     try{ await sumApi('exportSaveSettings',{exportToken:exportCtx.token,settings:opts.settings}); exportCtx.settings=opts.settings; }
     catch(e){ saveErr=e; }
-    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const dataUrl=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(blob);});
     closeSumModal();
     if(saveErr) showToast('ส่งออกแล้ว แต่บันทึกค่าตั้งค่าไม่ได้: '+saveErr.message,'error');
-    await saveDataUrl(dataUrl,`หอม-กระเทียม_${exportFileRange(opts.start,opts.end)}.xlsx`,blob.type);
+    await saveFiles(files);
   });
 }
 
@@ -3987,7 +4044,7 @@ function exportFileRange(a,b){
 
 // รูปแบบตามไฟล์ตัวอย่าง หอม-กระเทียม_19-25ส.ค.69 (V24): Angsana New · หัวตาราง #1F4E78 · แถวรวม #DDEBF7 · แนวนอน
 function buildImportWorkbook(ExcelJS,opts){
-  const {settings,start,end,importers,recs}=opts;
+  const {settings,start,end,importers,recs}=opts, staffRecs=opts.staffRecs||recs;
   const wb=new ExcelJS.Workbook(); wb.creator='ระบบอ่านใบชั่ง';
   const FONT='Angsana New', NUM='#,##0.00', CNT='0;\\-0;\\-';
   const NAVY='FF1F4E78', TOTAL='FFDDEBF7';
@@ -3997,7 +4054,7 @@ function buildImportWorkbook(ExcelJS,opts){
   const font=(o={})=>({name:FONT,size:16,color:{argb:'FF000000'},...o});
   const center={horizontal:'center',vertical:'middle'};
   const price=g=>Number(settings.prices[g])||0;
-  const baht=r=>Math.round((+r.netWeight||0)*price(r.goodsType)*100)/100;
+  const baht=r=>Math.round(exportKg(r)*price(r.goodsType)*100)/100;
   const title=`สรุปการนำเข้า หอม - กระเทียม วันที่ ${exportTitleRange(start,end)}`;
   // ความกว้างคอลัมน์จากจำนวนตัวอักษรที่กินที่ (ไม่นับสระบน/ล่าง วรรณยุกต์)
   const textLen=s=>String(s||'').replace(/[ัิ-ฺ็-๎]/g,'').length;
@@ -4029,6 +4086,7 @@ function buildImportWorkbook(ExcelJS,opts){
       .sort((a,b)=>a[2]-b[2]||irecs.indexOf(a[1][0])-irecs.indexOf(b[1][0]));
     const name=sheetName(imp,used);
     const ws=wb.addWorksheet(name,{pageSetup,views:[{state:'frozen',ySplit:4,showGridLines:false}]});
+    ws.headRow=4; // รูป/PDF: แถว 1–4 ซ้ำทุกหน้า
     const wC=Math.max(30,...groups.map(([co])=>textLen(co)*0.75+4));
     ws.columns=[{width:8},{width:14},{width:Math.min(wC,60)},{width:22},{width:16},{width:15},{width:15}];
     ws.mergeCells('A1:G1'); ws.mergeCells('A2:G2');
@@ -4037,17 +4095,17 @@ function buildImportWorkbook(ExcelJS,opts){
     ['A1','A2'].forEach(a=>{ws.getCell(a).font=font({size:20,bold:true});ws.getCell(a).alignment={...center,wrapText:true};});
     ws.getRow(1).height=29.25; ws.getRow(2).height=Math.max(29.25,Math.ceil(textLen(ws.getCell('A2').value)/90)*29.25);
     const head=ws.getRow(4);
-    head.values=['ลำดับ','วัน/เดือน/ปี','บริษัทฯ','เลขที่ใบขนสินค้าฯ','สินค้า','กิโลกรัม','บาท'];
+    head.values=['ลำดับ','วัน/เดือน/ปี','บริษัทฯ','เลขที่ใบขนสินค้าฯ','สินค้า','ส่วนต่าง (กก.)','บาท'];
     styleRow(head,7,{f:NAVY,bold:true,white:true}); head.height=23.25;
     let r=5, n=0; const totalRows=[]; let kgAll=0, bahtAll=0;
     groups.forEach(([co,rs])=>{
       const first=r;
       rs.forEach(rec=>{
         const row=ws.getRow(r++);
-        row.values=[++n,thaiDateShort(rec.dateIso),co,rec.declarationNo,EXPORT_GOODS_NAME(rec.goodsType),+rec.netWeight||0,baht(rec)];
+        row.values=[++n,thaiDateShort(rec.dateIso),co,rec.declarationNo,EXPORT_GOODS_NAME(rec.goodsType),exportKg(rec),baht(rec)];
         styleRow(row,7,{numFrom:6}); row.height=23.25;
       });
-      const kg=rs.reduce((s,x)=>s+(+x.netWeight||0),0), bt=rs.reduce((s,x)=>s+baht(x),0);
+      const kg=rs.reduce((s,x)=>s+exportKg(x),0), bt=rs.reduce((s,x)=>s+baht(x),0);
       kgAll+=kg; bahtAll+=bt;
       const tr=ws.getRow(r);
       ws.mergeCells(r,1,r,5);
@@ -4067,8 +4125,8 @@ function buildImportWorkbook(ExcelJS,opts){
   });
 
   // ── สรุปตามบริษัท: บริษัทละแถว · สูตรอ้างชีตผู้นำเข้า (SUMIFS ตามบริษัท+สินค้า)
-  if(opts.summary){
-    const ws=wb.addWorksheet('สรุปตามบริษัท',{pageSetup,views:[{showGridLines:false}]});
+  if(opts.summary&&impSheets.length){
+    const ws=wb.addWorksheet('สรุปตามบริษัท',{pageSetup,views:[{showGridLines:false}]}); ws.headRow=3;
     const goodsAll=exportGoodsList(recs).filter(g=>recs.some(r=>r.goodsType===g));
     // คอลัมน์สินค้าตามไฟล์ตัวอย่าง: กระเทียมสดก่อนหอมหัวใหญ่
     goodsAll.sort((a,b)=>(a==='กระเทียม'?-1:b==='กระเทียม'?1:goodsRank(a)-goodsRank(b)));
@@ -4092,10 +4150,10 @@ function buildImportWorkbook(ExcelJS,opts){
       const crec=impSheets.flatMap(s=>s.recs.filter(x=>exportCompanyOf(settings,s.imp,x.goodsType)===co));
       row.getCell(1).value=co;
       goodsAll.forEach((g,i)=>{
-        row.getCell(2+i).value={formula:sumIfs('F',r,EXPORT_GOODS_NAME(g)),result:crec.filter(x=>x.goodsType===g).reduce((s,x)=>s+(+x.netWeight||0),0)};
+        row.getCell(2+i).value={formula:sumIfs('F',r,EXPORT_GOODS_NAME(g)),result:crec.filter(x=>x.goodsType===g).reduce((s,x)=>s+exportKg(x),0)};
       });
       const cT=2+goodsAll.length;
-      row.getCell(cT).value={formula:`SUM(B${r}:${L(cT-1)}${r})`,result:crec.reduce((s,x)=>s+(+x.netWeight||0),0)};
+      row.getCell(cT).value={formula:`SUM(B${r}:${L(cT-1)}${r})`,result:crec.reduce((s,x)=>s+exportKg(x),0)};
       row.getCell(cT+1).value={formula:sumIfs('G',r),result:crec.reduce((s,x)=>s+baht(x),0)};
       row.getCell(cT+2).value={formula:countIfs(r),result:crec.length};
       styleRow(row,cols,{numFrom:2}); row.getCell(1).alignment={vertical:'middle'}; row.getCell(cols).numFmt='#,##0';
@@ -4111,7 +4169,7 @@ function buildImportWorkbook(ExcelJS,opts){
 
   // ── จำนวนใบขนตามเจ้าหน้าที่: เลขใบขนไม่ซ้ำต่อผู้นำเข้าต่อวัน (หลายชุด = 1 ใบ) (Q2)
   if(opts.staff){
-    const ws=wb.addWorksheet('จำนวนใบขนตามเจ้าหน้าที่',{pageSetup,views:[{showGridLines:false}]});
+    const ws=wb.addWorksheet('จำนวนใบขนตามเจ้าหน้าที่',{pageSetup,views:[{showGridLines:false}]}); ws.headRow=3;
     const days=[]; for(let d=start;d<=end;d=addDaysIso(d,1)) days.push(d);
     const cols=days.length+2, L=c=>c<=26?String.fromCharCode(64+c):'A'+String.fromCharCode(64+c-26);
     ws.columns=[{width:22},...days.map(()=>({width:13})),{width:13}];
@@ -4121,12 +4179,13 @@ function buildImportWorkbook(ExcelJS,opts){
     const head=ws.getRow(3);
     head.values=['เจ้าหน้าที่',...days.map(thaiDateShort),'รวม'];
     styleRow(head,cols,{f:NAVY,bold:true,white:true}); head.height=23.25;
-    let r=4; const staff=impSheets.map(s=>s.imp);
+    // V26 Q3: นับทุกใบขน แม้ผู้นำเข้านั้นไม่มีแถวเหลือในชีตของตัวเองหลังตัดติดลบ
+    let r=4; const staff=importers.filter(imp=>staffRecs.some(x=>x.importer===imp));
     staff.forEach(imp=>{
       const row=ws.getRow(r); row.getCell(1).value=imp;
       let sum=0;
       days.forEach((d,i)=>{
-        const n=new Set(recs.filter(x=>x.importer===imp&&x.dateIso===d).map(x=>normDecl(x.declarationNo))).size;
+        const n=new Set(staffRecs.filter(x=>x.importer===imp&&x.dateIso===d).map(x=>normDecl(x.declarationNo))).size;
         sum+=n; row.getCell(2+i).value=n||null;
       });
       row.getCell(cols).value={formula:`SUM(B${r}:${L(cols-1)}${r})`,result:sum};
@@ -4154,6 +4213,161 @@ function buildImportWorkbook(ExcelJS,opts){
     mr.getCell(2).font=font({bold:true});
   }
   return wb;
+}
+
+// ── V26 รูปภาพ/PDF: วาดจาก worksheet ของ ExcelJS ตัวเดียวกับไฟล์ Excel (Q9) ─────
+// ค่า/สี/เส้น/ช่องรวม/ความกว้างอ่านจากเซลล์ → ตัวเลขในรูปตรงกับ result ของสูตรใน Excel เสมอ
+const SHEET_FONT="'IBM Plex Sans Thai',Sarabun,sans-serif";
+const SHEET_PAD=16, SHEET_SCALE=2;
+function colNum(letters){return [...letters].reduce((n,ch)=>n*26+ch.charCodeAt(0)-64,0);}
+function sheetMerges(ws){
+  return (ws.model.merges||[]).map(a=>{
+    const m=/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/.exec(a); if(!m) return null;
+    return {left:colNum(m[1]),top:+m[2],right:colNum(m[3]),bottom:+m[4]};
+  }).filter(Boolean);
+}
+function sheetCellText(cell){
+  let v=cell.value;
+  if(v&&typeof v==='object'&&'formula' in v) v=v.result;
+  if(v==null||v==='') return '';
+  if(typeof v!=='number') return String(v);
+  const f=cell.numFmt||'';
+  if(f.startsWith('0;')) return v===0?'-':v.toLocaleString('en-US',{maximumFractionDigits:0});
+  const dec=/0\.(0+)/.exec(f)?.[1].length||0;
+  return v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+}
+function sheetColor(argb,fallback){return argb&&argb.length===8?'#'+argb.slice(2):fallback;}
+function sheetFontOf(cell,size){const fo=cell.font||{};return `${fo.bold?'bold ':''}${size||Math.round((fo.size||16)*0.9)}px ${SHEET_FONT}`;}
+// ความกว้างจาก Excel (คิดจาก Angsana ที่แคบ) แล้วขยายให้พอกับข้อความจริงของฟอนต์ในรูป — ช่องรวม/ตัดบรรทัดไม่นับ
+function sheetLayout(ws){
+  const cols=ws.columns.length, merges=sheetMerges(ws);
+  const colW=ws.columns.map(c=>Math.round((c.width||10)*7.2));
+  const m=document.createElement('canvas').getContext('2d');
+  for(let r=1;r<=ws.rowCount;r++){
+    const row=ws.getRow(r);
+    for(let col=1;col<=cols;col++){
+      if(merges.some(g=>r>=g.top&&r<=g.bottom&&col>=g.left&&col<=g.right)) continue;
+      const cell=row.getCell(col), t=sheetCellText(cell);
+      if(!t||(cell.alignment&&cell.alignment.wrapText)) continue;
+      m.font=sheetFontOf(cell);
+      colW[col-1]=Math.max(colW[col-1],Math.ceil(m.measureText(t).width)+14);
+    }
+  }
+  const colX=[0]; colW.forEach(w=>colX.push(colX[colX.length-1]+w));
+  const rowH=r=>Math.round((ws.getRow(r).height||20)*4/3);
+  return {cols,colW,colX,width:colX[cols],rowH,merges};
+}
+// แบ่งข้อความไทย (ไม่มีวรรค) ด้วย Intl.Segmenter ถ้ามี ไม่งั้นทีละตัวอักษร
+function wrapSheetText(c,text,maxW){
+  const parts=typeof Intl!=='undefined'&&Intl.Segmenter?[...new Intl.Segmenter('th',{granularity:'word'}).segment(text)].map(x=>x.segment):[...text];
+  const lines=[]; let cur='';
+  parts.forEach(p=>{if(cur&&c.measureText(cur+p).width>maxW){lines.push(cur.trimEnd());cur=p.trimStart();}else cur+=p;});
+  if(cur) lines.push(cur);
+  return lines;
+}
+// rows = เลขแถวที่จะวาดเรียงลงมา (PDF ใช้หัวตาราง + แถวของหน้านั้น)
+function drawWorksheetCanvas(ws,rows){
+  const L=sheetLayout(ws);
+  rows=rows||Array.from({length:ws.rowCount},(_,i)=>i+1);
+  const rowY={}; let h=0; rows.forEach(r=>{rowY[r]=h;h+=L.rowH(r);});
+  const cv=document.createElement('canvas');
+  cv.width=(L.width+SHEET_PAD*2)*SHEET_SCALE; cv.height=(h+SHEET_PAD*2)*SHEET_SCALE;
+  const c=cv.getContext('2d');
+  c.scale(SHEET_SCALE,SHEET_SCALE); c.fillStyle='#FFFFFF'; c.fillRect(0,0,cv.width,cv.height);
+  c.translate(SHEET_PAD,SHEET_PAD); c.textBaseline='middle';
+  const masterOf=(r,col)=>L.merges.find(m=>r>=m.top&&r<=m.bottom&&col>=m.left&&col<=m.right);
+  const boxes=[];
+  rows.forEach(r=>{
+    const row=ws.getRow(r);
+    for(let col=1;col<=L.cols;col++){
+      const m=masterOf(r,col);
+      if(m&&(m.top!==r||m.left!==col)) continue;
+      const cell=row.getCell(col);
+      const right=m?m.right:col;
+      const hh=m?rows.filter(x=>x>=m.top&&x<=m.bottom).reduce((s,x)=>s+L.rowH(x),0):L.rowH(r);
+      boxes.push({cell,x:L.colX[col-1],y:rowY[r],w:L.colX[right]-L.colX[col-1],h:hh});
+    }
+  });
+  boxes.forEach(b=>{const f=b.cell.fill;if(f&&f.fgColor){c.fillStyle=sheetColor(f.fgColor.argb,'#FFFFFF');c.fillRect(b.x,b.y,b.w,b.h);}});
+  boxes.forEach(b=>{
+    const text=sheetCellText(b.cell); if(!text) return;
+    const fo=b.cell.font||{}, al=b.cell.alignment||{};
+    let size=Math.round((fo.size||16)*0.9);
+    const setFont=()=>{c.font=sheetFontOf(b.cell,size);};
+    setFont(); c.fillStyle=sheetColor(fo.color&&fo.color.argb,'#000000');
+    const isNum=typeof (b.cell.value&&b.cell.value.formula!==undefined?b.cell.value.result:b.cell.value)==='number';
+    const align=al.horizontal||(isNum?'right':'left'), maxW=b.w-10;
+    let lines=[text];
+    if(al.wrapText) lines=wrapSheetText(c,text,maxW);
+    else while(size>9&&c.measureText(text).width>maxW){size--;setFont();}
+    const lh=size*1.35, y0=b.y+b.h/2-(lines.length-1)*lh/2;
+    lines.forEach((ln,i)=>{
+      const w=c.measureText(ln).width;
+      const x=align==='center'?b.x+(b.w-w)/2:align==='right'?b.x+b.w-5-w:b.x+5;
+      c.fillText(ln,x,y0+i*lh);
+    });
+  });
+  c.strokeStyle='#000000'; c.lineWidth=1;
+  boxes.forEach(b=>{if(b.cell.border&&b.cell.border.top) c.strokeRect(b.x+0.5,b.y+0.5,b.w,b.h);});
+  return cv;
+}
+function canvasBlob(cv,type='image/png'){
+  return new Promise((res,rej)=>cv.toBlob(b=>b?res(b):rej(new Error('สร้างรูปไม่ได้')),type));
+}
+
+// PDF: A4 แนวนอน ขอบ 10 มม. · ชีตละหน้า ยาวเกินขึ้นหน้าใหม่ + หัวตารางซ้ำ (Q8)
+let jsPdfPromise=null;
+function loadJsPdf(){
+  if(window.jspdf) return Promise.resolve(window.jspdf.jsPDF);
+  if(!jsPdfPromise){
+    jsPdfPromise=new Promise((resolve,reject)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.integrity='sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA==';
+      s.crossOrigin='anonymous';
+      s.onload=()=>resolve(window.jspdf.jsPDF);
+      s.onerror=()=>{jsPdfPromise=null;reject(new Error('โหลดตัวสร้างไฟล์ PDF ไม่ได้'));};
+      document.head.appendChild(s);
+    });
+  }
+  return jsPdfPromise;
+}
+function worksheetPages(ws){
+  const L=sheetLayout(ws), head=ws.headRow||0;
+  const usable=(L.width+SHEET_PAD*2)*190/277-SHEET_PAD*2; // ความสูงที่ใส่ได้ต่อหน้า (หน่วยเดียวกับ layout)
+  const headRows=Array.from({length:head},(_,i)=>i+1), headH=headRows.reduce((s,r)=>s+L.rowH(r),0);
+  const pages=[]; let cur=[], h=headH;
+  for(let r=head+1;r<=ws.rowCount;r++){
+    const rh=L.rowH(r);
+    if(cur.length&&h+rh>usable){pages.push(cur);cur=[];h=headH;}
+    cur.push(r); h+=rh;
+  }
+  if(cur.length||!pages.length) pages.push(cur);
+  return pages.map(p=>[...headRows,...p]);
+}
+function buildWorkbookPdf(jsPDF,wb){
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  let first=true;
+  wb.worksheets.forEach(ws=>worksheetPages(ws).forEach(rows=>{
+    if(!first) doc.addPage('a4','landscape'); first=false;
+    const cv=drawWorksheetCanvas(ws,rows);
+    doc.addImage(cv.toDataURL('image/png'),'PNG',10,10,277,277*cv.height/cv.width,undefined,'FAST');
+  }));
+  return doc.output('blob');
+}
+// หลายไฟล์ (รูปชีตละรูป): iPhone แชร์รวดเดียว ถ้าแชร์หลายไฟล์ไม่ได้ทำทีละไฟล์ · คอมดาวน์โหลดทีละไฟล์
+async function saveFiles(files){
+  const toDataUrl=b=>new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(b);});
+  if(files.length>1&&/iPad|iPhone|iPod/.test(navigator.userAgent)){
+    const fs=files.map(f=>new File([f.blob],f.name,{type:f.blob.type}));
+    try{
+      if(navigator.share&&navigator.canShare&&navigator.canShare({files:fs})){await navigator.share({files:fs});return;}
+    }catch(e){if(e.name==='AbortError')return;}
+  }
+  for(const f of files){
+    await saveDataUrl(await toDataUrl(f.blob),f.name,f.blob.type);
+    if(files.length>1) await new Promise(r=>setTimeout(r,400));
+  }
 }
 </script>
 
