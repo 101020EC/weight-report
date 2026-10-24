@@ -1113,7 +1113,7 @@ async function readImagesWithRetry(){
     totalFailedAttempts = 0;
     return;
   }
-  if(res1 === 'PAYLOAD_TOO_LARGE') return;
+  if(res1 === 'PAYLOAD_TOO_LARGE' || res1 === 'QUOTA') return;
   totalFailedAttempts++;
 
   // auto-retry รอบที่ 1 (Attempt 2)
@@ -1124,7 +1124,7 @@ async function readImagesWithRetry(){
     totalFailedAttempts = 0;
     return;
   }
-  if(res2 === 'PAYLOAD_TOO_LARGE') return;
+  if(res2 === 'PAYLOAD_TOO_LARGE' || res2 === 'QUOTA') return;
   totalFailedAttempts++;
 
   // auto-retry รอบที่ 2 (Attempt 3)
@@ -1135,12 +1135,18 @@ async function readImagesWithRetry(){
     totalFailedAttempts = 0;
     return;
   }
-  if(res3 === 'PAYLOAD_TOO_LARGE') return;
+  if(res3 === 'PAYLOAD_TOO_LARGE' || res3 === 'QUOTA') return;
   totalFailedAttempts++;
 
   if(totalFailedAttempts >= 6){
     showQuotaLimitModal();
   }
+}
+
+// V27: API ตอบ 429 {quota:true} เมื่อทุกคีย์ × ทุกโมเดลฟรีหมดโควตา → เปิดป๊อปอัปทันที ไม่ต้องลองซ้ำ
+function isQuotaResponse(resp,text){
+  if(resp.status!==429) return false;
+  try{ return !!JSON.parse(text).quota; }catch(e){ return false; }
 }
 
 function showQuotaLimitModal(){
@@ -1188,6 +1194,10 @@ async function runReadImages(isFinal=false){
     });
     if(!resp.ok){
       const errText=await resp.text();
+      if(isQuotaResponse(resp,errText)){
+        showQuotaLimitModal();
+        return 'QUOTA';
+      }
       if(resp.status === 413 || errText.includes('413') || errText.includes('FUNCTION_PAYLOAD_TOO_LARGE') || errText.includes('Payload Too Large') || errText.includes('TOO_LARGE')){
         showPayloadTooLargeModal();
         return 'PAYLOAD_TOO_LARGE';
@@ -1205,7 +1215,7 @@ async function runReadImages(isFinal=false){
     },100);
     document.getElementById('num-1').classList.add('done');
     document.getElementById('num-1').textContent='✓';
-    if(result.is_fallback || (result.model_used && result.model_used !== 'gemini-2.5-flash')){
+    if(result.is_fallback){
       showToast(`อ่านข้อมูลสำเร็จ ✓ (สลับใช้โมเดลสำรอง: ${result.model_used})`,'warn');
     }else{
       showToast('อ่านข้อมูลสำเร็จ ✓','success');
@@ -2231,7 +2241,7 @@ function handleTeamFiles(files){
 
 async function readTeamWithRetry(){
   const res1=await runReadTeam();
-  if(res1===true || res1==='PAYLOAD_TOO_LARGE') return;
+  if(res1===true || res1==='PAYLOAD_TOO_LARGE' || res1==='QUOTA') return;
   showToast('ลองใหม่อีกครั้ง...','warn');
   await new Promise(r=>setTimeout(r,1500));
   await runReadTeam(true);
@@ -2257,6 +2267,10 @@ async function runReadTeam(isFinal=false){
     });
     if(!resp.ok){
       const t=await resp.text();
+      if(isQuotaResponse(resp,t)){
+        showQuotaLimitModal();
+        return 'QUOTA';
+      }
       if(resp.status === 413 || t.includes('413') || t.includes('FUNCTION_PAYLOAD_TOO_LARGE') || t.includes('Payload Too Large') || t.includes('TOO_LARGE')){
         showPayloadTooLargeModal();
         return 'PAYLOAD_TOO_LARGE';
@@ -2275,7 +2289,7 @@ async function runReadTeam(isFinal=false){
     document.getElementById('teamResultCard').style.display='block';
     document.getElementById('teamClearBtnArea').style.display='block';
     autoGrowTeam(true);
-    if(result.is_fallback || (result.model_used && result.model_used !== 'gemini-2.5-flash')){
+    if(result.is_fallback){
       showToast(`อ่านข้อมูลทีมสำเร็จ ✓ (สลับใช้โมเดลสำรอง: ${result.model_used})`,'warn');
     }else{
       showToast('อ่านข้อมูลทีมสำเร็จ ✓','success');

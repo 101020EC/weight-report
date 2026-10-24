@@ -1,18 +1,13 @@
-// ── Gemini Candidate Models (เรียงตามลำดับความสำคัญ + Fallback) ──
-const GEMINI_MODELS = [
-  process.env.GEMINI_MODEL,
-  'gemini-2.5-flash',
-  'gemini-3.0-flash',
-  'gemini-3.5-flash',
-  'gemini-4.0-flash',
-  'gemini-4.5-flash',
-  'gemini-5.0-flash',
-  'gemini-5.5-flash',
-  'gemini-6.0-flash',
-  'gemini-6.5-flash',
-  'gemini-2.0-flash',
-  'gemini-1.5-flash'
-].filter(m => m && m.trim().length > 0);
+// ── Gemini models (V27) ───────────────────────────────────
+// โมเดลฟรีของ Google (หน้าราคา 2026-10-15) เรียงตามลำดับที่ลอง — ชุดเดียวกับ customshub D65.
+// Google เปลี่ยนรุ่นฟรีเมื่อไหร่ แก้บรรทัดนี้แล้ว push (ด่วน: ตั้ง GEMINI_MODEL ใน Vercel แล้ว redeploy ให้ขึ้นก่อน)
+// โมเดลไหนตอบ 404 = ถูกปลดแล้ว → Telegram เตือนวันละครั้งต่อโมเดล
+const FREE_MODELS = ['gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-3.5-flash-lite'];
+function modelOrder() {
+  return [...new Set([process.env.GEMINI_MODEL, ...FREE_MODELS].map(m => (m || '').trim()).filter(Boolean))];
+}
+const PER_CALL_MS = 25000; // เกินนี้ข้ามไปโมเดลถัดไป
+const BUDGET_MS = 55000;   // รวมทุกโมเดล (vercel.json maxDuration 60)
 
 // ── API Key Rotation ──────────────────────────────────────
 // เพิ่ม key ใน Vercel Environment Variables:
@@ -76,56 +71,121 @@ function todayBangkokIso() {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
 }
 
-// สุ่ม key จาก pool และวนลูปทดลองโมเดลตามลำดับ (Auto-Fallback)
-async function callGeminiWithRotation(parts) {
-  const keys = getApiKeys();
-  if (keys.length === 0) throw new Error('ไม่พบ API Key ใน Environment Variables');
+class GeminiError extends Error {
+  constructor(status, message, extra = {}) { super(message); this.status = status; Object.assign(this, extra); }
+}
 
-  // สุ่ม key แรก
+// thinking ทำให้ช้าหลายวินาที งานนี้แค่อ่านตัวเลขจากรูป — 3.x flash: low, 2.5 flash: 0, อื่นๆ ปล่อยตามโมเดล (customshub D57)
+function thinkingFor(model) {
+  const v = Number((model.match(/gemini-(\d+(?:\.\d+)?)/) || [])[1]) || 0;
+  if (!/flash/.test(model)) return null;
+  if (v >= 3) return { thinkingLevel: 'low' };
+  if (v >= 2.5) return { thinkingBudget: 0 };
+  return null;
+}
+
+// สุ่มลำดับคีย์ แล้วไล่โมเดลตามลำดับบนคีย์นั้น — โควตาฟรีนับต่อโมเดล 429 จึงไปโมเดลถัดไปคีย์เดิม;
+// คีย์หมดจริงเมื่อทุกโมเดลตอบ 429 แล้วจึงไปคีย์ถัดไป. คืน { raw, modelUsed, gone } (gone = โมเดลที่ตอบ 404)
+async function callGeminiWithRotation(parts, opts = {}) {
+  const fetchFn = opts.fetchFn || fetch;
+  const keys = opts.keys || getApiKeys();
+  const models = opts.models || modelOrder();
+  const perCall = opts.perCall || PER_CALL_MS;
+  const budget = opts.budget || BUDGET_MS;
+  if (keys.length === 0) throw new GeminiError(500, 'ไม่พบ API Key ใน Environment Variables');
+
+  const start = Date.now();
   const shuffled = [...keys].sort(() => Math.random() - 0.5);
+  const gone = new Set();
+  let quota = 0, slow = 0, other = null, keyErr = null;
 
-  let lastError = null;
   for (const key of shuffled) {
-    for (const model of GEMINI_MODELS) {
+    for (const model of models) {
+      if (gone.has(model)) continue;
+      const left = budget - (Date.now() - start);
+      if (left <= 0) throw new GeminiError(504, 'AI ตอบช้าเกินไป ลองใหม่หรือกด Manual', { gone: [...gone] });
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), Math.min(perCall, left));
       try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-        const resp = await fetch(url, {
+        const think = thinkingFor(model);
+        const body = { contents: [{ parts }], ...(think ? { generationConfig: { thinkingConfig: think } } : {}) };
+        const resp = await fetchFn(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts }] })
+          body: JSON.stringify(body),
+          signal: ctl.signal
         });
-
         if (!resp.ok) {
           const err = await resp.json().catch(() => ({}));
           const msg = err.error?.message || `HTTP ${resp.status}`;
-          // ถ้า quota หมด ลอง key ถัดไป
-          if (resp.status === 429 || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
-            lastError = new Error(`Key quota หมด (${model}): ${msg}`);
-            break; // สลับ key ถัดไป
+          if (resp.status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(msg)) { quota++; continue; }
+          if (resp.status === 404 || err.error?.status === 'NOT_FOUND') {
+            console.warn(`[GEMINI MODEL GONE] ${model}: ${msg}`);
+            gone.add(model);
+            continue;
           }
-          // ถ้าโมเดลถูกยกเลิก/หาไม่พบ (404/NOT_FOUND) ให้ลองโมเดลถัดไปในรายการ
-          if (resp.status === 404 || msg.includes('not found') || msg.includes('INVALID_ARGUMENT')) {
-            console.warn(`[GEMINI MODEL FALLBACK] Model ${model} not available, trying next... (${msg})`);
-            lastError = new Error(`Model ${model} ไม่พร้อมใช้งาน: ${msg}`);
-            continue; // ลองโมเดลรุ่นถัดไป
+          // คีย์เสีย/ถูกปิด → คีย์ถัดไป (คีย์อื่นอาจยังดี)
+          if (resp.status === 401 || resp.status === 403 || /API.?KEY/i.test(msg + (err.error?.details?.[0]?.reason || ''))) {
+            console.warn(`[GEMINI BAD KEY] ${msg}`);
+            keyErr = new GeminiError(502, `คีย์ Gemini ใช้ไม่ได้: ${msg}`);
+            break;
           }
-          throw new Error(msg);
+          if (resp.status >= 500) { other = new GeminiError(502, `${model}: ${msg}`); continue; } // โมเดลล่ม/คนแน่น → ตัวถัดไป
+          throw new GeminiError(resp.status === 400 ? 400 : 502, msg, { gone: [...gone], final: true }); // รูป/คำขอผิด ลองตัวอื่นก็ผิดเหมือนกัน
         }
-
         const data = await resp.json();
-        const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        if (raw) return { raw, modelUsed: model };
-
+        const raw = (data.candidates?.[0]?.content?.parts || []).filter(p => !p.thought).map(p => p.text || '').join('');
+        if (raw) return { raw, modelUsed: model, gone: [...gone] };
+        other = new GeminiError(502, `${model}: ไม่มีข้อความตอบกลับ`);
       } catch (e) {
-        if (e.message.includes('quota') || e.message.includes('RESOURCE_EXHAUSTED') || e.message.includes('429')) {
-          lastError = e;
-          break;
-        }
-        lastError = e;
+        if (e.final) throw e;
+        if (e.name === 'AbortError') { slow++; console.warn(`[GEMINI TIMEOUT] ${model}`); continue; }
+        other = e instanceof GeminiError ? e : new GeminiError(502, e.message);
+      } finally {
+        clearTimeout(timer);
       }
     }
   }
-  throw lastError || new Error('ไม่สามารถเรียกใช้งาน Gemini API ได้ในขณะนี้');
+  const g = { gone: [...gone] };
+  if (other) throw Object.assign(other, g);
+  if (quota) throw new GeminiError(429, 'โควตา Gemini ฟรีวันนี้หมดแล้ว กด Manual เพื่อกรอกเอง', { ...g, quota: true });
+  if (slow) throw new GeminiError(504, 'AI ตอบช้าเกินไป ลองใหม่หรือกด Manual', g);
+  if (keyErr) throw Object.assign(keyErr, g);
+  throw new GeminiError(502, 'ไม่มีโมเดล Gemini ที่ใช้ได้ — ตรวจรายชื่อ FREE_MODELS', g);
+}
+
+// โมเดลใน FREE_MODELS ตอบ 404 → Telegram วันละครั้งต่อโมเดล (จำวันที่ใน Firestore settings/aiAlerts)
+let _db = null;
+function db() {
+  if (_db) return _db;
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!raw) throw new Error('ยังไม่ได้ตั้งค่า FIREBASE_SERVICE_ACCOUNT');
+  const { initializeApp, cert, getApps } = require('firebase-admin/app');
+  const { getFirestore } = require('firebase-admin/firestore');
+  if (!getApps().length) initializeApp({ credential: cert(JSON.parse(raw)) });
+  _db = getFirestore();
+  return _db;
+}
+async function alertGoneModels(gone) {
+  if (!gone || !gone.length) return;
+  try {
+    const today = todayBangkokIso();
+    const ref = db().collection('settings').doc('aiAlerts');
+    const fresh = await db().runTransaction(async tx => {
+      const seen = (await tx.get(ref)).data() || {};
+      const list = gone.filter(m => seen[m] !== today);
+      if (list.length) tx.set(ref, Object.fromEntries(list.map(m => [m, today])), { merge: true });
+      return list;
+    });
+    if (!fresh.length) return;
+    await sendTelegramNotification(
+      `⚠️ <b>[GEMINI MODEL GONE]</b>\n` +
+      `• โมเดลที่ Google ตอบ 404: ${escapeHtml(fresh.join(', '))}\n` +
+      `• แก้รายชื่อ FREE_MODELS ใน api/gemini.js แล้ว push (หรือตั้ง GEMINI_MODEL ใน Vercel + redeploy)`
+    );
+  } catch (e) {
+    console.error('[GEMINI GONE ALERT ERROR]', e.message);
+  }
 }
 
 function escapeHtml(str) {
@@ -245,10 +305,10 @@ module.exports = async function handler(req, res) {
     }
 
     // เรียก Gemini ด้วย key rotation
-    const { raw, modelUsed } = await callGeminiWithRotation(parts);
+    const { raw, modelUsed, gone } = await callGeminiWithRotation(parts);
+    await alertGoneModels(gone);
     const duration = Date.now() - startTime;
-    const defaultModel = (process.env.GEMINI_MODEL || 'gemini-2.5-flash').trim();
-    const isFallback = (modelUsed !== defaultModel);
+    const isFallback = (modelUsed !== modelOrder()[0]);
 
     // ประมวลผลตาม type
     // helper: extract JSON จาก response ที่อาจมี text อื่นปน
@@ -408,10 +468,12 @@ module.exports = async function handler(req, res) {
                   `• Error: ${escapeHtml(err.message || 'เกิดข้อผิดพลาด')}\n` +
                   `⏱ เวลาใช้ไป: ${(duration / 1000).toFixed(2)}s`;
     await sendTelegramNotification(tgMsg);
+    await alertGoneModels(err.gone);
 
-    return res.status(500).json({ success: false, error: err.message || 'เกิดข้อผิดพลาด' });
+    return res.status(err.status || 500).json({ success: false, error: err.message || 'เกิดข้อผิดพลาด', ...(err.quota ? { quota: true } : {}) });
   }
 }
+module.exports._test = { callGeminiWithRotation, thinkingFor, modelOrder, FREE_MODELS };
 
 // ── PROMPTS ───────────────────────────────────────────────
 
