@@ -18,3 +18,14 @@
   - Missing env or a customshub read error → weight-report works as today with only its own data and a small note "อ่านข้อมูล customshub ไม่ได้".
 - **Owner's steps (key):** console.cloud.google.com › project customshub-pd › IAM & Admin › Service Accounts › Create (name `weight-report-reader`) › role Cloud Datastore Viewer › Done →
   open it › Keys › Add key › JSON → Vercel › pd21/weight-report › Settings › Environment Variables › `CUSTOMSHUB_SERVICE_ACCOUNT` (Production) = the whole JSON → delete the downloaded file.
+- **Built (2026-11-08, not deployed):**
+  - `api/summary.js`: second firebase-admin app `chub` from `CUSTOMSHUB_SERVICE_ACCOUNT` (absent → behaves exactly as before, no note). `chubRead` never lets a customshub error fail a call —
+    it returns the fallback plus `chubNote` "อ่านข้อมูล customshub ไม่ได้". `load` merges shifts (newest first) and pending count, reads a customshub shift's records from `wrecords`;
+    `recordsByDate` returns both. `submit` / `createRecord` refuse a declaration already in customshub with "ใบขนนี้มีอยู่แล้วในเวร … (customshub) — แก้ไขได้ที่ customshub" (no replace offer across
+    systems). `updateRecord` / `deleteRecord` / `deleteShift` on an id that is not ours → 404 with "แก้ไขได้ที่ customshub" (deleteRecord used to succeed silently on a missing id).
+  - `index.html`: no badge; a customshub record opens a read-only sheet ending "แก้ไขได้ที่ customshub"; edit shift / delete shift / add ใบขน on a customshub shift → toast instead;
+    `chubNote` shows as a notice at the top of สรุปผล.
+  - Checked: an in-memory Firestore harness for both projects (load order, records, pending, date list, write refusals, duplicate refusal, customshub down → weighing still saves) — all
+    pass; the page at 375 px with a mocked `sumApi` (notice, read-only sheet, blocked shift edit).
+  - Not checked: real `customshub-pd` with the new service account (needs the owner's key in Vercel), iPhone.
+- **Known look-alike:** a shift made on both sites for the same dates shows twice in the shift list with the same label (no badge, by Q3).

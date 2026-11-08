@@ -8,6 +8,8 @@
 //   load { shiftId? } · createShift · updateShift { startDate, endDate } · deleteShift { pin } ·
 //   createRecord { shiftId } · updateRecord · deleteRecord · renameImporter · recordsByDate { dateIso } ·
 //   exportUnlock { pin } (EXPORT_PIN) · exportSaveSettings { exportToken, settings }
+// V28: ใบชั่งที่ทีมบันทึกใน customshub (Firestore customshub-pd › team/main/wshifts|wrecords) อ่านอย่างเดียวด้วย
+//   CUSTOMSHUB_SERVICE_ACCOUNT (Cloud Datastore Viewer) — รวมใน load / recordsByDate / เช็คใบขนซ้ำ; แก้ไขได้ที่ customshub เท่านั้น
 
 const crypto = require('crypto');
 const { initializeApp, cert, getApps } = require('firebase-admin/app');
@@ -29,6 +31,25 @@ function db() {
   _db = getFirestore();
   return _db;
 }
+
+// V28: customshub (อ่านอย่างเดียว) — แอป firebase-admin ตัวที่สองชื่อ 'chub' · ไม่ได้ตั้งค่า = null (ใช้ข้อมูลของเราอย่างเดียว)
+let _chub;
+function chub() {
+  if (_chub !== undefined) return _chub;
+  const raw = process.env.CUSTOMSHUB_SERVICE_ACCOUNT;
+  if (!raw) return (_chub = null);
+  const app = getApps().find(a => a.name === 'chub') || initializeApp({ credential: cert(JSON.parse(raw)) }, 'chub');
+  return (_chub = getFirestore(app).collection('team').doc('main'));
+}
+const CHUB_NOTE = 'อ่านข้อมูล customshub ไม่ได้';
+// อ่าน customshub แบบไม่ทำให้ฟังก์ชันพัง: ผิดพลาด → ค่า fallback + note
+async function chubRead(fn, fallback) {
+  const t = chub();
+  if (!t) return { v: fallback, note: null };
+  try { return { v: await fn(t), note: null }; } catch (e) { console.error('[summary] customshub', e.message); return { v: fallback, note: CHUB_NOTE }; }
+}
+const chubDocs = snap => snap.docs.map(d => ({ id: d.id, ...d.data(), src: 'chub' }));
+const READONLY = 'รายการนี้บันทึกใน customshub — แก้ไขได้ที่ customshub';
 
 class HttpError extends Error {
   constructor(status, message, auth = false, extra = null) { super(message); this.status = status; this.auth = auth; this.extra = extra; }
@@ -263,6 +284,20 @@ async function findDuplicate(fields) {
   return byId.exists && same(byId.data()) ? byId : null;
 }
 
+// V28: ใบขนเดียวกันที่บันทึกใน customshub แล้ว → {id, shiftId, ...} หรือ null (อ่านไม่ได้ = ไม่ถือว่าซ้ำ)
+async function findChubDuplicate(fields) {
+  const norm = s => String(s || '').replace(/\s+/g, '');
+  const normNo = s => String(s || '').replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+  const { v } = await chubRead(async t => (await t.collection('wrecords').where('declarationNo', '==', fields.declarationNo).get())
+    .docs.map(d => ({ id: d.id, ...d.data() }))
+    .find(d => normNo(d.declarationNo) === normNo(fields.declarationNo) && norm(d.period) === norm(fields.period)) || null, null);
+  return v;
+}
+async function chubShiftLabel(shiftId) {
+  const { v } = await chubRead(async t => (shiftId ? await t.collection('wshifts').doc(shiftId).get() : null), null);
+  return v && v.exists ? `เวร ${thaiDate(v.data().startDate)} – ${thaiDate(v.data().endDate)} (customshub)` : 'รายการที่รอเข้าเวร (customshub)';
+}
+
 // id ตามเลขใบขน ถ้าว่าง ไม่ว่างแล้ว (เอกสารเดิมถูกแก้เลขไป) ใช้ id อัตโนมัติ
 async function newRecordRef(fields) {
   const ref = db().collection('records').doc(recordId(fields.declarationNo, fields.period));
@@ -287,6 +322,9 @@ const actions = {
     const shift = await openShift();
     const shiftId = shift ? shift.id : null;
     const now = Date.now();
+    // V28: บันทึกใน customshub แล้ว → ไม่บันทึกซ้ำที่นี่ (แทนที่ข้ามระบบไม่ได้)
+    const cdup = await findChubDuplicate(fields);
+    if (cdup) throw new HttpError(409, `ใบขนนี้มีอยู่แล้วใน${await chubShiftLabel(cdup.shiftId)} — แก้ไขได้ที่ customshub`);
     const dup = await findDuplicate(fields);
     // ซ้ำ → ไม่เขียนทับเอง ส่งข้อมูลเดิมกลับให้หน้าชั่งถามก่อน (V23 Q1) · replaceId ตรงกัน = ผู้ใช้ยืนยันแทนที่
     if (dup && body.replaceId !== dup.id) {
@@ -312,16 +350,30 @@ const actions = {
   },
 
   async load(req, body) {
-    const shiftsSnap = await db().collection('shifts').orderBy('createdAt', 'desc').limit(200).get();
-    const shifts = shiftsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const [shiftsSnap, pending, cs] = await Promise.all([
+      db().collection('shifts').orderBy('createdAt', 'desc').limit(200).get(),
+      db().collection('records').where('shiftId', '==', null).count().get(),
+      // V28: เวร + ใบขนรอเข้าเวรของ customshub
+      chubRead(async t => {
+        const [sh, pend] = await Promise.all([t.collection('wshifts').orderBy('createdAt', 'desc').limit(200).get(), t.collection('wrecords').where('shiftId', '==', null).count().get()]);
+        return { shifts: chubDocs(sh), pending: pend.data().count };
+      }, { shifts: [], pending: 0 }),
+    ]);
+    const shifts = [...shiftsSnap.docs.map(d => ({ id: d.id, ...d.data() })), ...cs.v.shifts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     const selected = (body.shiftId && shifts.find(s => s.id === body.shiftId)) || shifts[0] || null;
-    const pending = await db().collection('records').where('shiftId', '==', null).count().get();
+    let records = [];
+    let note = cs.note;
+    if (selected && selected.src === 'chub') {
+      const r = await chubRead(async t => chubDocs(await t.collection('wrecords').where('shiftId', '==', selected.id).get()), []);
+      records = r.v; note = note || r.note;
+    } else if (selected) records = await recordsOf(selected.id);
     return {
       today: todayBangkok(),
       shifts,
       shift: selected,
-      records: selected ? await recordsOf(selected.id) : [],
-      pendingCount: pending.data().count,
+      records,
+      pendingCount: pending.data().count + cs.v.pending,
+      chubNote: note,
     };
   },
 
@@ -340,7 +392,7 @@ const actions = {
     const ref = db().collection('shifts').doc(text(body.id, 'เวร', 60));
     const range = shiftRange(body);
     const snap = await ref.get();
-    if (!snap.exists) throw new HttpError(404, 'ไม่พบเวรนี้');
+    if (!snap.exists) throw new HttpError(404, 'ไม่พบเวรนี้ (เวรของ customshub แก้ไขได้ที่ customshub)');
     await ref.update({ ...range, updatedAt: Date.now() });
     return { id: ref.id };
   },
@@ -348,6 +400,7 @@ const actions = {
   async deleteShift(req, body) {
     await checkPin(req, body.pin);
     const id = text(body.id, 'เวร', 60);
+    if (!(await db().collection('shifts').doc(id).get()).exists) throw new HttpError(404, 'ไม่พบเวรนี้ (เวรของ customshub แก้ไขได้ที่ customshub)'); // V28
     const recs = await db().collection('records').where('shiftId', '==', id).get();
     await commitInChunks(recs.docs.map(d => d.ref), (b, r) => b.delete(r));
     await db().collection('shifts').doc(id).delete();
@@ -360,6 +413,8 @@ const actions = {
     const shiftRef = db().collection('shifts').doc(text(body.shiftId, 'เวร', 60));
     const shiftSnap = await shiftRef.get();
     if (!shiftSnap.exists) throw new HttpError(404, 'ไม่พบเวรนี้');
+    const cdup = await findChubDuplicate(fields); // V28
+    if (cdup) throw new HttpError(409, `ใบขนนี้มีอยู่แล้วใน${await chubShiftLabel(cdup.shiftId)} — แก้ไขได้ที่ customshub`);
     const existing = await findDuplicate(fields);
     if (existing) {
       throw new HttpError(409, `ใบขนนี้มีอยู่แล้วใน${await shiftLabel(existing.data().shiftId)} — แก้ไขที่รายการเดิม`);
@@ -373,20 +428,25 @@ const actions = {
   // รายงานตรวจทีมแบบ Manual (V19 Q2): ใบขนของวันที่เลือก ข้ามทุกเวร
   async recordsByDate(req, body) {
     const dateIso = isoDate(body.dateIso, 'วันที่');
-    const snap = await db().collection('records').where('dateIso', '==', dateIso).get();
-    return { records: snap.docs.map(d => ({ id: d.id, ...d.data() })) };
+    const [snap, c] = await Promise.all([
+      db().collection('records').where('dateIso', '==', dateIso).get(),
+      chubRead(async t => chubDocs(await t.collection('wrecords').where('dateIso', '==', dateIso).get()), []), // V28
+    ]);
+    return { records: [...snap.docs.map(d => ({ id: d.id, ...d.data() })), ...c.v], chubNote: c.note };
   },
 
   async updateRecord(req, body) {
     const ref = db().collection('records').doc(text(body.id, 'รายการ', 60));
     const snap = await ref.get();
-    if (!snap.exists) throw new HttpError(404, 'ไม่พบรายการนี้');
+    if (!snap.exists) throw new HttpError(404, READONLY); // V28: id ของ customshub ไม่มีในนี้
     await ref.update({ ...recordFields(body), updatedAt: Date.now() });
     return { id: ref.id };
   },
 
   async deleteRecord(req, body) {
-    await db().collection('records').doc(text(body.id, 'รายการ', 60)).delete();
+    const ref = db().collection('records').doc(text(body.id, 'รายการ', 60));
+    if (!(await ref.get()).exists) throw new HttpError(404, READONLY); // V28
+    await ref.delete();
     return { ok: true };
   },
 
