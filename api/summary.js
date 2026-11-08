@@ -359,14 +359,27 @@ const actions = {
         return { shifts: chubDocs(sh), pending: pend.data().count };
       }, { shifts: [], pending: 0 }),
     ]);
-    const shifts = [...shiftsSnap.docs.map(d => ({ id: d.id, ...d.data() })), ...cs.v.shifts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    const selected = (body.shiftId && shifts.find(s => s.id === body.shiftId)) || shifts[0] || null;
+    // V28 Q4: a customshub shift with the same dates as one of ours is the same shift — ours leads (edit/delete as before),
+    // its customshub ids ride along in chubIds and their records join it
+    const own = shiftsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const merged = new Map(); // chub id → our shift id
+    const rest = [];
+    for (const c of cs.v.shifts) {
+      const twin = own.find(o => o.startDate === c.startDate && o.endDate === c.endDate);
+      if (twin) { (twin.chubIds = twin.chubIds || []).push(c.id); merged.set(c.id, twin.id); } else rest.push(c);
+    }
+    const shifts = [...own, ...rest].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    const want = merged.get(body.shiftId) || body.shiftId;
+    const selected = (want && shifts.find(s => s.id === want)) || shifts[0] || null;
     let records = [];
     let note = cs.note;
-    if (selected && selected.src === 'chub') {
-      const r = await chubRead(async t => chubDocs(await t.collection('wrecords').where('shiftId', '==', selected.id).get()), []);
-      records = r.v; note = note || r.note;
-    } else if (selected) records = await recordsOf(selected.id);
+    // customshub files its ใบชั่ง into whichever shift is open — that can be one of ours, so our id is asked too
+    const chubIds = selected ? (selected.src === 'chub' ? [selected.id] : [selected.id, ...(selected.chubIds || [])]) : [];
+    if (selected && selected.src !== 'chub') records = await recordsOf(selected.id);
+    if (chubIds.length) {
+      const r = await chubRead(async t => chubDocs(await t.collection('wrecords').where('shiftId', 'in', chubIds.slice(0, 30)).get()), []);
+      records = [...records, ...r.v]; note = note || r.note;
+    }
     return {
       today: todayBangkok(),
       shifts,

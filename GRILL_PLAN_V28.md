@@ -30,3 +30,6 @@
   - Not checked: real `customshub-pd` with the new service account (needs the owner's key in Vercel), iPhone.
 - **Known look-alike:** a shift made on both sites for the same dates shows twice in the shift list with the same label (no badge, by Q3).
 - **V28 LIVE 2026-11-08** (6ab7262, Vercel Ready, HTML md5 = local). `CUSTOMSHUB_SERVICE_ACCOUNT` set in Production (sensitive, cannot be read back). Not yet proven: a real read of customshub-pd — needs the สรุปผล PIN; if the key or role is wrong, สรุปผล shows "อ่านข้อมูล customshub ไม่ได้" and Vercel logs `[summary] customshub <error>`.
+- **Q4 (2026-11-08) Same dates = one shift.** Owner saw the latest shift empty: a shift for the same week was set on both sites, the customshub one (empty) was newer. Now `load` folds a
+  customshub shift with the same start/end into ours (`chubIds`), and our shift also lists customshub rows filed under our id (customshub files into whichever shift is open). Delete-shift
+  says customshub rows are not deleted; rename lists only our importers. Same rule in customshub (D95, our shift leads there). Harness extended (merge, open by a merged id).

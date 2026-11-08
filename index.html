@@ -3337,7 +3337,7 @@ function openShiftEditModal(){
   if(chubBlocked()) return;
   const s=viewedShift();
   if(!s){openNewShiftModal();return;}
-  const importers=groupBy(sumState.records,r=>r.importer,IMPORTER_ORDER).map(g=>g[0]);
+  const importers=groupBy(sumState.records.filter(r=>r.src!=='chub'),r=>r.importer,IMPORTER_ORDER).map(g=>g[0]); // V28: rename touches only our records
   openSumModal(`<h3>แก้ไขเวรทำงาน</h3><div class="sub">เลือกช่วงวันที่ได้ 1–7 วัน</div>
     ${shiftRangeFields(s.startDate,s.endDate)}
     <button class="btn btn-primary" style="width:100%;" onclick="submitShiftEdit(this)">บันทึกช่วงวันที่</button>
@@ -3366,9 +3366,10 @@ function openDeleteShiftConfirm(){
   if(chubBlocked()) return;
   const s=viewedShift();
   if(!s){showToast('ยังไม่มีเวรให้ลบ','error');return;}
-  const count=sumState.records.length;
+  const count=sumState.records.filter(r=>r.src!=='chub').length; // V28: customshub records stay
+  const chubCount=sumState.records.length-count;
   openSumModal(`<h3 style="color:#B91C1C;">ลบข้อมูลทั้งเวร</h3>
-    <div class="sub">${shiftRangeText(s.startDate,s.endDate)}<br>ใบขน ${count} ใบในเวรนี้จะถูกลบถาวร<br><b>กรอกรหัส 4 หลักเพื่อยืนยัน</b></div>
+    <div class="sub">${shiftRangeText(s.startDate,s.endDate)}<br>ใบขน ${count} ใบในเวรนี้จะถูกลบถาวร${chubCount?`<br>(ใบขน ${chubCount} ใบที่บันทึกใน customshub ไม่ถูกลบ)`:''}<br><b>กรอกรหัส 4 หลักเพื่อยืนยัน</b></div>
     <input class="pin-input" id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
       oninput="this.value=this.value.replace(/\\D/g,'')" onkeydown="if(event.key==='Enter')document.getElementById('delShiftBtn').click()">
     <div class="sum-modal-err" id="sumModalErr"></div>
