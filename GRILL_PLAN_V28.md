@@ -9,10 +9,12 @@
 - **Q2 (2026-11-08) A read-only service account.** New service account in project `customshub-pd` with only **Cloud Datastore Viewer**; its JSON key goes to Vercel Production as
   `CUSTOMSHUB_SERVICE_ACCOUNT`. The owner creates the key (Google Cloud Console); the app never writes to customshub.
 - **Settled without a question (mirror of customshub's bridge):**
-  - `load`: shifts = weight-ht + customshub `team/main/wshifts`, newest first, customshub ones tagged `src: 'chub'`; a customshub shift's records come from `team/main/wrecords`; pending count adds
+  - `load`: shifts = weight-ht + customshub `team/main/wshifts`, newest first, customshub ones carry `src: 'chub'` (data only, not shown); a customshub shift's records come from `team/main/wrecords`; pending count adds
     customshub's records with no shift. The date list and Export read both.
-  - customshub rows show a "customshub" badge and no edit / delete / move buttons; the server refuses writes to an id it does not own.
-  - `submit` duplicate check also looks in customshub (same as customshub already checks weight-ht), and says "(customshub)" in the where line.
+  - **Q3 (2026-11-08) No customshub badge.** customshub shifts and rows look like the others; opening one shows a small line "แก้ไขได้ที่ customshub" in place of the edit / delete / move
+    buttons. The server refuses writes to an id it does not own.
+  - The duplicate warning's where line keeps "(customshub)" so the person knows where to fix it.
+  - `submit` duplicate check also looks in customshub (same as customshub already checks weight-ht).
   - Missing env or a customshub read error → weight-report works as today with only its own data and a small note "อ่านข้อมูล customshub ไม่ได้".
 - **Owner's steps (key):** console.cloud.google.com › project customshub-pd › IAM & Admin › Service Accounts › Create (name `weight-report-reader`) › role Cloud Datastore Viewer › Done →
   open it › Keys › Add key › JSON → Vercel › pd21/weight-report › Settings › Environment Variables › `CUSTOMSHUB_SERVICE_ACCOUNT` (Production) = the whole JSON → delete the downloaded file.
