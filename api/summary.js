@@ -492,11 +492,11 @@ const actions = {
   // customshub D97 Q8: the team's plate list (customshub team/main/plates, read-only here) — the weighing page checks Gemini's plates
   // against it. Only plate, times used and recent empty weights; no slips. customshub not set up → empty list.
   async plates() {
-    const { v } = await chubRead(async t => (await t.collection('plates').get()).docs.map(d => {
+    const { v, note } = await chubRead(async t => (await t.collection('plates').get()).docs.map(d => {
       const p = d.data();
       return { plate: String(p.plate || ''), count: p.count || 0, empties: (p.empties || []).map(e => ({ w: e.w })) };
     }), []);
-    return { plates: v };
+    return { plates: v, note, linked: !!chub() }; // note = customshub could not be read; linked=false = not set up
   },
 };
 
