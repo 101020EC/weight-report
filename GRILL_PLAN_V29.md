@@ -9,3 +9,5 @@ customshub keeps it up to date, including slips saved here (it catches up from t
   a character-sized yellow "!" in the corner, tap the cell → "ครั้งก่อน …", tap to use it. Rows never change height. Plate boxes suggest known plates.
 - The rules are a copy of customshub `src/weight/plates.js` `checkRow` — change both together.
 - Not built here: the edit log (customshub `readlog`) — this app cannot write to customshub.
+
+- **LIVE 2026-11-09** (8198c6d + read-status follow-up). /api/summary plates → linked:true, note:null, 0 plates (customshub seeds on the first open of its ใบชั่ง).
