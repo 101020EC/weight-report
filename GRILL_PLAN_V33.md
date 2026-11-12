@@ -24,4 +24,4 @@
 - **WR-OPS-01** `npm test` (node --test, Firestore จำลองใน test/fake-firestore.js) 8 เทสต์ + GitHub Actions (เทสต์, inline script
   parse, vercel.json)
 - ตรวจในเครื่อง: เซิร์ฟเวอร์จำลองที่ใช้ headers/routes ของ vercel.json — โหลดหน้า, ฟอนต์, ExcelJS/jsPDF, id ที่มี HTML ไม่รัน,
-  ไม่มี CSP violation · ยังไม่ได้ลองบนเว็บจริง/iPhone
+  ไม่มี CSP violation · LIVE 12 พ.ย. (fbe20c5 + 3bfee69) ตรวจบนเว็บจริงแล้ว · เจ้าของลองบน iPhone แล้ว
