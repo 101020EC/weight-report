@@ -47,27 +47,6 @@ function normalizeOriginToThai(origin) {
   return trimmed;
 }
 
-function formatIntNumberWithComma(val) {
-  if (val == null || val === '') return '';
-  let str = String(val).trim();
-  // หากมีจุดทศนิยม ให้ตัดส่วนหลังจุดทศนิยมออกก่อน (ป้องกัน 14,000.000 กลายเป็น 14,000,000)
-  if (str.includes('.')) {
-    str = str.split('.')[0];
-  }
-  const numOnly = str.replace(/[^0-9]/g, '');
-  if (!numOnly) return '';
-  return Number(numOnly).toLocaleString('en-US');
-}
-
-const THAI_MONTHS_FULL = [
-  'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
-];
-function formatThaiDateFromIso(iso) {
-  const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!m) return iso || '';
-  return `${+m[3]} ${THAI_MONTHS_FULL[+m[2] - 1]} ${+m[1] + 543}`;
-}
 function todayBangkokIso() {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
 }
@@ -307,9 +286,7 @@ module.exports = async function handler(req, res) {
     // เพิ่ม prompt ตาม type
     if (type === 'weight') {
       parts.push({ text: PROMPT_WEIGHT });
-    } else if (type === 'team') {
-      parts.push({ text: PROMPT_TEAM });
-    } else {
+    } else { // V35: the รายงาน page pulls from สรุปผล now — no 'team' reading
       return res.status(400).json({ success: false, error: 'type ไม่ถูกต้อง' });
     }
 
@@ -375,98 +352,6 @@ module.exports = async function handler(req, res) {
         is_fallback: isFallback 
       });
 
-    } else if (type === 'team') {
-      const parsed = extractJSON(raw);
-
-      // วันที่จาก body (Date Picker) หรือ fallback เป็นวันปัจจุบันตามเวลาไทย
-      const dateRaw = (req.body && req.body.date ? String(req.body.date) : '').trim() || todayBangkokIso();
-      const date = formatThaiDateFromIso(dateRaw);
-      const rawDecls = parsed.declarations || [];
-
-      // ตัดใบขนที่เลขซ้ำออก (เก็บใบแรก) + เก็บเลขที่ซ้ำไว้แจ้งเตือน
-      const warnings = [];
-      const seenNo = new Set();
-      const dupNos = new Set();
-      const decls = [];
-      rawDecls.forEach(d => {
-        if (d.origin) {
-          d.origin = normalizeOriginToThai(d.origin);
-        }
-        if (d.weight) {
-          d.weight = formatIntNumberWithComma(d.weight);
-        }
-        if (d.qty) {
-          d.qty = formatIntNumberWithComma(d.qty);
-        }
-        const key = (d.no || '').trim();
-        if (key !== '') {
-          if (seenNo.has(key)) { dupNos.add(key); return; }
-          seenNo.add(key);
-        }
-        decls.push(d);
-      });
-      const count = decls.length;
-      dupNos.forEach(no => warnings.push(`เลขใบขน ${no} ซ้ำ — แสดงครั้งเดียว`));
-
-      // ตรวจหาข้อมูลขาด
-      const REQUIRED = { no:'เลขที่ใบขนสินค้า', goods:'สินค้า', origin:'เมืองกำเนิด', qty:'จำนวน', weight:'น้ำหนัก' };
-      decls.forEach((d, i) => {
-        const missing = Object.entries(REQUIRED)
-          .filter(([k]) => String(d[k] ?? '').trim() === '')
-          .map(([, label]) => label);
-        if (missing.length > 0) {
-          warnings.push(`ใบขนที่ ${i+1} (${d.no||'ไม่ทราบเลข'}) ขาด: ${missing.join(', ')}`);
-        }
-      });
-
-      // รวมน้ำหนักหน้าใบขนแยกตามประเภทสินค้า
-      const weightByGoods = {};
-      decls.forEach(d => {
-        const g = String(d.goods ?? 'ไม่ระบุ').trim() || 'ไม่ระบุ';
-        const w = parseFloat(String(d.weight ?? '0').replace(/,/g, '')) || 0;
-        weightByGoods[g] = (weightByGoods[g] || 0) + w;
-      });
-
-      console.log(`[SUCCESS team] ${clientIp} | Model: ${modelUsed}${isFallback ? ' (FALLBACK)' : ''} | Duration: ${duration}ms | Count: ${count} ใบขน`);
-
-      // ส่ง Telegram แจ้งเตือนสำเร็จ
-      try {
-        const goodsSummaryLines = Object.entries(weightByGoods)
-          .map(([g, w]) => `  • ${escapeHtml(g)}: ${w > 0 ? w.toLocaleString('en-US') + ' KG' : '-'}`)
-          .join('\n');
-
-        const declNosList = decls.map(d => escapeHtml(d.no)).filter(Boolean).map(no => `<code>${no}</code>`).join(', ');
-
-        const tgMsg = `👥 <b>[อ่านใบขนรายงานตรวจทีมสำเร็จ]</b>\n` +
-                      `• โมเดลที่ใช้: ${modelUsed}${isFallback ? ' ⚠️ (Fallback)' : ''}\n` +
-                      `• วันที่: ${escapeHtml(date) || '-'}\n` +
-                      `• จำนวนใบขน: ${count} ใบขน\n` +
-                      `• เลขที่ใบขน: ${declNosList || '-'}\n` +
-                      `• น้ำหนักหน้าใบขนรวมแยกตามสินค้า:\n${goodsSummaryLines || '  • -'}\n` +
-                      `⏱ เวลาประมวลผล: ${(duration / 1000).toFixed(2)}s`;
-        await sendTelegramNotification(tgMsg);
-      } catch (tgErr) {
-        console.error('[TELEGRAM TEAM LOG ERROR]', tgErr.message);
-      }
-
-      // สร้างข้อความรายงาน
-      let text = `${date}\n`;
-      text += `เจ้าหน้าที่งานพิธีการ ร่วมกับเจ้าหน้าที่งานสืบสวนและปราบปราม เปิดตรวจสินค้าเป็นทีม สินค้าเกษตร ใบขนสินค้าขาเข้าจำนวน ${count} ใบขน ดังนี้`;
-      decls.forEach((d, i) => {
-        text += `\n\n${i+1}.${d.no||''}`;
-        text += `\nสินค้า ${d.goods||''}`;
-        text += `\nเมืองกำเนิด ${d.origin||''}`;
-        text += `\nจำนวน ${d.qty||''} กระสอบ`;
-        text += `\nน้ำหนัก ${d.weight||''} กิโลกรัม`;
-      });
-
-      return res.status(200).json({ 
-        success: true, 
-        text: text.trim(), 
-        warnings, 
-        model_used: modelUsed, 
-        is_fallback: isFallback 
-      });
     }
 
   } catch (err) {
@@ -525,32 +410,3 @@ const PROMPT_WEIGHT = `คุณคือระบบอ่านใบชั่
 }
 net_weight=gross_weight-empty_weight, ตัวเลขไม่มี comma, ไม่พบข้อมูลใส่ null`;
 
-const PROMPT_TEAM = `คุณคือระบบอ่านใบขนสินค้าขาเข้า (แบบ กศก. 09/01) ด่านศุลกากรปาดังเบซาร์
-
-อ่านข้อมูลจากภาพเอกสารใบขนสินค้า โดยแต่ละภาพเอกสาร (ภาพเอกสารที่ 1, ภาพเอกสารที่ 2, ...) คือใบขนสินค้า 1 ฉบับ มีสินค้าเกษตร 1 รายการเท่านั้น
-
-ดึงข้อมูลเฉพาะ 5 ตำแหน่งตามแบบฟอร์มใบขนสินค้าอย่างเคร่งครัด ดังนี้:
-1. เลขที่ใบขนสินค้า (no): ดูที่กล่องมุมบนขวา "เลขที่ใบขนสินค้า" ดึงเฉพาะรหัสรูปแบบ A0XX-XXXXX-XXXXX (เช่น A018-06909-07124) ห้ามนำเลข DOTS... หรือข้อความอื่นมาใส่
-2. จำนวนและลักษณะหีบห่อ (qty): ดูที่กล่อง "จำนวนและลักษณะหีบห่อ" ตรงกลางด้านซ้าย ดึงเฉพาะตัวเลขจำนวนเต็ม เช่น 4,632 (ใส่เครื่องหมาย comma คั่นหลักพัน ห้ามใส่คำว่า Bag หรือคำอื่น)
-3. ประเทศกำเนิด (origin): ดูที่กล่อง "ประเทศกำเนิด" ตรงกลาง แปลเป็นภาษาไทยเท่านั้น เช่น INDIA -> "อินเดีย", CHINA -> "จีน", EGYPT -> "อียิปต์", VIETNAM -> "เวียดนาม", PAKISTAN -> "ปากีสถาน", MYANMAR -> "เมียนมา"
-4. น้ำหนักสุทธิ (weight): ดูที่ตารางรายการสินค้า คอลัมน์ "น้ำหนักสุทธิ" ดึงเฉพาะตัวเลขจำนวนเต็มหน้าจุดทศนิยม เช่น 44,004.000 KGM ให้ดึงเฉพาะ 44,004 (ใส่ comma คั่นหลักพัน ห้ามนำเลขทศนิยม .000 หรือหน่วย KGM มาใส่เด็ดขาด)
-5. ชื่อสินค้า (goods): ดูที่ตารางรายการสินค้า คอลัมน์ "รายละเอียดสินค้า" ดึงเฉพาะชื่อสินค้าภาษาไทย เช่น "หอมหัวใหญ่", "กระเทียมสด" (ห้ามนำเลขใบอนุญาต, ข้อความภาษาอังกฤษ, หรือข้อความกำกับอื่นมาใส่)
-
-กฎสำคัญอย่างยิ่ง:
-- ละเว้น/เพิกเฉยต่อข้อมูลส่วนอื่นๆ ทั้งหมดในใบขนสินค้า เช่น ชื่อผู้นำเข้า, อัตราภาษีอากร, ค่าธรรมเนียม, ราคาของ, พิกัดศุลกากร, วันที่ชำระเงิน, เลขที่ B/L, ลายมือชื่อเจ้าหน้าที่ศุลกากร และตารางสรุปภาษีด้านล่างทั้งหมด
-- ห้ามเดาหรือสมมติข้อมูล ถ้าไม่พบข้อมูลช่องใดให้ใส่ "" (string ว่าง)
-- ตัวเลข qty และ weight ต้องเป็นจำนวนเต็ม มี comma คั่นหลักพัน ไม่มีจุดทศนิยม
-
-สร้าง JSON ในรูปแบบนี้เท่านั้น:
-{
-  "declarations": [
-    {
-      "no": "A018-06909-07124",
-      "goods": "หอมหัวใหญ่",
-      "origin": "อินเดีย",
-      "qty": "4,632",
-      "weight": "44,004"
-    }
-  ]
-}
-ส่งกลับ JSON เท่านั้น ห้ามมีข้อความอื่น`;

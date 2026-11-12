@@ -466,6 +466,37 @@ const actions = {
     return { id: ref.id };
   },
 
+  // V35 (GRILL_PLAN_V35 Q4): หน้ารายงานเก็บจำนวนกระสอบ + ชื่อสินค้าในรายงานไว้ในใบที่ดึง (แก้แค่สองฟิลด์นี้; goodsType คงเดิม)
+  // กติกาเดียวกับ customshub src/weight/logic.js reportInfoItems — แก้คู่กัน · ใบที่ถูกลบไประหว่างนั้นข้าม · batch เดียว
+  async saveReportInfo(req, body) {
+    const items = body.items;
+    if (!Array.isArray(items) || !items.length) throw new HttpError(400, 'ไม่มีรายการให้บันทึก');
+    if (items.length > REPORT_INFO_MAX) throw new HttpError(400, `บันทึกได้ครั้งละไม่เกิน ${REPORT_INFO_MAX} ใบขน`);
+    const rows = items.map(it => {
+      const id = String(it && it.id || '');
+      if (!/^[\w-]{1,80}$/.test(id)) throw new HttpError(400, 'รายการไม่ถูกต้อง');
+      const raw = String(it.sacks == null ? '' : it.sacks).replace(/[,\s]/g, '');
+      const sacks = raw === '' ? null : Number(raw);
+      if (sacks !== null && (!Number.isInteger(sacks) || sacks < 0 || sacks > 1000000)) throw new HttpError(400, 'จำนวนกระสอบไม่ถูกต้อง');
+      const g = String(it.reportGoods == null ? '' : it.reportGoods).trim();
+      if (g.length > 80) throw new HttpError(400, 'ชื่อสินค้ายาวเกินไป');
+      return { id, sacks, reportGoods: g || null };
+    });
+    const snaps = await Promise.all(rows.map(r => db().collection('records').doc(r.id).get()));
+    const b = db().batch();
+    const changed = [];
+    rows.forEach((r, i) => {
+      if (!snaps[i].exists) return;
+      const d = snaps[i].data();
+      b.update(snaps[i].ref, { sacks: r.sacks, reportGoods: r.reportGoods });
+      if ((d.sacks ?? null) !== r.sacks || (d.reportGoods ?? null) !== r.reportGoods) changed.push([r, d]);
+    });
+    const saved = snaps.filter(x => x.exists).length;
+    if (saved) await b.commit();
+    for (const [r, d] of changed) await audit(req, 'saveReportInfo', r.id, { sacks: d.sacks ?? null, reportGoods: d.reportGoods ?? null }, { sacks: r.sacks, reportGoods: r.reportGoods });
+    return { saved, missing: rows.length - saved };
+  },
+
   // V30 Q3: ใบที่รอเข้าเวร → เวรที่กำลังดู
   async moveRecord(req, body) {
     const ref = db().collection('records').doc(text(body.id, 'รายการ', 60));
@@ -540,6 +571,7 @@ const actions = {
 
 const PUBLIC_ACTIONS = new Set(['submit', 'login', 'plates']);
 const PLATES_TTL_MS = 5 * 60 * 1000;
+const REPORT_INFO_MAX = 100;
 let platesCache = null;
 
 module.exports = async function handler(req, res) {

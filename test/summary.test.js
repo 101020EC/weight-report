@@ -95,3 +95,23 @@ test('notify (WR-SEC-04): our Origin only, fields capped, at most 120 an hour pe
     assert.equal((await call(notify, { action: 'nope' })).status, 400);
   } finally { global.fetch = real; }
 });
+
+test('V35 saveReportInfo: sacks + report goods name kept on the slip (goodsType untouched), checked, logged; deleted slips skipped', async () => {
+  const st = (await api('createShift', { startDate: today })).body;
+  const a = (await api('createRecord', { ...slip({ declarationNo: 'R-1' }), shiftId: st.id })).body;
+  const b = (await api('createRecord', { ...slip({ declarationNo: 'R-2', goodsType: 'กระเทียม' }), shiftId: st.id })).body;
+  const r = await api('saveReportInfo', { items: [{ id: a.id, sacks: '1,400', reportGoods: ' หอมแดง ' }, { id: b.id, sacks: '', reportGoods: '' }, { id: 'gone_1', sacks: 5 }] });
+  assert.deepEqual([r.status, r.body], [200, { saved: 2, missing: 1 }]);
+  const da = main.store.get(`records/${a.id}`), dbb = main.store.get(`records/${b.id}`);
+  assert.deepEqual([da.sacks, da.reportGoods, da.goodsType], [1400, 'หอมแดง', 'หอม']);
+  assert.deepEqual([dbb.sacks, dbb.reportGoods], [null, null]);
+  const day = (await api('recordsByDate', { dateIso: today })).body.records.find((x) => x.id === a.id);
+  assert.deepEqual([day.sacks, day.reportGoods], [1400, 'หอมแดง'], 'pulling again shows them');
+  assert.equal(logs('saveReportInfo').length, 1, 'only the slip that changed is logged');
+  for (const bad of [{ id: a.id, sacks: '1.5' }, { id: a.id, sacks: -1 }, { id: a.id, sacks: 2_000_000 }, { id: "x'", sacks: 1 }, { id: a.id, reportGoods: 'ก'.repeat(81) }]) {
+    assert.equal((await api('saveReportInfo', { items: [bad] })).status, 400, JSON.stringify(bad).slice(0, 40));
+  }
+  assert.equal((await api('saveReportInfo', { items: [] })).status, 400);
+  assert.equal((await api('saveReportInfo', { items: Array(101).fill({ id: a.id }) })).status, 400);
+  assert.equal((await call(summary, { action: 'saveReportInfo', items: [{ id: a.id }] })).status, 401, 'needs the สรุปผล token');
+});

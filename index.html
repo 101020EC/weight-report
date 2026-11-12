@@ -536,8 +536,15 @@ details[open]>.m-total .chev{transform:rotate(45deg);}
 /* นำเข้ารายงานจากสรุปผล */
 .tm-list{max-height:46vh;overflow-y:auto;border:1px solid var(--line);border-radius:12px;}
 .tm-item{display:grid;grid-template-columns:auto auto 1fr auto;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer;}
+/* V35: ดึงจากสรุปผล — แต่ละใบมีช่องสินค้า + กระสอบ */
+.tm-row{display:flex;flex-direction:column;align-items:stretch;gap:8px;cursor:default;}
+.tm-pick{display:flex;align-items:center;gap:8px;cursor:pointer;min-width:0;}
+.tm-fields{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:8px;padding-left:26px;}
+.tm-f{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--ink-soft,#8A857D);min-width:0;}
+.tm-f input{width:100%;box-sizing:border-box;padding:7px 10px;border:1.5px solid var(--line,#ECE6DF);border-radius:10px;font:inherit;font-size:15px;color:var(--ink,#2B2A28);background:#fff;}
+.tm-f-sacks input{text-align:right;}
 .tm-item:last-child{border-bottom:none;}
-.tm-item input{width:20px;height:20px;accent-color:var(--orange);}
+.tm-item input[type=checkbox]{width:20px;height:20px;accent-color:var(--orange);} /* V35: only the tick box, not the goods/sacks fields */
 .tm-imp{font-size:0.8rem;font-weight:700;color:#fff;background:var(--imp);border-radius:999px;padding:2px 10px;}
 .tm-no{font-variant-numeric:tabular-nums;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .tm-goods{color:var(--ink-soft);font-size:0.88rem;}
@@ -970,7 +977,7 @@ details[open]>.m-total .chev{transform:rotate(45deg);}
         <div class="step-label" style="display:flex;align-items:center;justify-content:center;gap:8px;"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg> รายงานตรวจทีม</div>
       </div>
       <div class="step-body">
-        <p style="font-size:14px;color:var(--gray-600);margin-bottom:12px;">อัปโหลดภาพใบขนสินค้า หรือรายงานใบชั่งน้ำหนักได้หลายไฟล์</p>
+        <p style="font-size:14px;color:var(--gray-600);margin-bottom:12px;">เลือกวันที่ แล้วดึงใบขนจากเมนูสรุปผล ใส่ชื่อสินค้าและจำนวนกระสอบได้รายใบขน</p>
         <div style="display:flex;flex-direction:column;align-items:center;margin:0 auto 16px auto;max-width:280px;text-align:center;">
           <label style="display:block;font-size:13px;font-weight:700;color:var(--gray-700);margin-bottom:6px;text-align:center;">วันที่ในรายงาน</label>
           <div style="position:relative;width:100%;box-sizing:border-box;">
@@ -988,26 +995,8 @@ details[open]>.m-total .chev{transform:rotate(45deg);}
             " />
           </div>
         </div>
-        <!-- upload zone — ใช้ label เพื่อให้ iOS file picker ทำงานได้แน่นอน -->
-        <label for="teamFileInput" style="display:block;border:2px dashed var(--gray-200);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;touch-action:manipulation;" id="teamDropZone">
-          <input type="file" id="teamFileInput" accept="image/*" multiple style="display:none;" onchange="handleTeamFiles(this.files)" />
-          <div id="teamUploadPlaceholder" style="display:flex;align-items:center;justify-content:center;gap:10px;color:var(--gray-600);font-size:1rem;">
-            <span style="font-size:22px;">📄</span>
-            <strong style="color:var(--orange);">คลิกเพื่อเลือกรูป</strong>
-          </div>
-          <div id="teamPreviewGrid" style="display:none;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;"></div>
-        </label>
         <div style="margin-top:12px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;">
-          <button class="btn btn-primary" id="teamReadBtn" onclick="readTeamImages()" disabled>
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            อ่านข้อมูลด้วย Gemini
-          </button>
-          <button class="btn btn-secondary" id="teamManualOpenBtn" onclick="openTeamManual()" title="นำเข้าใบขนจากเมนูสรุปผล">ดึงจากสรุปผล</button>
-          <button class="btn btn-secondary" id="teamClearBtn" onclick="clearTeamFiles()" style="display:none;padding:10px 14px;">✕ ล้างรูป</button>
-        </div>
-        <div id="teamLoadingArea" style="display:none;margin-top:14px;">
-          <div class="loading-bar"><div class="loading-bar-inner"></div></div>
-          <p class="loading-text" id="teamLoadingText">กำลังอ่านข้อมูล...</p>
+          <button class="btn btn-primary" id="teamManualOpenBtn" onclick="openTeamManual()" title="นำเข้าใบขนจากเมนูสรุปผล">ดึงจากสรุปผล</button>
         </div>
       </div>
     </div>
@@ -2230,132 +2219,6 @@ function switchPage(page){
 
 
 // ── TEAM REPORT ───────────────────────────────────────────
-let teamFiles=[];
-
-function onDragOver2(e){e.preventDefault();document.getElementById('teamDropZone').classList.add('drag-over');}
-function onDragLeave2(){document.getElementById('teamDropZone').classList.remove('drag-over');}
-function onDrop2(e){e.preventDefault();onDragLeave2();handleTeamFiles(e.dataTransfer.files);}
-
-function handleTeamFiles(files){
-  for(const f of files){if(!f.type.startsWith('image/'))continue;teamFiles.push(f);}
-  renderTeamPreview();
-  updateTeamReadBtn();
-  // รัน Gemini อัตโนมัติหลังเลือกรูป
-  if(teamFiles.length>0){
-    setTimeout(()=>readTeamWithRetry(),400);
-  }
-}
-
-async function readTeamWithRetry(){
-  const res1=await runReadTeam();
-  if(res1===true || res1==='PAYLOAD_TOO_LARGE' || res1==='QUOTA') return;
-  showToast('ลองใหม่อีกครั้ง...','warn');
-  await new Promise(r=>setTimeout(r,1500));
-  await runReadTeam(true);
-}
-
-async function runReadTeam(isFinal=false){
-  if(teamFiles.length===0) return false;
-  document.getElementById('teamLoadingArea').style.display='block';
-  document.getElementById('teamReadBtn').disabled=true;
-  try{
-    const imagesData=[];
-    for(const f of teamFiles){
-      document.getElementById('teamLoadingText').textContent=`กำลังประมวลผลภาพ ${imagesData.length+1}/${teamFiles.length}...`;
-      const encoded=await resizeAndEncode(f);
-      imagesData.push(encoded);
-    }
-    document.getElementById('teamLoadingText').textContent='กำลังส่งไปยัง Gemini AI...';
-    const reportDate = document.getElementById('teamReportDate')?.value || localTodayIso();
-    const resp=await fetch('/api/gemini',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({type:'team',images:imagesData,date:reportDate})
-    });
-    if(!resp.ok){
-      const t=await resp.text();
-      if(isQuotaResponse(resp,t)){
-        showQuotaLimitModal();
-        return 'QUOTA';
-      }
-      if(resp.status === 413 || t.includes('413') || t.includes('FUNCTION_PAYLOAD_TOO_LARGE') || t.includes('Payload Too Large') || t.includes('TOO_LARGE')){
-        showPayloadTooLargeModal();
-        return 'PAYLOAD_TOO_LARGE';
-      }
-      throw new Error(`${resp.status}: ${t.slice(0,100)}`);
-    }
-    const result=await resp.json();
-    if(!result.success) throw new Error(result.error||'เกิดข้อผิดพลาด');
-    document.getElementById('teamChatBubble').value=result.text;
-    if(result.warnings&&result.warnings.length>0){
-      document.getElementById('teamWarningBox').style.display='block';
-      document.getElementById('teamWarningList').innerHTML=result.warnings.map(w=>`• ${esc(w)}`).join('<br>');
-    } else {
-      document.getElementById('teamWarningBox').style.display='none';
-    }
-    document.getElementById('teamResultCard').style.display='block';
-    document.getElementById('teamClearBtnArea').style.display='block';
-    autoGrowTeam(true);
-    if(result.is_fallback){
-      showToast(`อ่านข้อมูลทีมสำเร็จ ✓ (สลับใช้โมเดลสำรอง: ${result.model_used})`,'warn');
-    }else{
-      showToast('อ่านข้อมูลทีมสำเร็จ ✓','success');
-    }
-    
-
-    setTimeout(()=>{
-      const warn=document.getElementById('teamWarningBox');
-      const target=(warn.style.display!=='none')?warn:document.getElementById('teamResultCard');
-      scrollBelowHeader(target);
-    },60);
-    showToast('สร้างรายงานสำเร็จ ✓','success');
-    return true;
-  }catch(err){
-    if(err.message && (err.message.includes('413') || err.message.includes('PAYLOAD_TOO_LARGE') || err.message.includes('Too Large'))){
-      showPayloadTooLargeModal();
-      return 'PAYLOAD_TOO_LARGE';
-    }
-    if(isFinal) showToast('ผิดพลาด: '+(err.message||'เกิดข้อผิดพลาด'),'error');
-    return false;
-  }finally{
-    document.getElementById('teamLoadingArea').style.display='none';
-    updateTeamReadBtn();
-  }
-}
-function renderTeamPreview(){
-  const ph=document.getElementById('teamUploadPlaceholder');
-  const pg=document.getElementById('teamPreviewGrid');
-  const cb=document.getElementById('teamClearBtn');
-  if(teamFiles.length===0){
-    ph.style.display='flex';pg.style.display='none';cb.style.display='none';return;
-  }
-  ph.style.display='none';pg.style.display='flex';cb.style.display='';
-  pg.innerHTML='';
-  teamFiles.forEach((f,idx)=>{
-    const url=URL.createObjectURL(f);
-    const item=document.createElement('div');
-    item.style.cssText='position:relative;width:72px;height:72px;border-radius:6px;overflow:hidden;border:1.5px solid var(--gray-200);flex-shrink:0;';
-    const img=document.createElement('img');
-    img.src=url;
-    img.style.cssText='width:100%;height:100%;object-fit:cover;';
-    img.onload=()=>URL.revokeObjectURL(url);
-    const btn=document.createElement('button');
-    btn.onclick=(e)=>{e.stopPropagation();removeTeamFile(idx);};
-    btn.style.cssText='position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;';
-    btn.textContent='×';
-    item.appendChild(img);
-    item.appendChild(btn);
-    pg.appendChild(item);
-  });
-}
-function removeTeamFile(idx){teamFiles.splice(idx,1);renderTeamPreview();updateTeamReadBtn();}
-function clearTeamFiles(){teamFiles=[];document.getElementById('teamFileInput').value='';renderTeamPreview();updateTeamReadBtn();}
-function updateTeamReadBtn(){document.getElementById('teamReadBtn').disabled=teamFiles.length===0;}
-
-async function readTeamImages(){
-  await readTeamWithRetry();
-}
-
 function autoGrowTeam(force){
   const el=document.getElementById('teamChatBubble');
   if(!el) return;
@@ -2413,7 +2276,6 @@ function updateTeamDatePreview(){
 }
 
 function clearTeamAll(){
-  teamFiles=[];document.getElementById('teamFileInput').value='';renderTeamPreview();updateTeamReadBtn();
   document.getElementById('teamResultCard').style.display='none';
   document.getElementById('teamClearBtnArea').style.display='none';
   const bubble=document.getElementById('teamChatBubble');
@@ -2992,7 +2854,7 @@ function renderSummary(){
 // ไม่จำข้ามการโหลดหน้า: คอมเริ่มกาง, มือถือเริ่มยุบ
 const sumDeskCollapsed=new Set();   // key วันที่ยุบในตารางคอม
 const sumMobileOpen=new Set();      // key ของ <details> ที่แตะกางไว้บนมือถือ
-const sumTotalOpen=new Set();       // ชื่อผู้นำเข้าที่กางช่องรวมแยกหอม/กระเทียม
+const sumTotalOpen=new Set();       // ชื่อผู้นำเข้าที่กางช่องรวมแยกตามสินค้า
 function dayKey(name,day){return name+'|'+day;}
 // เลขใบขนบนมือถือ: เต็มถ้าช่องพอ ไม่พอย่อเป็น A016…09708 (V22) — ตัวจางทั้งเลข
 function mobileDecl(no){
@@ -3078,7 +2940,7 @@ function renderImporterCard(name,recs){
     <thead><tr><th>ลำดับ</th><th>สินค้า</th><th>เลขที่ใบขนสินค้า</th><th>น้ำหนักสำแดง (KG)</th><th>น้ำหนักชั่งจริง (KG)</th><th>ผลต่าง (KG)</th><th>ร้อยละ</th></tr></thead>
     ${bodies}
     <tfoot class="imp-tfoot ${isTotOpen?'open':''}" data-importer="${esc(name)}">
-      <tr class="tot-row" onclick="toggleDeskImpTotal(this.closest('tfoot'))" title="กดเพื่อแยกหอม/กระเทียม">
+      <tr class="tot-row" onclick="toggleDeskImpTotal(this.closest('tfoot'))" title="กดเพื่อแยกตามสินค้า">
         <td colspan="2"><span class="chev"></span>รวม ${esc(name)}</td>
         <td>${t.count} ใบขน</td>
         <td class="num">${fmtKg(t.decl)}</td>
@@ -3167,9 +3029,8 @@ function renderGrand(recs,importerCount){
   const stat=(l,v,u)=>`<div class="g-stat"><div class="l">${l}</div><div class="v">${v} <small>${u}</small></div></div>`;
   const subStat=(l,v,u)=>`<div class="g-sub-stat"><div class="l">${l}</div><div class="v">${v} <small>${u}</small></div></div>`;
 
-  const goodsBlocks=GOODS_ORDER.map(g=>{
-    const grecs=recs.filter(r=>r.goodsType===g);
-    if(!grecs.length) return '';
+  // V34: every product in the table (หอม → กระเทียม → others by Thai order, as in the importer tables), not only หอม/กระเทียม
+  const goodsBlocks=groupBy(recs,r=>r.goodsType,GOODS_ORDER).map(([g,grecs])=>{
     const gt=totals(grecs);
     const impCount=new Set(grecs.map(r=>r.importer)).size;
     return `<div class="g-sub-card">
@@ -3194,7 +3055,7 @@ function renderGrand(recs,importerCount){
   return `<div class="grand-card ${sumGrandOpen?'open':''}">
     <div class="grand-head" onclick="toggleGrand(this.parentElement)">
       <span class="sigma">Σ</span><span>สรุปรวมทั้งหมด</span>
-      <button type="button" class="g-detail-btn ${sumGrandDetailOpen?'active':''}" onclick="toggleGrandDetail(event)" title="แสดงรายละเอียดแยกหอมและกระเทียม">รายละเอียด</button>
+      <button type="button" class="g-detail-btn ${sumGrandDetailOpen?'active':''}" onclick="toggleGrandDetail(event)" title="แสดงรายละเอียดแยกตามสินค้า">รายละเอียด</button>
       <span class="g-mini ${diffCls(t.diff)}">${fmtDiff(t.diff)} <small>KG</small> <b>${fmtPct(t.pct)}</b></span>
       <i class="chev"></i>
     </div>
@@ -3495,7 +3356,7 @@ function openSaveImageModal(onlyImporter){
         <label><input type="radio" name="imgMode" value="expanded" checked><span>ขยาย</span></label>
         <label><input type="radio" name="imgMode" value="daily"><span>แค่รายวัน</span></label>
       </div></div>
-    ${toggle('imgSplitGoods','แยกหอม–กระเทียมช่องรวม',false)}
+    ${toggle('imgSplitGoods','แยกสินค้าช่องรวม',false)}
     ${onlyImporter?`<input type="hidden" id="imgOnly" value="${esc(onlyImporter)}">`:`
     <div class="sum-section-title">ผู้นำเข้า</div>
     <div class="opt-chips">${names.map(n=>`<label class="opt-chip" style="${impStyle(n)}"><input type="checkbox" class="imgImporter" value="${esc(n)}" checked><span>${esc(n)}</span></label>`).join('')}</div>
@@ -3533,13 +3394,16 @@ function drawSummaryCanvas(shift,groups,opts){
   const ORANGE_DEEP='#C9550E',INK='#2B2A28',SOFT='#8A857D',LINE='#ECE6DF';
   const daysOf=recs=>groupBy(recs,r=>r.dateIso).sort((a,b)=>a[0].localeCompare(b[0]));
   const goodsOf=recs=>groupBy(recs,r=>r.goodsType,GOODS_ORDER);
+  // V34: the Σ card's product boxes, 2 a row (a lone last box keeps half width); each further row adds GRAND_ROW_H
+  const GRAND_ROW_H=140;
+  const grandSubH=()=>splitGoods?GRAND_SUB_H+(Math.max(1,Math.ceil(goodsOf(groups.flatMap(g=>g[1])).length/2))-1)*GRAND_ROW_H:0;
   const blockHeight=recs=>BANNER_H+HEAD_H+TOT_H+(splitGoods?goodsOf(recs).length*TOT_SUB_H:0)+daysOf(recs)
     .reduce((h,[,drecs])=>h+DAY_H+(expanded?drecs.length*ROW_H:0),0);
 
   let H=M;
   if(header) H+=TITLE_H+GAP;
   groups.forEach(([,recs])=>{H+=blockHeight(recs)+GAP;});
-  if(grand) H+=(GRAND_H+(splitGoods?GRAND_SUB_H:0))+GAP;
+  if(grand) H+=GRAND_H+grandSubH()+GAP;
   H+=M-GAP;
 
   const cv=document.createElement('canvas');cv.width=W*SCALE;cv.height=H*SCALE;
@@ -3668,7 +3532,7 @@ function drawSummaryCanvas(shift,groups,opts){
 
   if(grand){
     const all=groups.flatMap(g=>g[1]), t=totals(all), gx=M, gw=W-2*M;
-    const curGrandH=GRAND_H+(splitGoods?GRAND_SUB_H:0);
+    const curGrandH=GRAND_H+grandSubH();
     whiteCard(gx,y,gw,curGrandH);
     rr(gx+22,y+24,44,44,12);c.fillStyle='#FDF0E6';c.fill();
     txt('Σ',gx+44,y+47,`bold 26px ${FONT}`,ORANGE_DEEP,'center');
@@ -3701,12 +3565,10 @@ function drawSummaryCanvas(shift,groups,opts){
 
     if(splitGoods){
       c.fillStyle=LINE; c.fillRect(gx+22,y+GRAND_H-14,gw-44,1.5);
-      const subW=(gw-44-16)/2, subY=y+GRAND_H-4;
-      GOODS_ORDER.forEach((g,i)=>{
-        const grecs=all.filter(r=>r.goodsType===g);
-        if(!grecs.length) return;
+      const subW=(gw-44-16)/2, subY0=y+GRAND_H-4;
+      goodsOf(all).forEach(([g,grecs],i)=>{ // V34: every product, 2 a row
         const gt=totals(grecs), impCount=new Set(grecs.map(r=>r.importer)).size;
-        const subX=gx+22+i*(subW+16);
+        const subX=gx+22+(i%2)*(subW+16), subY=subY0+Math.floor(i/2)*GRAND_ROW_H;
         rr(subX,subY,subW,124,12); c.fillStyle='#FAF8F5'; c.fill();
         rr(subX,subY,subW,124,12); c.strokeStyle=LINE; c.lineWidth=1; c.stroke();
 
@@ -3784,9 +3646,11 @@ async function loadTeamManualList(){
     if(seq!==teamManualSeq||!document.getElementById('teamManualList')) return;
     teamManualRecs=groupBy(o.records,r=>r.importer,IMPORTER_ORDER).flatMap(([,rs])=>sortedRecs(rs));
     list.innerHTML=teamManualRecs.length
-      ?teamManualRecs.map((r,i)=>`<label class="tm-item"><input type="checkbox" class="tmChk" value="${i}" checked onchange="updateTeamManualBtn()">
+      ?teamManualRecs.map((r,i)=>`<div class="tm-item tm-row"><label class="tm-pick"><input type="checkbox" class="tmChk" value="${i}" checked onchange="updateTeamManualBtn()">
           <span class="tm-imp" style="${impStyle(r.importer)}">${esc(r.importer)}</span>
-          <span class="tm-no">${esc(r.declarationNo)}</span><span class="tm-goods">${esc(teamGoodsName(r.goodsType))}</span></label>`).join('')
+          <span class="tm-no">${esc(r.declarationNo)}</span></label>
+          <div class="tm-fields"><label class="tm-f tm-f-goods"><span>สินค้า</span><input type="text" class="tmGoods" data-i="${i}" maxlength="80" value="${esc(r.reportGoods||teamGoodsName(r.goodsType))}"></label>
+          <label class="tm-f tm-f-sacks"><span>กระสอบ</span><input type="text" class="tmSacks" data-i="${i}" inputmode="numeric" maxlength="9" placeholder="-" value="${r.sacks==null?'':esc(Number(r.sacks).toLocaleString('en-US'))}" oninput="fmtNumberWithComma(this)"></label></div></div>`).join('')
       :`<div class="sum-empty" style="padding:20px;">ไม่มีใบขนวันที่ ${thaiDate(dateIso)}</div>`;
     updateTeamManualBtn();
   }catch(e){
@@ -3807,27 +3671,38 @@ function updateTeamManualBtn(){
   btn.textContent=n?`นำเข้า ${n} ใบขน`:'นำเข้า';
 }
 // ข้อความรูปแบบเดียวกับที่ api/gemini.js สร้าง (type team) — จำนวนกระสอบเว้นว่างให้เติมเอง
+// V35: each picked slip carries the goods name + sacks typed in its row; they are kept on the slip (saveReportInfo) so pulling it
+// again — on any device, in weight-report or customshub — shows them. goodsType (สรุปผล groups, Excel prices) is not changed.
+function teamManualValues(i){
+  const g=document.querySelector(`#teamManualList .tmGoods[data-i="${i}"]`), n=document.querySelector(`#teamManualList .tmSacks[data-i="${i}"]`);
+  const sacksRaw=(n?.value||'').replace(/[^0-9]/g,'');
+  return {goods:(g?.value||'').trim(), sacks:sacksRaw===''?null:Number(sacksRaw)};
+}
 function importTeamManual(){
-  const picked=[...document.querySelectorAll('#teamManualList .tmChk:checked')].map(c=>teamManualRecs[+c.value]);
+  const checked=[...document.querySelectorAll('#teamManualList .tmChk:checked')].map(c=>+c.value);
+  const picked=checked.map(i=>({...teamManualRecs[i],...teamManualValues(i)}));
   if(!picked.length) return;
   const dateIso=document.getElementById('teamManualDate').value;
   let text=`${thaiDate(dateIso)}\n`;
   text+=`เจ้าหน้าที่งานพิธีการ ร่วมกับเจ้าหน้าที่งานสืบสวนและปราบปราม เปิดตรวจสินค้าเป็นทีม สินค้าเกษตร ใบขนสินค้าขาเข้าจำนวน ${picked.length} ใบขน ดังนี้`;
   picked.forEach((r,i)=>{
     text+=`\n\n${i+1}.${r.declarationNo}`;
-    text+=`\nสินค้า ${teamGoodsName(r.goodsType)}`;
+    text+=`\nสินค้า ${r.goods||teamGoodsName(r.goodsType)}`;
     text+=`\nเมืองกำเนิด ${r.origin||''}`;
-    text+=`\nจำนวน  กระสอบ`;
+    text+=`\nจำนวน ${r.sacks==null?'':r.sacks.toLocaleString('en-US')} กระสอบ`; // empty = "จำนวน  กระสอบ" as before
     text+=`\nน้ำหนัก ${fmtKg(r.declaredWeight)} กิโลกรัม`;
   });
   closeSumModal();
   setTeamReportDate(dateIso);
   document.getElementById('teamChatBubble').value=text;
   const noOrigin=picked.filter(r=>!r.origin).map(r=>r.declarationNo);
-  const warnings=[`ยังไม่มีจำนวนกระสอบ ${picked.length} ใบขน — เติมในข้อความก่อนคัดลอก`];
+  const noSacks=picked.filter(r=>r.sacks==null).map(r=>r.declarationNo);
+  const warnings=noSacks.length?[`ยังไม่มีจำนวนกระสอบ: ${noSacks.join(', ')} — เติมในข้อความก่อนคัดลอก`]:[];
   if(noOrigin.length) warnings.push(`ไม่มีเมืองกำเนิด: ${noOrigin.join(', ')}`);
-  document.getElementById('teamWarningBox').style.display='block';
+  document.getElementById('teamWarningBox').style.display=warnings.length?'block':'none';
   document.getElementById('teamWarningList').innerHTML=warnings.map(w=>`• ${esc(w)}`).join('<br>');
+  sumApi('saveReportInfo',{items:picked.map(r=>({id:r.id,sacks:r.sacks,reportGoods:r.goods}))})
+    .catch(e=>{ if(!e.auth) showToast('สร้างข้อความแล้ว แต่เก็บจำนวนกระสอบ/ชื่อสินค้าไม่ได้: '+e.message,'error'); });
   document.getElementById('teamResultCard').style.display='block';
   document.getElementById('teamClearBtnArea').style.display='block';
   autoGrowTeam(true);
