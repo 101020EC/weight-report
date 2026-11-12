@@ -353,7 +353,6 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
 .pend-row{display:flex;flex-direction:column;gap:8px;border:1px solid #EFE6DA;border-radius:12px;padding:10px 12px;background:#fff;}
 .pend-main{min-width:0;font-size:14px;line-height:1.45;}
 .pend-main span{color:var(--ink-soft);}
-.pend-ro{display:inline-block;margin-top:2px;font-size:12px;color:#8a5a00 !important;}
 .pend-acts{display:flex;gap:6px;justify-content:flex-end;}
 .pend-acts .btn{height:34px;padding:6px 12px;font-size:0.9rem;}
 .sum-empty{background:#fff;border:1px dashed #E2D8CC;border-radius:1rem;padding:36px 20px;text-align:center;color:var(--ink-soft);}
@@ -2939,10 +2938,6 @@ function impStyle(name){
   return `--imp:${T.primary};--imp-dark:${T.dark};--imp-light:${T.light};--imp-border:${T.border};--imp-alt:${T.rowAlt};--imp-total:${T.totalBg};--imp-total-text:${T.totalTxt};`;
 }
 function viewedShift(){return sumState&&sumState.shift;}
-// V28: เวร/ใบขนที่ทีมบันทึกใน customshub — อ่านอย่างเดียว ไม่ติดป้าย บอกเมื่อกดแก้
-const CHUB_EDIT='แก้ไขได้ที่ customshub';
-function chubShift(){const s=viewedShift();return !!(s&&s.src==='chub');}
-function chubBlocked(){if(!chubShift())return false;showToast(`เวรนี้บันทึกใน customshub — ${CHUB_EDIT}`,'error');return true;}
 function isLatestShift(){return sumState&&sumState.shift&&sumState.shifts[0]&&sumState.shift.id===sumState.shifts[0].id;}
 
 // ── load + render ──────────────────────────────────────────
@@ -2974,7 +2969,6 @@ function renderSummary(){
   }else if(shift && st.today>shift.endDate){
     notices.push(`<div class="sum-notice"><span>เวรนี้สิ้นสุดแล้ว ใบขนที่ส่งหลังจากนี้จะรอเข้าเวรใหม่</span><button class="btn btn-primary" onclick="openNewShiftModal()">ตั้งเวรใหม่</button></div>`);
   }
-  if(st.chubNote) notices.push(`<div class="sum-notice"><span>${esc(st.chubNote)} — แสดงเฉพาะข้อมูลของเว็บนี้</span></div>`); // V28
   if(st.pendingCount>0 && shift){
     notices.push(`<div class="sum-notice"><span>มีใบขน ${st.pendingCount} ใบรอเข้าเวรใหม่</span>${PEND_BTN}</div>`);
   }
@@ -3342,10 +3336,9 @@ function submitNewShift(btn){
 }
 
 function openShiftEditModal(){
-  if(chubBlocked()) return;
   const s=viewedShift();
   if(!s){openNewShiftModal();return;}
-  const importers=groupBy(sumState.records.filter(r=>r.src!=='chub'),r=>r.importer,IMPORTER_ORDER).map(g=>g[0]); // V28: rename touches only our records
+  const importers=groupBy(sumState.records,r=>r.importer,IMPORTER_ORDER).map(g=>g[0]);
   openSumModal(`<h3>แก้ไขเวรทำงาน</h3><div class="sub">เลือกช่วงวันที่ได้ 1–7 วัน</div>
     ${shiftRangeFields(s.startDate,s.endDate)}
     <button class="btn btn-primary" style="width:100%;" onclick="submitShiftEdit(this)">บันทึกช่วงวันที่</button>
@@ -3371,13 +3364,11 @@ function submitRename(btn){
   });
 }
 function openDeleteShiftConfirm(){
-  if(chubBlocked()) return;
   const s=viewedShift();
   if(!s){showToast('ยังไม่มีเวรให้ลบ','error');return;}
-  const count=sumState.records.filter(r=>r.src!=='chub').length; // V28: customshub records stay
-  const chubCount=sumState.records.length-count;
+  const count=sumState.records.length;
   openSumModal(`<h3 style="color:#B91C1C;">ลบข้อมูลทั้งเวร</h3>
-    <div class="sub">${shiftRangeText(s.startDate,s.endDate)}<br>ใบขน ${count} ใบในเวรนี้จะถูกลบถาวร${chubCount?`<br>(ใบขน ${chubCount} ใบที่บันทึกใน customshub ไม่ถูกลบ)`:''}<br><b>กรอกรหัส 4 หลักเพื่อยืนยัน</b></div>
+    <div class="sub">${shiftRangeText(s.startDate,s.endDate)}<br>ใบขน ${count} ใบในเวรนี้จะถูกลบ<br><b>กรอกรหัส 4 หลักเพื่อยืนยัน</b></div>
     <input class="pin-input" id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
       oninput="this.value=this.value.replace(/\\D/g,'')" onkeydown="if(event.key==='Enter')document.getElementById('delShiftBtn').click()">
     <div class="sum-modal-err" id="sumModalErr"></div>
@@ -3425,7 +3416,6 @@ function recChipValue(idAttr){
 // id ว่าง = เพิ่มใบขน Manual เข้าเวรที่กำลังดู (V19 Q3/Q4)
 function openRecordModal(id){
   const isNew=!id;
-  if(isNew&&chubBlocked()) return;
   const shift=viewedShift();
   if(isNew&&!shift){showToast('ตั้งเวรก่อนเพิ่มใบขน','error');openNewShiftModal();return;}
   const r=isNew
@@ -3433,7 +3423,6 @@ function openRecordModal(id){
       dateIso:(sumState.today>=shift.startDate&&sumState.today<=shift.endDate)?sumState.today:shift.startDate,declaredWeight:'',netWeight:''}
     :sumState&&(sumState.records.find(x=>x.id===id)||(sumState.pending||[]).find(x=>x.id===id)); // V30 Q3: ใบที่รอเข้าเวรก็เปิดได้
   if(!r) return;
-  if(r.src==='chub') return openChubRecord(r); // V28
   const field=(label,idAttr,value,type='text',extra='')=>`<div class="form-group"><label>${label}</label><input type="${type}" id="${idAttr}" value="${esc(value)}" ${extra}></div>`;
   openSumModal(`<h3>${isNew?'เพิ่มใบขนสินค้า':'แก้ไขรายการใบขน'}</h3>
     <div class="sub">${isNew?`เข้าเวร ${shiftRangeText(shift.startDate,shift.endDate)}`:esc(r.declarationNo)}</div>
@@ -3449,17 +3438,15 @@ function openRecordModal(id){
     ${isNew?'':`<div class="danger-zone"><button class="btn btn-danger" style="padding:10px 20px;" onclick="submitRecordDelete(this,'${esc(r.id)}')">ลบรายการนี้</button></div>`}`,
     null);
 }
-// V28: ใบขนจาก customshub — ดูได้อย่างเดียว
-// ── V30 Q3: ใบที่รอเข้าเวร — รายการ, แก้ไข/ลบ (หน้าแก้ไขเดิม), ย้ายเข้าเวรที่กำลังดู · ของ customshub อ่านอย่างเดียว ──
+// ── V30 Q3: ใบที่รอเข้าเวร — รายการ, แก้ไข/ลบ (หน้าแก้ไขเดิม), ย้ายเข้าเวรที่กำลังดู ──
 const PEND_BTN='<button class="btn btn-secondary" onclick="openPendingList()">ดูรายการ</button>';
 function openPendingList(){
   const recs=(sumState&&sumState.pending)||[], shift=viewedShift();
   const row=r=>`<div class="pend-row">
     <div class="pend-main"><b>${esc(r.declarationNo||'-')}</b>${r.period?` · ชุดที่ ${esc(r.period)}`:''}<br>
-      <span>${esc(r.importer||'')} · ${esc(r.goodsType||'')} · ${thaiDateShort(r.dateIso)} · ${fmtKg(r.netWeight)} KG</span>
-      ${r.src==='chub'?'<br><span class="pend-ro">customshub · อ่านอย่างเดียว</span>':''}</div>
-    ${r.src==='chub'?'':`<div class="pend-acts"><button class="btn btn-secondary" onclick="closeSumModal();openRecordModal('${esc(r.id)}')">แก้ไข</button>
-      ${shift?`<button class="btn btn-primary" onclick="movePending(this,'${esc(r.id)}')">ย้ายเข้าเวรนี้</button>`:''}</div>`}
+      <span>${esc(r.importer||'')} · ${esc(r.goodsType||'')} · ${thaiDateShort(r.dateIso)} · ${fmtKg(r.netWeight)} KG</span></div>
+    <div class="pend-acts"><button class="btn btn-secondary" onclick="closeSumModal();openRecordModal('${esc(r.id)}')">แก้ไข</button>
+      ${shift?`<button class="btn btn-primary" onclick="movePending(this,'${esc(r.id)}')">ย้ายเข้าเวรนี้</button>`:''}</div>
   </div>`;
   openSumModal(`<h3>ใบขนที่รอเข้าเวรใหม่</h3>
     <div class="sub">${recs.length} ใบ${shift?` · ย้ายเข้าเวร ${thaiDateShort(shift.startDate)} – ${thaiDateShort(shift.endDate)} ได้เลย`:''}</div>
@@ -3476,15 +3463,6 @@ function movePending(btn,id){
   });
 }
 
-function openChubRecord(r){
-  const row=(k,v)=>`<div class="opt-row"><span>${k}</span><b>${esc(v)}</b></div>`;
-  openSumModal(`<h3>รายการใบขน</h3>
-    <div class="sub">${esc(r.declarationNo)}${r.period?` · ชุดที่ ${esc(r.period)}`:''}</div>
-    ${row('ผู้นำเข้า',r.importer)}${row('ประเภทสินค้า',r.goodsType)}${row('ประเทศกำเนิด',r.origin||'-')}${row('วันที่',thaiDate(r.dateIso))}
-    ${row('น้ำหนักสำแดง (KG)',fmtKg(r.declaredWeight))}${row('น้ำหนักชั่งจริง (KG)',fmtKg(r.netWeight))}${row('ส่วนต่าง (KG)',fmtKg(r.diffWeight))}
-    <div class="sub" style="margin-top:12px;">${CHUB_EDIT}</div>
-    <div class="sum-modal-actions"><button class="btn btn-secondary" onclick="closeSumModal()">ปิด</button></div>`,null);
-}
 function submitRecordEdit(btn,id){
   const v=i=>document.getElementById(i).value;
   const data={importer:recChipValue('recImporter'),goodsType:recChipValue('recGoods'),origin:v('recOrigin'),declarationNo:v('recDecl'),
