@@ -27,8 +27,10 @@ function db() {
   if (_db) return _db;
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!raw) throw new HttpError(500, 'ยังไม่ได้ตั้งค่า FIREBASE_SERVICE_ACCOUNT');
-  if (!getApps().length) initializeApp({ credential: cert(JSON.parse(raw)) });
-  _db = getFirestore();
+  // V30: ต้องหาแอป default ตามชื่อ — ถ้า `plates` สร้างแอป 'chub' ไว้ก่อน getApps().length = 1 แล้วแอป default
+  // ไม่เคยถูกสร้าง → login/submit พัง "The default Firebase app does not exist" (เกิดข้อผิดพลาดในระบบ)
+  const app = getApps().find(a => a.name === '[DEFAULT]') || initializeApp({ credential: cert(JSON.parse(raw)) });
+  _db = getFirestore(app);
   return _db;
 }
 
