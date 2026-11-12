@@ -17,7 +17,7 @@
 - **WR-DATA-05** ลบใบ / ลบเวร / ตั้งเวร: สำเนาถังขยะ + ลบ (หรือเวร + ใบที่รอ) อยู่ใน batch เดียวเมื่อไม่เกิน 500
 - **WR-SEC-08** คีย์ Gemini ใน header `x-goog-api-key`; หน้าเว็บได้ข้อความกลาง ๆ ส่วนข้อความของ Google อยู่ใน log + Telegram
 - **WR-SEC-09** log ไม่มี IP (เป็น hash 8 ตัว), เลขใบขน, ชื่อผู้นำเข้า
-- **WR-SEC-10** `npm audit fix`: เหลือ 8 ระดับกลาง (สูง/ต่ำหายแล้ว) ซึ่งต้องขึ้น firebase-admin 14 (major) — ยังไม่ทำ
+- **WR-SEC-10** `npm audit fix` (สูง/ต่ำ) แล้วขึ้น firebase-admin 14.5.1 + `engines.node` 22.x (v14 ต้องการ Node ≥ 22) → `npm audit` 0 รายการ
 - **WR-PERF-01** รูป sloth 452 → 18 KB, ไอคอนแยกเป็นไฟล์ `icons/` (index 359 → 280 KB, manifest 77 → 0.7 KB) · พบว่า
   `/sad_sloth.jpg` และ `/manifest.json` เดิมได้หน้า index.html กลับไป (route รับทุกอย่าง) → เพิ่ม route เฉพาะไฟล์เหล่านี้
   (ไม่เปิดทั้งโฟลเดอร์ เพราะจะเผย AUDIT/GRILL_PLAN/lib) · ไม่ได้ทำ service worker

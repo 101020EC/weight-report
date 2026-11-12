@@ -5,6 +5,9 @@
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
-    "firebase-admin": "^13.0.0"
+    "firebase-admin": "^14.5.1"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }
