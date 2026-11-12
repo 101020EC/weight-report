@@ -318,6 +318,12 @@ async function shiftLabel(shiftId) {
   return shiftId ? chubShiftLabel(shiftId) : 'รายการที่รอเข้าเวร'; // V30: ใบของเราในเวรของ customshub
 }
 
+// V31 (= customshub D105): ลบเวร/ใบขน → เก็บสำเนาไว้ที่ trash/{auto id} = {kind, shift, records, at, by} ก่อนลบ
+// customshub (แอดมิน) แสดงในถังขยะใบชั่งและกู้คืนกลับมาที่นี่ด้วย id เดิม · เขียนสำเนาไม่ได้ = ไม่ลบ
+async function toTrash(kind, shift, records, req) {
+  await db().collection('trash').doc().set({ kind, shift, records, at: Date.now(), by: `weight-report · ${deviceId(req)}` });
+}
+
 // ── actions ─────────────────────────────────────────────────
 const actions = {
   async submit(req, body) {
@@ -425,8 +431,11 @@ const actions = {
   async deleteShift(req, body) {
     await checkPin(req, body.pin);
     const id = text(body.id, 'เวร', 60);
-    if (!(await db().collection('shifts').doc(id).get()).exists) throw new HttpError(404, 'ไม่พบเวรนี้ (เวรของ customshub แก้ไขได้ที่ customshub)'); // V28
+    const shiftSnap = await db().collection('shifts').doc(id).get();
+    if (!shiftSnap.exists) throw new HttpError(404, 'ไม่พบเวรนี้ (เวรของ customshub แก้ไขได้ที่ customshub)'); // V28
     const recs = await db().collection('records').where('shiftId', '==', id).get();
+    // V31: a copy goes to trash first (customshub › Setting › ถังขยะใบชั่ง puts it back) — no copy, no delete
+    await toTrash('shift', { id, ...shiftSnap.data() }, recs.docs.map(d => ({ id: d.id, ...d.data() })), req);
     await commitInChunks(recs.docs.map(d => d.ref), (b, r) => b.delete(r));
     await db().collection('shifts').doc(id).delete();
     return { deletedRecords: recs.size };
@@ -483,7 +492,9 @@ const actions = {
 
   async deleteRecord(req, body) {
     const ref = db().collection('records').doc(text(body.id, 'รายการ', 60));
-    if (!(await ref.get()).exists) throw new HttpError(404, READONLY); // V28
+    const snap = await ref.get();
+    if (!snap.exists) throw new HttpError(404, READONLY); // V28
+    await toTrash('record', null, [{ id: ref.id, ...snap.data() }], req); // V31
     await ref.delete();
     return { ok: true };
   },
