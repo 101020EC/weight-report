@@ -12,6 +12,7 @@
 //   so the V28/V30 reads of customshub team/main/wshifts|wrecords are gone. CUSTOMSHUB_SERVICE_ACCOUNT is used only for `plates`.
 
 const crypto = require('crypto');
+const { originOk, ipTag } = require('../lib/guard.js');
 const { initializeApp, cert, getApps } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 
@@ -120,15 +121,26 @@ async function checkPin(req, pin, kind = 'summary') {
   }
   const a = Buffer.from(String(pin || ''));
   const b = Buffer.from(expected);
+  await cleanOldAttempts(col, now);
   if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
     await Promise.all(counters.filter(c => c.exists).map(c => c.ref.delete()));
     return;
   }
-  await Promise.all(counters.map(c => c.ref.set({ fails: c.fails + 1, windowStart: c.windowStart })));
+  // V33 (WR-DATA-04): expireAt lets a Firestore TTL policy drop them too (optional, set in the Console)
+  await Promise.all(counters.map(c => c.ref.set({ fails: c.fails + 1, windowStart: c.windowStart, expireAt: new Date(c.windowStart + LOCK_WINDOW_MS) })));
   const left = Math.min(...counters.map(c => c.max - c.fails - 1));
   throw new HttpError(401, left > 0
     ? `รหัสไม่ถูกต้อง เหลืออีก ${left} ครั้ง`
     : `รหัสไม่ถูกต้อง — ล็อก ${LOCK_WINDOW_MS / 60000} นาที`);
+}
+
+// V33 (WR-DATA-04): a device id is chosen by the caller, so counters for ids never used again would pile up — every PIN check
+// removes up to 20 whose window has long passed (a lock lasts LOCK_WINDOW_MS). Failing to clean never blocks the check.
+async function cleanOldAttempts(col, now) {
+  try {
+    const old = await col.where('windowStart', '<', now - LOCK_WINDOW_MS).limit(20).get();
+    if (old.size) { const b = db().batch(); old.docs.forEach(d => b.delete(d.ref)); await b.commit(); }
+  } catch (e) { console.warn('[summary] clean pin_attempts', e.message); }
 }
 
 // ── ส่งออก Excel (V24) — รหัสแยก EXPORT_PIN · token อายุสั้นใช้บันทึกค่าตั้งค่า ──
@@ -297,9 +309,16 @@ async function shiftLabel(shiftId) {
 }
 
 // V31 (= customshub D105): ลบเวร/ใบขน → เก็บสำเนาไว้ที่ trash/{auto id} = {kind, shift, records, at, by} ก่อนลบ
-// customshub (แอดมิน) แสดงในถังขยะใบชั่งและกู้คืนกลับมาที่นี่ด้วย id เดิม · เขียนสำเนาไม่ได้ = ไม่ลบ
-async function toTrash(kind, shift, records, req) {
-  await db().collection('trash').doc().set({ kind, shift, records, at: Date.now(), by: `weight-report · ${deviceId(req)}` });
+// customshub (แอดมิน) แสดงในถังขยะใบชั่งและกู้คืนกลับมาที่นี่ด้วย id เดิม · V33: สำเนา + ลบในก้อนเดียว (deleteShift, deleteRecord)
+
+// V33 (AUDIT-2026-11 WR-DATA-02): who changed what — log/{auto id} = {action, id, at, by, ip, before, after}. The team shares one
+// PIN, so `by` is the device id (the same one the PIN lock uses) and ip a short hash. Best effort: a failed log never undoes the
+// change. customshub's writes carry `by: customshub · <email>` on the documents themselves.
+const slim = d => (d ? Object.fromEntries(Object.entries(d).filter(([k]) => k !== 'vehicles')) : null);
+async function audit(req, action, id, before = null, after = null) {
+  try {
+    await db().collection('log').doc().set({ action, id: id || null, at: Date.now(), by: `weight-report · ${deviceId(req)}`, ip: ipTag(req), before: slim(before), after: slim(after) });
+  } catch (e) { console.warn('[summary] log', action, e.message); }
 }
 
 // ── actions ─────────────────────────────────────────────────
@@ -330,6 +349,7 @@ const actions = {
     const ref = dup ? dup.ref : await newRecordRef(fields);
     // แทนที่แล้วย้ายมาเวรที่เปิดอยู่ (Q2) คงเวลาสร้างเดิม
     await ref.set({ ...fields, vehicles, shiftId, createdAt: dup ? (dup.data().createdAt || now) : now, updatedAt: now });
+    await audit(req, dup ? 'replace' : 'submit', ref.id, dup ? dup.data() : null, { ...fields, shiftId });
     return { id: ref.id, shiftId, replaced: !!dup };
   },
 
@@ -360,10 +380,18 @@ const actions = {
     const range = shiftRange(body);
     const ref = db().collection('shifts').doc();
     const now = Date.now();
-    await ref.set({ ...range, createdAt: now, updatedAt: now });
-    // ใบขนที่ส่งมาตอนยังไม่มีเวรเปิด → เข้าเวรใหม่นี้ (D2)
+    // ใบขนที่ส่งมาตอนยังไม่มีเวรเปิด → เข้าเวรใหม่นี้ (D2) · V33 (WR-DATA-05): เวร + ใบที่รออยู่ในก้อนเดียว (พังกลางทางไม่ค้างครึ่ง)
     const pending = await db().collection('records').where('shiftId', '==', null).get();
-    await commitInChunks(pending.docs.map(d => d.ref), (b, r) => b.update(r, { shiftId: ref.id, updatedAt: now }));
+    if (pending.size < 500) {
+      const b = db().batch();
+      b.create(ref, { ...range, createdAt: now, updatedAt: now });
+      pending.docs.forEach(d => b.update(d.ref, { shiftId: ref.id, updatedAt: now }));
+      await b.commit();
+    } else {
+      await ref.set({ ...range, createdAt: now, updatedAt: now });
+      await commitInChunks(pending.docs.map(d => d.ref), (b, r) => b.update(r, { shiftId: ref.id, updatedAt: now }));
+    }
+    await audit(req, 'createShift', ref.id, null, { ...range, attached: pending.size });
     return { id: ref.id, attached: pending.size };
   },
 
@@ -373,6 +401,7 @@ const actions = {
     const snap = await ref.get();
     if (!snap.exists) throw new HttpError(404, 'ไม่พบเวรนี้');
     await ref.update({ ...range, updatedAt: Date.now() });
+    await audit(req, 'updateShift', ref.id, snap.data(), range);
     return { id: ref.id };
   },
 
@@ -383,9 +412,20 @@ const actions = {
     if (!shiftSnap.exists) throw new HttpError(404, 'ไม่พบเวรนี้');
     const recs = await db().collection('records').where('shiftId', '==', id).get();
     // V31: a copy goes to trash first (customshub › Setting › ถังขยะใบชั่ง puts it back) — no copy, no delete
-    await toTrash('shift', { id, ...shiftSnap.data() }, recs.docs.map(d => ({ id: d.id, ...d.data() })), req);
-    await commitInChunks(recs.docs.map(d => d.ref), (b, r) => b.delete(r));
-    await db().collection('shifts').doc(id).delete();
+    // V33 (WR-DATA-05): copy + deletes in one batch when they fit (≤ 500 writes), so a failure leaves nothing half done
+    const copy = { kind: 'shift', shift: { id, ...shiftSnap.data() }, records: recs.docs.map(d => ({ id: d.id, ...d.data() })), at: Date.now(), by: `weight-report · ${deviceId(req)}` };
+    if (recs.size <= 498) {
+      const b = db().batch();
+      b.set(db().collection('trash').doc(), copy);
+      recs.docs.forEach(d => b.delete(d.ref));
+      b.delete(db().collection('shifts').doc(id));
+      await b.commit();
+    } else {
+      await db().collection('trash').doc().set(copy);
+      await commitInChunks(recs.docs.map(d => d.ref), (b, r) => b.delete(r));
+      await db().collection('shifts').doc(id).delete();
+    }
+    await audit(req, 'deleteShift', id, { ...shiftSnap.data(), records: recs.size });
     return { deletedRecords: recs.size };
   },
 
@@ -402,6 +442,7 @@ const actions = {
     const ref = await newRecordRef(fields);
     const now = Date.now();
     await ref.create({ ...fields, vehicles: [], shiftId: shiftRef.id, manual: true, createdAt: now, updatedAt: now });
+    await audit(req, 'createRecord', ref.id, null, { ...fields, shiftId: shiftRef.id });
     return { id: ref.id };
   },
 
@@ -416,7 +457,12 @@ const actions = {
     const ref = db().collection('records').doc(text(body.id, 'รายการ', 60));
     const snap = await ref.get();
     if (!snap.exists) throw new HttpError(404, NOT_FOUND);
-    await ref.update({ ...recordFields(body), updatedAt: Date.now() });
+    const fields = recordFields(body);
+    // V33 (WR-DATA-03): changing the number (+ ชุดที่) to one another slip already has would count it twice
+    const dup = await findDuplicate(fields);
+    if (dup && dup.id !== ref.id) throw new HttpError(409, `ใบขนนี้มีอยู่แล้วใน${await shiftLabel(dup.data().shiftId)} — แก้ไขที่รายการเดิม`);
+    await ref.update({ ...fields, updatedAt: Date.now() });
+    await audit(req, 'updateRecord', ref.id, snap.data(), fields);
     return { id: ref.id };
   },
 
@@ -428,6 +474,7 @@ const actions = {
     const shiftId = text(body.shiftId, 'เวร', 60);
     if (!(await db().collection('shifts').doc(shiftId).get()).exists) throw new HttpError(404, 'ไม่พบเวรนี้');
     await ref.update({ shiftId, updatedAt: Date.now() });
+    await audit(req, 'moveRecord', ref.id, { shiftId: snap.data().shiftId ?? null }, { shiftId });
     return { id: ref.id };
   },
 
@@ -435,8 +482,12 @@ const actions = {
     const ref = db().collection('records').doc(text(body.id, 'รายการ', 60));
     const snap = await ref.get();
     if (!snap.exists) throw new HttpError(404, NOT_FOUND);
-    await toTrash('record', null, [{ id: ref.id, ...snap.data() }], req); // V31
-    await ref.delete();
+    // V31 trash copy · V33 (WR-DATA-05): copy + delete in one batch
+    const b = db().batch();
+    b.set(db().collection('trash').doc(), { kind: 'record', shift: null, records: [{ id: ref.id, ...snap.data() }], at: Date.now(), by: `weight-report · ${deviceId(req)}` });
+    b.delete(ref);
+    await b.commit();
+    await audit(req, 'deleteRecord', ref.id, snap.data());
     return { ok: true };
   },
 
@@ -453,7 +504,10 @@ const actions = {
 
   async exportSaveSettings(req, body) {
     verifyExportToken(body.exportToken);
-    await db().collection('settings').doc('export').set({ settings: exportSettings(body.settings), updatedAt: Date.now() });
+    const before = (await db().collection('settings').doc('export').get()).data()?.settings || null;
+    const settings = exportSettings(body.settings);
+    await db().collection('settings').doc('export').set({ settings, updatedAt: Date.now() });
+    if (JSON.stringify(before) !== JSON.stringify(settings)) await audit(req, 'exportSaveSettings', 'export', before, settings);
     return { ok: true };
   },
 
@@ -464,20 +518,29 @@ const actions = {
     const recs = (await recordsOf(shiftId)).filter(r => r.importer === from);
     const now = Date.now();
     await commitInChunks(recs.map(r => db().collection('records').doc(r.id)), (b, r) => b.update(r, { importer: to, updatedAt: now }));
+    await audit(req, 'renameImporter', shiftId, { importer: from }, { importer: to, renamed: recs.length });
     return { renamed: recs.length };
   },
   // customshub D97 Q8: the team's plate list (customshub team/main/plates, read-only here) — the weighing page checks Gemini's plates
   // against it. Only plate, times used and recent empty weights; no slips. customshub not set up → empty list.
-  async plates() {
+  // V33 (WR-SEC-05): the weighing page has no login (owner's decision), so the list stays public — but only to our own page
+  // (Origin), and one read of customshub per 5 minutes per instance, so outside calls cannot burn customshub's read quota.
+  async plates(req) {
+    if (!originOk(req)) throw new HttpError(403, 'ไม่อนุญาต');
+    if (platesCache && Date.now() - platesCache.at < PLATES_TTL_MS) return platesCache.out;
     const { v, note } = await chubRead(async t => (await t.collection('plates').get()).docs.map(d => {
       const p = d.data();
       return { plate: String(p.plate || ''), count: p.count || 0, empties: (p.empties || []).map(e => ({ w: e.w })) };
     }), []);
-    return { plates: v, note, linked: !!chub() }; // note = customshub could not be read; linked=false = not set up
+    const out = { plates: v, note, linked: !!chub() }; // note = customshub could not be read; linked=false = not set up
+    if (!note) platesCache = { at: Date.now(), out };
+    return out;
   },
 };
 
 const PUBLIC_ACTIONS = new Set(['submit', 'login', 'plates']);
+const PLATES_TTL_MS = 5 * 60 * 1000;
+let platesCache = null;
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');

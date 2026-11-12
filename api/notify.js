@@ -1,4 +1,9 @@
 // api/notify.js — Vercel Serverless Function สำหรับส่ง Telegram แจ้งเตือนเมื่อกดสร้างรายงาน
+// V33 (AUDIT-2026-11 WR-SEC-04): หน้าชั่งไม่มี login (เจ้าของตัดสินใจไว้) จึงกันด้วย Origin ต้องเป็นของเรา (ไม่มี Origin = ไม่รับ),
+// ความยาวต่อช่อง และไม่เกิน 120 ข้อความต่อชั่วโมงต่อ IP (ทั้งทีมใช้ IP ที่ทำงานเดียวกัน)
+const { originOk, ipTag, rateOk } = require('../lib/guard.js');
+const NOTIFY_PER_HOUR = 120;
+const cap = (v, n) => String(v == null ? '' : v).slice(0, n);
 
 function escapeHtml(str) {
   if (!str) return '';
@@ -33,7 +38,7 @@ async function sendTelegramNotification(message) {
 
     if (!resp.ok) {
       const errRes = await resp.text();
-      console.warn(`[TELEGRAM HTML ERROR] HTTP ${resp.status}: ${errRes} — Fallback to Plaintext...`);
+      console.warn(`[TELEGRAM HTML ERROR] HTTP ${resp.status}: ${errRes.slice(0, 200)} — Fallback to Plaintext...`);
       const plainText = message.replace(/<[^>]*>/g, '');
       resp = await fetch(url, {
         method: 'POST',
@@ -60,49 +65,34 @@ async function sendTelegramNotification(message) {
 }
 
 module.exports = async function handler(req, res) {
-  // CORS — จำกัดเฉพาะโดเมนแอป
-  const ALLOWED_ORIGINS = [
-    'https://weight-report.vercel.app',
-  ];
-  const origin = req.headers.origin || '';
-  const isAllowedOrigin = ALLOWED_ORIGINS.includes(origin);
-  if (isAllowedOrigin) res.setHeader('Access-Control-Allow-Origin', origin);
+  const ok = originOk(req);
+  if (ok) res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
-
-  if (origin && !isAllowedOrigin) {
-    return res.status(403).json({ success: false, error: 'Origin not allowed' });
-  }
+  if (!ok) return res.status(403).json({ success: false, error: 'Origin not allowed' });
 
   try {
-    const { action, declaration_no, importer, date, goods_type, plates, diff_text } = req.body;
-
-    if (action === 'report_created') {
-      const dateStr = escapeHtml(date || '-');
-      const importerStr = escapeHtml(importer || '-');
-      const declNoStr = escapeHtml(declaration_no || '-');
-      const goodsTypeStr = escapeHtml(goods_type || '-');
-      const platesStr = escapeHtml(plates || '-');
-      const diffTextStr = escapeHtml(diff_text || '-');
-
-      const tgMsg = `🖼️ <b>[สร้างรายงานชั่งน้ำหนักสำเร็จ]</b>\n` +
-                    `• วันที่: ${dateStr}\n` +
-                    `• ผู้นำเข้า: ${importerStr}\n` +
-                    `• เลขที่ใบขน: <code>${declNoStr}</code>\n` +
-                    `• ประเภทสินค้า: ${goodsTypeStr}\n` +
-                    `• ทะเบียนรถ: ${platesStr}\n` +
-                    `• ผลต่างน้ำหนัก: ${diffTextStr}`;
-
-      await sendTelegramNotification(tgMsg);
-      return res.status(200).json({ success: true });
+    const { action, declaration_no, importer, date, goods_type, plates, diff_text } = req.body || {};
+    if (action !== 'report_created') return res.status(400).json({ success: false, error: 'Unknown action' });
+    if (!(await rateOk(req, 'notify', NOTIFY_PER_HOUR, 3600e3))) {
+      console.warn(`[NOTIFY LIMIT] ip#${ipTag(req)}`);
+      return res.status(429).json({ success: false, error: 'ส่งแจ้งเตือนถี่เกินไป' });
     }
-
-    return res.status(400).json({ success: false, error: 'Unknown action' });
+    const tgMsg = `🖼️ <b>[สร้างรายงานชั่งน้ำหนักสำเร็จ]</b>\n` +
+                  `• วันที่: ${escapeHtml(cap(date, 40) || '-')}\n` +
+                  `• ผู้นำเข้า: ${escapeHtml(cap(importer, 80) || '-')}\n` +
+                  `• เลขที่ใบขน: <code>${escapeHtml(cap(declaration_no, 40) || '-')}</code>\n` +
+                  `• ประเภทสินค้า: ${escapeHtml(cap(goods_type, 80) || '-')}\n` +
+                  `• ทะเบียนรถ: ${escapeHtml(cap(plates, 400) || '-')}\n` +
+                  `• ผลต่างน้ำหนัก: ${escapeHtml(cap(diff_text, 80) || '-')}`;
+    await sendTelegramNotification(tgMsg);
+    return res.status(200).json({ success: true });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    console.error('[NOTIFY ERROR]', err.message);
+    return res.status(500).json({ success: false, error: 'เกิดข้อผิดพลาด' });
   }
 };

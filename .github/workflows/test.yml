@@ -1,0 +1,25 @@
+# V33 (AUDIT-2026-11 WR-OPS-01): push to main deploys straight to production on Vercel, so every push and PR runs the tests here.
+name: test
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: page scripts parse
+        run: |
+          node -e "
+          const s=require('fs').readFileSync('index.html','utf8');
+          const re=/<script(?![^>]*src)[^>]*>([\s\S]*?)<\/script>/g; let m, n=0;
+          while((m=re.exec(s))){ new Function(m[1]); n++; }
+          console.log('inline scripts parsed:', n);"
+      - name: vercel.json is valid JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('vercel.json','utf8'))"

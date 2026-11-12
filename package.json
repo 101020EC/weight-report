@@ -1,6 +1,9 @@
 {
   "name": "weight-report",
   "private": true,
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
   "dependencies": {
     "firebase-admin": "^13.0.0"
   }

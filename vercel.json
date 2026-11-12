@@ -7,8 +7,23 @@
   },
   "routes": [
     {
+      "src": "/(.*)",
+      "headers": {
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://images.unsplash.com; connect-src 'self' data: blob:; worker-src 'self' blob:; frame-ancestors 'self' https://customsgate.vercel.app; base-uri 'self'; form-action 'self'; object-src 'none'",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=()"
+      },
+      "continue": true
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/api/$1.js"
+    },
+    {
+      "src": "/(manifest\\.json|sad_sloth\\.jpg|icons/icon-(?:180|192|512)\\.png)",
+      "headers": { "Cache-Control": "public, max-age=86400" },
+      "dest": "/$1"
     },
     {
       "src": "/(.*)",

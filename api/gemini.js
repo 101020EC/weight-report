@@ -1,4 +1,5 @@
 // ── Gemini models (V27) ───────────────────────────────────
+const { ipTag } = require('../lib/guard.js');
 // โมเดลฟรีของ Google (หน้าราคา 2026-10-15) เรียงตามลำดับที่ลอง — ชุดเดียวกับ customshub D65.
 // Google เปลี่ยนรุ่นฟรีเมื่อไหร่ แก้บรรทัดนี้แล้ว push (ด่วน: ตั้ง GEMINI_MODEL ใน Vercel แล้ว redeploy ให้ขึ้นก่อน)
 // โมเดลไหนตอบ 404 = ถูกปลดแล้ว → Telegram เตือนวันละครั้งต่อโมเดล
@@ -109,9 +110,10 @@ async function callGeminiWithRotation(parts, opts = {}) {
       try {
         const think = thinkingFor(model);
         const body = { contents: [{ parts }], ...(think ? { generationConfig: { thinkingConfig: think } } : {}) };
-        const resp = await fetchFn(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+        // V33 (WR-SEC-08): the key goes in a header, never in the URL (URLs end up in logs and error texts)
+        const resp = await fetchFn(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
           body: JSON.stringify(body),
           signal: ctl.signal
         });
@@ -249,9 +251,16 @@ async function sendTelegramNotification(message) {
   }
 }
 
+// V33 (WR-SEC-08): the page gets a plain Thai message; Google's own text stays in the log and the team's Telegram
+function clientMessage(err) {
+  if (err.status === 429 || err.status === 504) return err.message; // our own Thai texts (quota / too slow)
+  if (err.status === 400) return 'อ่านรูปนี้ไม่ได้ ลองถ่ายใหม่หรือกด Manual';
+  return 'AI อ่านไม่สำเร็จ ลองใหม่หรือกด Manual';
+}
+
 module.exports = async function handler(req, res) {
   const startTime = Date.now();
-  const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  const clientIp = `ip#${ipTag(req)}`; // V33 (WR-SEC-09): logs keep a short hash, not the address
 
   // CORS — จำกัดเฉพาะโดเมนแอป กันเว็บอื่นยิง API เผา quota Gemini
   const ALLOWED_ORIGINS = [
@@ -275,14 +284,14 @@ module.exports = async function handler(req, res) {
   const keys = getApiKeys();
   if (keys.length === 0) {
     const err = 'ไม่พบ API Key ใน Environment Variables';
-    console.error(`[ERROR] IP: ${clientIp} | ${err}`);
+    console.error(`[ERROR] ${clientIp} | ${err}`);
     await sendTelegramNotification(`🚨 <b>[API ERROR]</b>\nError: ${err}`);
-    return res.status(500).json({ success: false, error: err });
+    return res.status(500).json({ success: false, error: 'AI ยังไม่พร้อมใช้ กด Manual เพื่อกรอกเอง' });
   }
 
   try {
     const { type, images } = req.body;
-    console.log(`[REQUEST] IP: ${clientIp} | Type: ${type} | Images: ${images?.length || 0}`);
+    console.log(`[REQUEST] ${clientIp} | Type: ${type} | Images: ${images?.length || 0}`);
 
     if (!images || !Array.isArray(images) || images.length === 0) {
       return res.status(400).json({ success: false, error: 'ไม่พบข้อมูลภาพ' });
@@ -320,7 +329,7 @@ module.exports = async function handler(req, res) {
       if (match) {
         try { return JSON.parse(match[0]); } catch(e) {}
       }
-      throw new Error('อ่าน JSON ไม่ได้ raw: ' + rawText.slice(0, 200));
+      throw new Error('อ่าน JSON ไม่ได้ raw: ' + rawText.slice(0, 120));
     }
 
     if (type === 'weight') {
@@ -334,7 +343,7 @@ module.exports = async function handler(req, res) {
       if (parsed.origin) {
         parsed.origin = normalizeOriginToThai(parsed.origin);
       }
-      console.log(`[SUCCESS weight] IP: ${clientIp} | Model: ${modelUsed}${isFallback ? ' (FALLBACK)' : ''} | Duration: ${duration}ms | Declaration: ${parsed.declaration_no || '-'} | Importer: ${parsed.importer || '-'}`);
+      console.log(`[SUCCESS weight] ${clientIp} | Model: ${modelUsed}${isFallback ? ' (FALLBACK)' : ''} | Duration: ${duration}ms`);
 
       // ส่ง Telegram แจ้งเตือนสำเร็จ
       try {
@@ -418,7 +427,7 @@ module.exports = async function handler(req, res) {
         weightByGoods[g] = (weightByGoods[g] || 0) + w;
       });
 
-      console.log(`[SUCCESS team] IP: ${clientIp} | Model: ${modelUsed}${isFallback ? ' (FALLBACK)' : ''} | Duration: ${duration}ms | Count: ${count} ใบขน`);
+      console.log(`[SUCCESS team] ${clientIp} | Model: ${modelUsed}${isFallback ? ' (FALLBACK)' : ''} | Duration: ${duration}ms | Count: ${count} ใบขน`);
 
       // ส่ง Telegram แจ้งเตือนสำเร็จ
       try {
@@ -462,15 +471,15 @@ module.exports = async function handler(req, res) {
 
   } catch (err) {
     const duration = Date.now() - startTime;
-    console.error(`[ERROR] IP: ${clientIp} | Duration: ${duration}ms | Msg: ${err.message}`);
+    console.error(`[ERROR] ${clientIp} | Duration: ${duration}ms | Msg: ${String(err.message || '').slice(0, 300)}`);
 
     const tgMsg = `🚨 <b>[API ERROR]</b>\n` +
-                  `• Error: ${escapeHtml(err.message || 'เกิดข้อผิดพลาด')}\n` +
+                  `• Error: ${escapeHtml(String(err.message || 'เกิดข้อผิดพลาด').slice(0, 300))}\n` +
                   `⏱ เวลาใช้ไป: ${(duration / 1000).toFixed(2)}s`;
     await sendTelegramNotification(tgMsg);
     await alertGoneModels(err.gone);
 
-    return res.status(err.status || 500).json({ success: false, error: err.message || 'เกิดข้อผิดพลาด', ...(err.quota ? { quota: true } : {}) });
+    return res.status(err.status || 500).json({ success: false, error: clientMessage(err), ...(err.quota ? { quota: true } : {}) });
   }
 }
 module.exports._test = { callGeminiWithRotation, thinkingFor, modelOrder, FREE_MODELS };
