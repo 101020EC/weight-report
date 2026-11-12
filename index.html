@@ -348,6 +348,14 @@ button, [onclick], .btn, .btn-add-row, .nav-item, .btn-del,
   margin-bottom:12px;font-size:0.95rem;background:#FFF7E6;border:1px solid #F7D9A0;color:#8A5A00;}
 .sum-notice.info{background:#EFF6FF;border-color:#BFDBFE;color:#1E40AF;}
 .sum-notice .btn{height:34px;padding:6px 14px;font-size:0.9rem;}
+/* V30 Q3: ใบที่รอเข้าเวร (= customshub D97 Q3) */
+.pend-list{display:flex;flex-direction:column;gap:8px;margin:12px 0;max-height:55vh;overflow-y:auto;}
+.pend-row{display:flex;flex-direction:column;gap:8px;border:1px solid #EFE6DA;border-radius:12px;padding:10px 12px;background:#fff;}
+.pend-main{min-width:0;font-size:14px;line-height:1.45;}
+.pend-main span{color:var(--ink-soft);}
+.pend-ro{display:inline-block;margin-top:2px;font-size:12px;color:#8a5a00 !important;}
+.pend-acts{display:flex;gap:6px;justify-content:flex-end;}
+.pend-acts .btn{height:34px;padding:6px 12px;font-size:0.9rem;}
 .sum-empty{background:#fff;border:1px dashed #E2D8CC;border-radius:1rem;padding:36px 20px;text-align:center;color:var(--ink-soft);}
 .sum-empty b{display:block;color:var(--ink);font-size:1.1rem;margin-bottom:6px;}
 .sum-empty .btn{margin-top:14px;}
@@ -2968,13 +2976,13 @@ function renderSummary(){
   }
   if(st.chubNote) notices.push(`<div class="sum-notice"><span>${esc(st.chubNote)} — แสดงเฉพาะข้อมูลของเว็บนี้</span></div>`); // V28
   if(st.pendingCount>0 && shift){
-    notices.push(`<div class="sum-notice"><span>มีใบขน ${st.pendingCount} ใบรอเข้าเวรใหม่</span></div>`);
+    notices.push(`<div class="sum-notice"><span>มีใบขน ${st.pendingCount} ใบรอเข้าเวรใหม่</span>${PEND_BTN}</div>`);
   }
   document.getElementById('sumNotices').innerHTML=notices.join('');
 
   const body=document.getElementById('sumBody');
   if(!shift){
-    body.innerHTML=`<div class="sum-empty"><b>ยังไม่มีเวรทำงาน</b>${st.pendingCount>0?`มีใบขน ${st.pendingCount} ใบรออยู่ จะเข้าเวรแรกที่ตั้ง`:'ตั้งเวรเพื่อเริ่มสรุปผล'}<br><button class="btn btn-primary" onclick="openNewShiftModal()">ตั้งเวรใหม่</button></div>`;
+    body.innerHTML=`<div class="sum-empty"><b>ยังไม่มีเวรทำงาน</b>${st.pendingCount>0?`มีใบขน ${st.pendingCount} ใบรออยู่ จะเข้าเวรแรกที่ตั้ง`:'ตั้งเวรเพื่อเริ่มสรุปผล'}<br>${st.pendingCount>0?PEND_BTN+' ':''}<button class="btn btn-primary" onclick="openNewShiftModal()">ตั้งเวรใหม่</button></div>`;
     return;
   }
   if(!st.records.length){
@@ -3423,7 +3431,7 @@ function openRecordModal(id){
   const r=isNew
     ?{importer:'',goodsType:'',origin:'จีน',declarationNo:'',period:'',
       dateIso:(sumState.today>=shift.startDate&&sumState.today<=shift.endDate)?sumState.today:shift.startDate,declaredWeight:'',netWeight:''}
-    :sumState&&sumState.records.find(x=>x.id===id);
+    :sumState&&(sumState.records.find(x=>x.id===id)||(sumState.pending||[]).find(x=>x.id===id)); // V30 Q3: ใบที่รอเข้าเวรก็เปิดได้
   if(!r) return;
   if(r.src==='chub') return openChubRecord(r); // V28
   const field=(label,idAttr,value,type='text',extra='')=>`<div class="form-group"><label>${label}</label><input type="${type}" id="${idAttr}" value="${esc(value)}" ${extra}></div>`;
@@ -3442,6 +3450,32 @@ function openRecordModal(id){
     null);
 }
 // V28: ใบขนจาก customshub — ดูได้อย่างเดียว
+// ── V30 Q3: ใบที่รอเข้าเวร — รายการ, แก้ไข/ลบ (หน้าแก้ไขเดิม), ย้ายเข้าเวรที่กำลังดู · ของ customshub อ่านอย่างเดียว ──
+const PEND_BTN='<button class="btn btn-secondary" onclick="openPendingList()">ดูรายการ</button>';
+function openPendingList(){
+  const recs=(sumState&&sumState.pending)||[], shift=viewedShift();
+  const row=r=>`<div class="pend-row">
+    <div class="pend-main"><b>${esc(r.declarationNo||'-')}</b>${r.period?` · ชุดที่ ${esc(r.period)}`:''}<br>
+      <span>${esc(r.importer||'')} · ${esc(r.goodsType||'')} · ${thaiDateShort(r.dateIso)} · ${fmtKg(r.netWeight)} KG</span>
+      ${r.src==='chub'?'<br><span class="pend-ro">customshub · อ่านอย่างเดียว</span>':''}</div>
+    ${r.src==='chub'?'':`<div class="pend-acts"><button class="btn btn-secondary" onclick="closeSumModal();openRecordModal('${esc(r.id)}')">แก้ไข</button>
+      ${shift?`<button class="btn btn-primary" onclick="movePending(this,'${esc(r.id)}')">ย้ายเข้าเวรนี้</button>`:''}</div>`}
+  </div>`;
+  openSumModal(`<h3>ใบขนที่รอเข้าเวรใหม่</h3>
+    <div class="sub">${recs.length} ใบ${shift?` · ย้ายเข้าเวร ${thaiDateShort(shift.startDate)} – ${thaiDateShort(shift.endDate)} ได้เลย`:''}</div>
+    <div class="pend-list">${recs.map(row).join('')||'<div class="sub">ไม่มีแล้ว</div>'}</div>
+    <div class="sum-modal-err" id="sumModalErr"></div>
+    <div class="sum-modal-actions"><button class="btn btn-secondary" onclick="closeSumModal()">ปิด</button></div>`);
+}
+function movePending(btn,id){
+  return modalBusy(btn,async()=>{
+    await sumApi('moveRecord',{id,shiftId:viewedShift().id});
+    showToast('ย้ายเข้าเวรนี้แล้ว ✓','success');
+    await loadSummary(sumViewShiftId);
+    if(((sumState&&sumState.pending)||[]).length) openPendingList(); else closeSumModal();
+  });
+}
+
 function openChubRecord(r){
   const row=(k,v)=>`<div class="opt-row"><span>${k}</span><b>${esc(v)}</b></div>`;
   openSumModal(`<h3>รายการใบขน</h3>

@@ -6,7 +6,7 @@
 //   login { pin }     — ตรวจ PIN คืน token อายุ 15 วัน
 //   ที่เหลือต้องมี header  Authorization: Bearer <token>
 //   load { shiftId? } · createShift · updateShift { startDate, endDate } · deleteShift { pin } ·
-//   createRecord { shiftId } · updateRecord · deleteRecord · renameImporter · recordsByDate { dateIso } ·
+//   createRecord { shiftId } · updateRecord · moveRecord { id, shiftId } · deleteRecord · renameImporter · recordsByDate { dateIso } ·
 //   exportUnlock { pin } (EXPORT_PIN) · exportSaveSettings { exportToken, settings }
 // V28: ใบชั่งที่ทีมบันทึกใน customshub (Firestore customshub-pd › team/main/wshifts|wrecords) อ่านอย่างเดียวด้วย
 //   CUSTOMSHUB_SERVICE_ACCOUNT (Cloud Datastore Viewer) — รวมใน load / recordsByDate / เช็คใบขนซ้ำ; แก้ไขได้ที่ customshub เท่านั้น
@@ -361,12 +361,12 @@ const actions = {
   async load(req, body) {
     const [shiftsSnap, pending, cs] = await Promise.all([
       db().collection('shifts').orderBy('createdAt', 'desc').limit(200).get(),
-      db().collection('records').where('shiftId', '==', null).count().get(),
-      // V28: เวร + ใบขนรอเข้าเวรของ customshub
+      db().collection('records').where('shiftId', '==', null).get(),
+      // V28: เวร + ใบขนรอเข้าเวรของ customshub · V30 Q3: รายการเต็ม (ไม่ใช่แค่จำนวน)
       chubRead(async t => {
-        const [sh, pend] = await Promise.all([t.collection('wshifts').orderBy('createdAt', 'desc').limit(200).get(), t.collection('wrecords').where('shiftId', '==', null).count().get()]);
-        return { shifts: chubDocs(sh), pending: pend.data().count };
-      }, { shifts: [], pending: 0 }),
+        const [sh, pend] = await Promise.all([t.collection('wshifts').orderBy('createdAt', 'desc').limit(200).get(), t.collection('wrecords').where('shiftId', '==', null).get()]);
+        return { shifts: chubDocs(sh), pending: chubDocs(pend) };
+      }, { shifts: [], pending: [] }),
     ]);
     // V28 Q4: a customshub shift with the same dates as one of ours is the same shift — ours leads (edit/delete as before),
     // its customshub ids ride along in chubIds and their records join it
@@ -395,7 +395,9 @@ const actions = {
       shifts,
       shift: selected,
       records,
-      pendingCount: pending.data().count + cs.v.pending,
+      pendingCount: pending.size + cs.v.pending.length,
+      // V30 Q3 (= customshub D97 Q3): ใบที่รอเข้าเวร — ของเราแก้/ลบ/ย้ายเข้าเวรได้, ของ customshub อ่านอย่างเดียว
+      pending: [...pending.docs.map(d => ({ id: d.id, ...d.data() })), ...cs.v.pending],
       chubNote: note,
     };
   },
@@ -463,6 +465,19 @@ const actions = {
     const snap = await ref.get();
     if (!snap.exists) throw new HttpError(404, READONLY); // V28: id ของ customshub ไม่มีในนี้
     await ref.update({ ...recordFields(body), updatedAt: Date.now() });
+    return { id: ref.id };
+  },
+
+  // V30 Q3: ใบที่รอเข้าเวร → เวรที่กำลังดู (เวรของเรา หรือเวรของ customshub — D2)
+  async moveRecord(req, body) {
+    const ref = db().collection('records').doc(text(body.id, 'รายการ', 60));
+    const snap = await ref.get();
+    if (!snap.exists) throw new HttpError(404, READONLY);
+    const shiftId = text(body.shiftId, 'เวร', 60);
+    const ours = (await db().collection('shifts').doc(shiftId).get()).exists;
+    const theirs = !ours && (await chubRead(async t => (await t.collection('wshifts').doc(shiftId).get()).exists, false)).v;
+    if (!ours && !theirs) throw new HttpError(404, 'ไม่พบเวรนี้');
+    await ref.update({ shiftId, updatedAt: Date.now() });
     return { id: ref.id };
   },
 
