@@ -251,12 +251,18 @@ function shiftRange(body) {
 }
 
 // เวรล่าสุด = เวรที่เปิดอยู่ ในช่วงวันเริ่มเวร–วันสิ้นสุด (D2)
+// V30 D2: เวรที่ตั้งใน customshub ก็นับ (customshub ทำแบบเดียวกันกับเวรของเรา) — ใบขนเก็บที่ weight-ht โดยมี shiftId = id เวรของ customshub
+//   เวรวันเดียวกันทั้งสองฝั่ง = เวรเดียวกัน (V28 Q4) → ใช้ id ของเรา · อ่าน customshub ไม่ได้ = ใช้เวรของเราอย่างเดียว
 async function openShift() {
-  const snap = await db().collection('shifts').orderBy('createdAt', 'desc').limit(10).get();
-  if (snap.empty) return null;
+  const [snap, cs] = await Promise.all([
+    db().collection('shifts').orderBy('createdAt', 'desc').limit(10).get(),
+    chubRead(async t => chubDocs(await t.collection('wshifts').orderBy('createdAt', 'desc').limit(10).get()), []),
+  ]);
   const today = todayBangkok();
-  const shifts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  const active = shifts.find(s => (s.startDate ? today >= s.startDate : true) && today <= s.endDate);
+  const own = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const chub = cs.v.filter(c => !own.some(o => o.startDate === c.startDate && o.endDate === c.endDate));
+  const active = [...own, ...chub].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    .find(s => (s.startDate ? today >= s.startDate : true) && today <= s.endDate);
   return active || null;
 }
 
@@ -308,7 +314,8 @@ async function newRecordRef(fields) {
 
 async function shiftLabel(shiftId) {
   const s = shiftId ? await db().collection('shifts').doc(shiftId).get() : null;
-  return s && s.exists ? `เวร ${thaiDate(s.data().startDate)} – ${thaiDate(s.data().endDate)}` : 'รายการที่รอเข้าเวร';
+  if (s && s.exists) return `เวร ${thaiDate(s.data().startDate)} – ${thaiDate(s.data().endDate)}`;
+  return shiftId ? chubShiftLabel(shiftId) : 'รายการที่รอเข้าเวร'; // V30: ใบของเราในเวรของ customshub
 }
 
 // ── actions ─────────────────────────────────────────────────
@@ -377,7 +384,8 @@ const actions = {
     let note = cs.note;
     // customshub files its ใบชั่ง into whichever shift is open — that can be one of ours, so our id is asked too
     const chubIds = selected ? (selected.src === 'chub' ? [selected.id] : [selected.id, ...(selected.chubIds || [])]) : [];
-    if (selected && selected.src !== 'chub') records = await recordsOf(selected.id);
+    // V30: ใบของเราที่ส่งตอนเวร customshub เปิดอยู่ มี shiftId = id ของ customshub
+    if (selected) records = (await Promise.all([...new Set([selected.id, ...(selected.chubIds || [])])].map(recordsOf))).flat();
     if (chubIds.length) {
       const r = await chubRead(async t => chubDocs(await t.collection('wrecords').where('shiftId', 'in', chubIds.slice(0, 30)).get()), []);
       records = [...records, ...r.v]; note = note || r.note;
