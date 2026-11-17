@@ -9,4 +9,4 @@ Decided in customshub PLAN.md D122 (Q1–Q8). The admin imports trucks weighed e
 - The rules are a copy of customshub `src/weight/plates.js` `checkRow` — change both together (parity checked on 12 cases).
 - No import or edit here: the plate list stays read-only in this app.
 
-- **BUILT 2026-11-17, not committed / not pushed** (push main = deploy). Deploy after customshub's rules + Pages.
+- **LIVE 2026-11-17** (c3fa60c, with customshub 32c4491).

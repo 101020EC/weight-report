@@ -9,4 +9,4 @@ Decided in customshub PLAN.md D123 (Q1, Q3, Q7). customshub's admin sets this si
   slot the last 4 characters / last quota-out / refused, and ok / 429 counts per model for the California day. customshub's card and bell read it.
 - Pure parts in `lib/ai-status.js` (test/ai-status.test.js); the Telegram gone-model alert stays and now points to customshub.
 
-- **BUILT 2026-11-17, not committed / not pushed** (push main = deploy). Ship together with V36, after customshub's deploy.
+- **LIVE 2026-11-17** (c3fa60c, with customshub 32c4491).
