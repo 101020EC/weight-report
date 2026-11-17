@@ -89,3 +89,20 @@ test('D125: a 400 about thinking → the same model once without it; a timeout i
   assert.equal(s.modelUsed, 'gemini-2.5-flash');
   assert.deepEqual(s.events.map((e) => [e.model, e.kind]), [['gemini-3.6-flash', 'slow'], ['gemini-2.5-flash', 'ok']]);
 });
+
+test('D126: a 5xx → the same model again (then without thinking) before moving on; code + message kept', async () => {
+  const { callGeminiWithRotation } = gemini._test;
+  let n = 0; const seen = [];
+  const fetchFn = async (url, init) => {
+    const b = JSON.parse(init.body); seen.push([url.match(/models\/([^:]+)/)[1], !!b.generationConfig]);
+    if (url.includes('3.6') && ++n < 3) return new Response(JSON.stringify({ error: { message: 'The model is overloaded. Please try again later.' } }), { status: 503 });
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{}' }] } }] }));
+  };
+  const r = await callGeminiWithRotation([{ text: 'x' }], { fetchFn, slots: [{ slot: 'K', key: 'k' }], models: ['gemini-3.6-flash', 'gemini-2.5-flash'], retryWait: 1 });
+  assert.equal(r.modelUsed, 'gemini-3.6-flash');
+  assert.deepEqual(seen, [['gemini-3.6-flash', true], ['gemini-3.6-flash', true], ['gemini-3.6-flash', false]]);
+  const always = async (url) => (url.includes('3.6') ? new Response(JSON.stringify({ error: { message: 'Internal error encountered.' } }), { status: 500 }) : new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{}' }] } }] })));
+  const r2 = await callGeminiWithRotation([{ text: 'x' }], { fetchFn: always, slots: [{ slot: 'K', key: 'k' }], models: ['gemini-3.6-flash', 'gemini-2.5-flash'], retryWait: 1 });
+  assert.equal(r2.modelUsed, 'gemini-2.5-flash');
+  assert.deepEqual(r2.events[0], { slot: 'K', model: 'gemini-3.6-flash', kind: 'err', code: 500, msg: 'Internal error encountered.' });
+});

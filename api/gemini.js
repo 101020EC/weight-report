@@ -25,6 +25,7 @@ async function loadSettings(now = Date.now()) {
 }
 const PER_CALL_MS = 25000; // เกินนี้ข้ามไปโมเดลถัดไป
 const BUDGET_MS = 55000;   // รวมทุกโมเดล (vercel.json maxDuration 60)
+const RETRY_WAIT_MS = 1500; // customshub D126: wait before trying a model again after a 5xx
 
 // ── API Key Rotation ──────────────────────────────────────
 // เพิ่ม key ใน Vercel Environment Variables:
@@ -120,6 +121,16 @@ async function callGeminiWithRotation(parts, opts = {}) {
           resp = await send(null);
           err = resp.ok ? null : await resp.json().catch(() => ({}));
         }
+        // customshub D126: a server error (5xx, often "overloaded") → the same model again after a short wait, then once without thinking
+        if (!resp.ok && resp.status >= 500) {
+          for (const t of think ? [think, null] : [null]) {
+            if (budget - (Date.now() - start) < RETRY_WAIT_MS + 2000) break;
+            await new Promise(r => setTimeout(r, opts.retryWait ?? RETRY_WAIT_MS));
+            resp = await send(t);
+            err = resp.ok ? null : await resp.json().catch(() => ({}));
+            if (resp.ok || resp.status < 500) break;
+          }
+        }
         if (!resp.ok) {
           const msg = err?.error?.message || `HTTP ${resp.status}`;
           if (resp.status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(msg)) { quota++; events.push({ slot, model, kind: 'q429' }); continue; }
@@ -136,7 +147,7 @@ async function callGeminiWithRotation(parts, opts = {}) {
             events.push({ slot, model, kind: 'bad' });
             break;
           }
-          if (resp.status >= 500) { other = new GeminiError(502, `${model}: ${msg}`); events.push({ slot, model, kind: 'err', code: resp.status }); continue; } // โมเดลล่ม/คนแน่น → ตัวถัดไป
+          if (resp.status >= 500) { other = new GeminiError(502, `${model}: ${msg}`); events.push({ slot, model, kind: 'err', code: resp.status, msg: String(msg).slice(0, 80) }); continue; } // โมเดลล่ม/คนแน่น (ลองซ้ำแล้ว) → ตัวถัดไป
           throw new GeminiError(resp.status === 400 ? 400 : 502, msg, { gone: [...gone], events, final: true }); // รูป/คำขอผิด ลองตัวอื่นก็ผิดเหมือนกัน
         }
         const data = await resp.json();
