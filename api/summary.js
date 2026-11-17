@@ -553,7 +553,7 @@ const actions = {
     return { renamed: recs.length };
   },
   // customshub D97 Q8: the team's plate list (customshub team/main/plates, read-only here) — the weighing page checks Gemini's plates
-  // against it. Only plate, times used and recent empty weights; no slips. customshub not set up → empty list.
+  // against it. Only plate, times used, recent empty weights and scale weighings (D122); no slips. customshub not set up → empty list.
   // V33 (WR-SEC-05): the weighing page has no login (owner's decision), so the list stays public — but only to our own page
   // (Origin), and one read of customshub per 5 minutes per instance, so outside calls cannot burn customshub's read quota.
   async plates(req) {
@@ -561,7 +561,9 @@ const actions = {
     if (platesCache && Date.now() - platesCache.at < PLATES_TTL_MS) return platesCache.out;
     const { v, note } = await chubRead(async t => (await t.collection('plates').get()).docs.map(d => {
       const p = d.data();
-      return { plate: String(p.plate || ''), count: p.count || 0, empties: (p.empties || []).map(e => ({ w: e.w })) };
+      // customshub D122 (V36): + the scale weighings (weight + date only)
+      return { plate: String(p.plate || ''), count: p.count || 0, empties: (p.empties || []).map(e => ({ w: e.w })),
+        ...(p.scale?.length ? { scale: p.scale.map(e => ({ w: e.w, d: e.d || '' })) } : {}) };
     }), []);
     const out = { plates: v, note, linked: !!chub() }; // note = customshub could not be read; linked=false = not set up
     if (!note) platesCache = { at: Date.now(), out };

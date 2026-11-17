@@ -1,11 +1,27 @@
 // ── Gemini models (V27) ───────────────────────────────────
 const { ipTag } = require('../lib/guard.js');
+const { orderFrom, chosenOf, nextStatus } = require('../lib/ai-status.js');
 // โมเดลฟรีของ Google (หน้าราคา 2026-10-15) เรียงตามลำดับที่ลอง — ชุดเดียวกับ customshub D65.
-// Google เปลี่ยนรุ่นฟรีเมื่อไหร่ แก้บรรทัดนี้แล้ว push (ด่วน: ตั้ง GEMINI_MODEL ใน Vercel แล้ว redeploy ให้ขึ้นก่อน)
+// ค่าเริ่มต้นเมื่อยังไม่ได้ตั้งลำดับใน customshub (D123) — Google เปลี่ยนรุ่นฟรีเมื่อไหร่ แก้ลำดับที่ customshub ได้เลย ไม่ต้อง push
 // โมเดลไหนตอบ 404 = ถูกปลดแล้ว → Telegram เตือนวันละครั้งต่อโมเดล
 const FREE_MODELS = ['gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-3.5-flash-lite'];
-function modelOrder() {
-  return [...new Set([process.env.GEMINI_MODEL, ...FREE_MODELS].map(m => (m || '').trim()).filter(Boolean))];
+// customshub D123 (V37): the model / order come from settings/gemini (set in customshub › Setting › ใบชั่งน้ำหนัก); GEMINI_MODEL env
+// only counts while nothing is saved there. Read once a minute per instance; unreadable → FREE_MODELS as before.
+function modelOrder(settings = cachedSettings) {
+  return orderFrom(settings, FREE_MODELS, process.env.GEMINI_MODEL);
+}
+let cachedSettings = null, settingsAt = 0;
+const SETTINGS_TTL_MS = 60 * 1000;
+async function loadSettings(now = Date.now()) {
+  if (now - settingsAt < SETTINGS_TTL_MS) return cachedSettings;
+  try {
+    const snap = await db().collection('settings').doc('gemini').get();
+    cachedSettings = snap.exists ? snap.data() : null;
+    settingsAt = now;
+  } catch (e) {
+    console.warn('[GEMINI SETTINGS]', e.message); // keep the last good copy (or none)
+  }
+  return cachedSettings;
 }
 const PER_CALL_MS = 25000; // เกินนี้ข้ามไปโมเดลถัดไป
 const BUDGET_MS = 55000;   // รวมทุกโมเดล (vercel.json maxDuration 60)
@@ -13,14 +29,13 @@ const BUDGET_MS = 55000;   // รวมทุกโมเดล (vercel.json max
 // ── API Key Rotation ──────────────────────────────────────
 // เพิ่ม key ใน Vercel Environment Variables:
 // GEMINI_API_KEY_1, GEMINI_API_KEY_2, GEMINI_API_KEY_3
+const KEY_SLOTS = ['GEMINI_API_KEY_1', 'GEMINI_API_KEY_2', 'GEMINI_API_KEY_3', 'GEMINI_API_KEY']; // last = fallback key เดิม
+/** D123: the keys that are set with their env names (the name and last 4 characters are shown in customshub, never the key). */
+function getApiSlots() {
+  return KEY_SLOTS.filter(n => process.env[n] && process.env[n].length > 0).map(slot => ({ slot, key: process.env[slot] }));
+}
 function getApiKeys() {
-  const keys = [
-    process.env.GEMINI_API_KEY_1,
-    process.env.GEMINI_API_KEY_2,
-    process.env.GEMINI_API_KEY_3,
-    process.env.GEMINI_API_KEY, // fallback key เดิม
-  ].filter(k => k && k.length > 0);
-  return keys;
+  return getApiSlots().map(s => s.key);
 }
 
 function normalizeOriginToThai(origin) {
@@ -68,22 +83,24 @@ function thinkingFor(model) {
 // คีย์หมดจริงเมื่อทุกโมเดลตอบ 429 แล้วจึงไปคีย์ถัดไป. คืน { raw, modelUsed, gone } (gone = โมเดลที่ตอบ 404)
 async function callGeminiWithRotation(parts, opts = {}) {
   const fetchFn = opts.fetchFn || fetch;
-  const keys = opts.keys || getApiKeys();
+  const slots = opts.slots || (opts.keys ? opts.keys.map((key, i) => ({ slot: `k${i}`, key })) : getApiSlots());
+  const keys = slots.map(s => s.key);
   const models = opts.models || modelOrder();
+  const events = []; // D123: what each key / model answered, for settings/aiStatus
   const perCall = opts.perCall || PER_CALL_MS;
   const budget = opts.budget || BUDGET_MS;
   if (keys.length === 0) throw new GeminiError(500, 'ไม่พบ API Key ใน Environment Variables');
 
   const start = Date.now();
-  const shuffled = [...keys].sort(() => Math.random() - 0.5);
+  const shuffled = [...slots].sort(() => Math.random() - 0.5);
   const gone = new Set();
   let quota = 0, slow = 0, other = null, keyErr = null;
 
-  for (const key of shuffled) {
+  for (const { slot, key } of shuffled) {
     for (const model of models) {
       if (gone.has(model)) continue;
       const left = budget - (Date.now() - start);
-      if (left <= 0) throw new GeminiError(504, 'AI ตอบช้าเกินไป ลองใหม่หรือกด Manual', { gone: [...gone] });
+      if (left <= 0) throw new GeminiError(504, 'AI ตอบช้าเกินไป ลองใหม่หรือกด Manual', { gone: [...gone], events });
       const ctl = new AbortController();
       const timer = setTimeout(() => ctl.abort(), Math.min(perCall, left));
       try {
@@ -99,7 +116,7 @@ async function callGeminiWithRotation(parts, opts = {}) {
         if (!resp.ok) {
           const err = await resp.json().catch(() => ({}));
           const msg = err.error?.message || `HTTP ${resp.status}`;
-          if (resp.status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(msg)) { quota++; continue; }
+          if (resp.status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(msg)) { quota++; events.push({ slot, model, kind: 'q429' }); continue; }
           if (resp.status === 404 || err.error?.status === 'NOT_FOUND') {
             console.warn(`[GEMINI MODEL GONE] ${model}: ${msg}`);
             gone.add(model);
@@ -109,14 +126,15 @@ async function callGeminiWithRotation(parts, opts = {}) {
           if (resp.status === 401 || resp.status === 403 || /API.?KEY/i.test(msg + (err.error?.details?.[0]?.reason || ''))) {
             console.warn(`[GEMINI BAD KEY] ${msg}`);
             keyErr = new GeminiError(502, `คีย์ Gemini ใช้ไม่ได้: ${msg}`);
+            events.push({ slot, model, kind: 'bad' });
             break;
           }
           if (resp.status >= 500) { other = new GeminiError(502, `${model}: ${msg}`); continue; } // โมเดลล่ม/คนแน่น → ตัวถัดไป
-          throw new GeminiError(resp.status === 400 ? 400 : 502, msg, { gone: [...gone], final: true }); // รูป/คำขอผิด ลองตัวอื่นก็ผิดเหมือนกัน
+          throw new GeminiError(resp.status === 400 ? 400 : 502, msg, { gone: [...gone], events, final: true }); // รูป/คำขอผิด ลองตัวอื่นก็ผิดเหมือนกัน
         }
         const data = await resp.json();
         const raw = (data.candidates?.[0]?.content?.parts || []).filter(p => !p.thought).map(p => p.text || '').join('');
-        if (raw) return { raw, modelUsed: model, gone: [...gone] };
+        if (raw) { events.push({ slot, model, kind: 'ok' }); return { raw, modelUsed: model, gone: [...gone], events }; }
         other = new GeminiError(502, `${model}: ไม่มีข้อความตอบกลับ`);
       } catch (e) {
         if (e.final) throw e;
@@ -127,7 +145,7 @@ async function callGeminiWithRotation(parts, opts = {}) {
       }
     }
   }
-  const g = { gone: [...gone] };
+  const g = { gone: [...gone], events };
   if (other) throw Object.assign(other, g);
   if (quota) throw new GeminiError(429, 'โควตา Gemini ฟรีวันนี้หมดแล้ว กด Manual เพื่อกรอกเอง', { ...g, quota: true });
   if (slow) throw new GeminiError(504, 'AI ตอบช้าเกินไป ลองใหม่หรือกด Manual', g);
@@ -162,10 +180,24 @@ async function alertGoneModels(gone) {
     await sendTelegramNotification(
       `⚠️ <b>[GEMINI MODEL GONE]</b>\n` +
       `• โมเดลที่ Google ตอบ 404: ${escapeHtml(fresh.join(', '))}\n` +
-      `• แก้รายชื่อ FREE_MODELS ใน api/gemini.js แล้ว push (หรือตั้ง GEMINI_MODEL ใน Vercel + redeploy)`
+      `• แก้ลำดับโมเดลที่ customshub › Setting › ใบชั่งน้ำหนัก › Gemini ของ weight-report (มีผลภายใน 1 นาที)`
     );
   } catch (e) {
     console.error('[GEMINI GONE ALERT ERROR]', e.message);
+  }
+}
+
+// D123: settings/aiStatus after every call (success or not) — never fails the request
+async function recordStatus({ modelUsed = '', events = [], gone = [] }, settings, now = Date.now()) {
+  try {
+    const tails = Object.fromEntries(getApiSlots().map(s => [s.slot, s.key.slice(-4)]));
+    const ref = db().collection('settings').doc('aiStatus');
+    await db().runTransaction(async tx => {
+      const prev = (await tx.get(ref)).data() || null;
+      tx.set(ref, nextStatus(prev, { modelUsed, chosen: chosenOf(settings), events, gone, tails }, now));
+    });
+  } catch (e) {
+    console.warn('[GEMINI STATUS]', e.message);
   }
 }
 
@@ -268,6 +300,7 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'AI ยังไม่พร้อมใช้ กด Manual เพื่อกรอกเอง' });
   }
 
+  let settings = null;
   try {
     const { type, images } = req.body;
     console.log(`[REQUEST] ${clientIp} | Type: ${type} | Images: ${images?.length || 0}`);
@@ -290,11 +323,12 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'type ไม่ถูกต้อง' });
     }
 
-    // เรียก Gemini ด้วย key rotation
-    const { raw, modelUsed, gone } = await callGeminiWithRotation(parts);
-    await alertGoneModels(gone);
+    // เรียก Gemini ด้วย key rotation (D123: model / order from customshub's settings)
+    settings = await loadSettings();
+    const { raw, modelUsed, gone, events } = await callGeminiWithRotation(parts, { models: modelOrder(settings) });
+    await Promise.all([alertGoneModels(gone), recordStatus({ modelUsed, events, gone }, settings)]);
     const duration = Date.now() - startTime;
-    const isFallback = (modelUsed !== modelOrder()[0]);
+    const isFallback = (modelUsed !== modelOrder(settings)[0]);
 
     // ประมวลผลตาม type
     // helper: extract JSON จาก response ที่อาจมี text อื่นปน
@@ -363,11 +397,12 @@ module.exports = async function handler(req, res) {
                   `⏱ เวลาใช้ไป: ${(duration / 1000).toFixed(2)}s`;
     await sendTelegramNotification(tgMsg);
     await alertGoneModels(err.gone);
+    if (err.events) await recordStatus({ events: err.events, gone: err.gone }, settings);
 
     return res.status(err.status || 500).json({ success: false, error: clientMessage(err), ...(err.quota ? { quota: true } : {}) });
   }
 }
-module.exports._test = { callGeminiWithRotation, thinkingFor, modelOrder, FREE_MODELS };
+module.exports._test = { callGeminiWithRotation, thinkingFor, modelOrder, FREE_MODELS, loadSettings, resetSettingsCache: () => { cachedSettings = null; settingsAt = 0; } };
 
 // ── PROMPTS ───────────────────────────────────────────────
 

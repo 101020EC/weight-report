@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { install, call } = require('./fake-firestore.js');
 
-install();
+const fake = install();
 process.env.GEMINI_API_KEY_1 = 'KEY-ONE-SECRET';
 const gemini = require('../api/gemini.js');
 const img = { mimeType: 'image/jpeg', data: 'AAAA' };
@@ -47,4 +47,24 @@ test("Google's own error text stays out of the reply; quota keeps its Thai messa
     const r = await call(gemini, { type: 'weight', images: [img] });
     assert.deepEqual([r.status, r.body.quota, /โควตา/.test(r.body.error)], [429, true, true]);
   });
+});
+
+test('D123: the order saved in settings/gemini is used and settings/aiStatus records the call', async () => {
+  const { store } = fake.main;
+  gemini._test.resetSettingsCache();
+  store.set('settings/gemini', { model: 'gemini-2.5-flash', order: ['gemini-3.8-flash'] });
+  const text = JSON.stringify({ declaration_no: 'A1', vehicles: [] });
+  await run(() => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] })), async (seen) => {
+    const r = await call(gemini, { type: 'weight', images: [img] });
+    assert.equal(r.status, 200);
+    assert.match(seen[0].url, /models\/gemini-2\.5-flash:/, 'the chosen model is tried first');
+    assert.equal(r.body.model_used, 'gemini-2.5-flash');
+    assert.equal(r.body.is_fallback, false);
+  });
+  const st = store.get('settings/aiStatus');
+  assert.equal(st.last.model, 'gemini-2.5-flash');
+  assert.equal(st.keys.GEMINI_API_KEY_1.tail, 'CRET');
+  assert.equal(st.gday.c.GEMINI_API_KEY_1['gemini-2.5-flash'].ok, 1);
+  assert.equal(st.fail, null);
+  store.delete('settings/gemini'); gemini._test.resetSettingsCache();
 });

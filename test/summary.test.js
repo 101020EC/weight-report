@@ -68,11 +68,12 @@ test('delete a slip and a shift: trash copy + delete in one batch each (WR-DATA-
 });
 
 test('plates (WR-SEC-05): only from our page; customshub read at most once per 5 minutes', async () => {
-  chub.store.set('team/main/plates/p1', { plate: '71-5778', count: 3, empties: [{ w: 9840, at: 1 }] });
+  chub.store.set('team/main/plates/p1', { plate: '71-5778', count: 3, empties: [{ w: 9840, at: 1 }], scale: [{ w: 10200, d: '2026-05-07', type: 'ตู้ทึบ', img: 'IMG_1.JPG' }] });
   assert.equal((await api('plates', {}, { origin: null })).status, 403);
   assert.equal((await api('plates', {}, { origin: 'https://evil.example' })).status, 403);
   const p = await api('plates');
   assert.deepEqual([p.status, p.body.plates[0].plate, p.body.plates[0].empties, p.body.linked], [200, '71-5778', [{ w: 9840 }], true]);
+  assert.deepEqual(p.body.plates[0].scale, [{ w: 10200, d: '2026-05-07' }], 'D122: scale weight + date only');
   chub.store.set('team/main/plates/p2', { plate: '70-1216', count: 1, empties: [] });
   assert.equal((await api('plates')).body.plates.length, 1, 'cached');
 });
