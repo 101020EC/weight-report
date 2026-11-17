@@ -116,3 +116,18 @@ test('V35 saveReportInfo: sacks + report goods name kept on the slip (goodsType 
   assert.equal((await api('saveReportInfo', { items: Array(101).fill({ id: a.id }) })).status, 400);
   assert.equal((await call(summary, { action: 'saveReportInfo', items: [{ id: a.id }] })).status, 401, 'needs the สรุปผล token');
 });
+
+test('D125 (V38): a slip read by Gemini leaves a read log next to it; one typed by hand does not', async () => {
+  const aiRead = { model: 'gemini-2.5-flash', fields: { importer: 'ดิเรค', goodsType: 'หอม', origin: 'จีน', declarationNo: 'A018-06909-09999', period: '', dateIso: today, declaredWeight: 44000, extra: 'x' },
+    vehicles: [{ plate: '91-5778', empty: 12000, gross: 32000 }], fixes: [{ row: 0, from: '91-5778', to: '71-5778' }], scaleTaps: [{ row: 0, w: 12540 }] };
+  const r = await api('submit', slip({ declarationNo: 'A018-06909-09999', vehicles: [{ plate: '71-5778', empty: 12540, gross: 32000, net: 19460 }], aiRead }));
+  assert.equal(r.status, 200);
+  const log = main.store.get(`readlog/${r.body.id}`);
+  assert.equal(log.source, 'weight-report');
+  assert.equal(log.model, 'gemini-2.5-flash');
+  assert.match(log.by, /^weight-report · /);
+  assert.deepEqual(log.changes.map((c) => [c.field, c.how]), [['importer', 'person'], ['plate', 'plates'], ['empty', 'scale']]);
+  assert.equal(log.changes[1].kept, true);
+  const typed = await api('submit', slip({ declarationNo: 'A018-06909-09998' }));
+  assert.equal(main.store.has(`readlog/${typed.body.id}`), false);
+});

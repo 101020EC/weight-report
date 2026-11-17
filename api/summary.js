@@ -13,6 +13,7 @@
 
 const crypto = require('crypto');
 const { originOk, ipTag } = require('../lib/guard.js');
+const { cleanAiRead, readlogDoc } = require('../lib/readlog.js');
 const { initializeApp, cert, getApps } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 
@@ -350,6 +351,12 @@ const actions = {
     // แทนที่แล้วย้ายมาเวรที่เปิดอยู่ (Q2) คงเวลาสร้างเดิม
     await ref.set({ ...fields, vehicles, shiftId, createdAt: dup ? (dup.data().createdAt || now) : now, updatedAt: now });
     await audit(req, dup ? 'replace' : 'submit', ref.id, dup ? dup.data() : null, { ...fields, shiftId });
+    // customshub D125 (V38): what Gemini read vs what was saved → readlog/{recordId} (only when the slip was read by Gemini; never fails the save)
+    const aiRead = cleanAiRead(body.aiRead);
+    if (aiRead) {
+      try { await db().collection('readlog').doc(ref.id).set(readlogDoc(aiRead, { id: ref.id, fields, vehicles, by: `weight-report · ${deviceId(req)}`, at: now })); }
+      catch (e) { console.warn('[summary] readlog', e.message); }
+    }
     return { id: ref.id, shiftId, replaced: !!dup };
   },
 

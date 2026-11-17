@@ -47,3 +47,13 @@ test('status: a chosen model that did not answer is a failure until it answers a
   assert.equal(s.fail, null);
   assert.equal(nextStatus({ fail: { model: 'x' } }, { modelUsed: 'gemini-3.6-flash', chosen: '' }, 4).fail, null, 'back to auto clears it');
 });
+
+test('D125: skips keep why a model was passed over, until it answers again', () => {
+  let s = nextStatus(null, { modelUsed: 'gemini-2.5-flash', chosen: 'gemini-3.6-flash',
+    events: [{ slot: 'A', model: 'gemini-3.6-flash', kind: 'slow' }, { slot: 'A', model: 'gemini-3.8-flash', kind: 'err', code: 503 }, { slot: 'A', model: 'gemini-2.5-flash', kind: 'ok' }] }, 10);
+  assert.deepEqual(s.skips, { 'gemini-3.6-flash': { why: 'slow', at: 10 }, 'gemini-3.8-flash': { why: 'err', at: 10, code: 503 } });
+  assert.deepEqual(s.fail, { model: 'gemini-3.6-flash', used: 'gemini-2.5-flash', at: 10 });
+  s = nextStatus(s, { modelUsed: 'gemini-3.6-flash', chosen: 'gemini-3.6-flash', events: [{ slot: 'A', model: 'gemini-3.6-flash', kind: 'ok' }] }, 20);
+  assert.deepEqual(Object.keys(s.skips), ['gemini-3.8-flash']);
+  assert.equal(s.fail, null);
+});

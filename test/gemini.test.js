@@ -68,3 +68,24 @@ test('D123: the order saved in settings/gemini is used and settings/aiStatus rec
   assert.equal(st.fail, null);
   store.delete('settings/gemini'); gemini._test.resetSettingsCache();
 });
+
+test('D125: a 400 about thinking → the same model once without it; a timeout is recorded as slow', async () => {
+  const { callGeminiWithRotation } = gemini._test;
+  const bodies = [];
+  const fetchFn = async (url, init) => {
+    const b = JSON.parse(init.body); bodies.push(b);
+    if (b.generationConfig?.thinkingConfig) return new Response(JSON.stringify({ error: { message: 'Unknown name "thinkingLevel": thinking is not supported' } }), { status: 400 });
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{}' }] } }] }));
+  };
+  const r = await callGeminiWithRotation([{ text: 'x' }], { fetchFn, slots: [{ slot: 'K', key: 'k' }], models: ['gemini-3.6-flash'] });
+  assert.equal(r.modelUsed, 'gemini-3.6-flash');
+  assert.equal(bodies.length, 2);
+  assert.equal(bodies[1].generationConfig, undefined);
+  const slowFetch = (url, init) => new Promise((res, rej) => {
+    if (url.includes('3.6')) init.signal.addEventListener('abort', () => rej(Object.assign(new Error('aborted'), { name: 'AbortError' })));
+    else res(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{}' }] } }] })));
+  });
+  const s = await callGeminiWithRotation([{ text: 'x' }], { fetchFn: slowFetch, slots: [{ slot: 'K', key: 'k' }], models: ['gemini-3.6-flash', 'gemini-2.5-flash'], perCall: 30 });
+  assert.equal(s.modelUsed, 'gemini-2.5-flash');
+  assert.deepEqual(s.events.map((e) => [e.model, e.kind]), [['gemini-3.6-flash', 'slow'], ['gemini-2.5-flash', 'ok']]);
+});

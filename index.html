@@ -2020,7 +2020,7 @@ function sentKey(rec){return String(rec.declarationNo||'').replace(/[^0-9A-Za-z]
 async function submitToSummary(rec,replaceId){
   replaceId=replaceId||sentRecordIds.get(sentKey(rec));
   try{
-    const o=await sumApi('submit',{...rec,replaceId});
+    const o=await sumApi('submit',{...rec,replaceId,aiRead:window.__aiRead||null}); // customshub D125: what Gemini read, for the read log
     sentRecordIds.set(sentKey(rec),o.id);
     showToast(o.replaced?'แทนที่ใบขนเดิมแล้ว ✓':o.shiftId?'ส่งเข้าเมนูสรุปผลแล้ว ✓':'ส่งแล้ว — รอเข้าเวรใหม่ ✓','success');
     return true;
@@ -4408,7 +4408,10 @@ async function saveFiles(files){
     if(!lines.length)return;
     const box=document.createElement('div');box.className='pl-pop';
     lines.forEach(ln=>{const b=document.createElement('button');b.type='button';b.className=`pl-pop-line ${ln.cls}`;b.textContent=ln.text;
-      b.addEventListener('pointerdown',e=>{e.preventDefault();empty.value=String(ln.w);empty.dispatchEvent(new Event('input',{bubbles:true}));empty.value=fmt(ln.w);closePop();});
+      b.addEventListener('pointerdown',e=>{e.preventDefault();
+        const row=[...document.querySelectorAll('#vehicleBody tr')].indexOf(td.closest('tr'));
+        if(aiRead){aiRead.scaleTaps=aiRead.scaleTaps.filter(t=>t.row!==row);if(ln.cls)aiRead.scaleTaps.push({row,w:ln.w});}
+        empty.value=String(ln.w);empty.dispatchEvent(new Event('input',{bubbles:true}));empty.value=fmt(ln.w);closePop();});
       box.append(b);});
     td.append(box);pop=box;}
   document.addEventListener('pointerdown',e=>{if(pop&&!e.target.closest?.('.pl-pop,.pl-dot,td.pl-warn'))closePop();},true);
@@ -4424,17 +4427,37 @@ async function saveFiles(files){
     }else if(dot){dot.remove();td.classList.remove('pl-warn');closePop();}
   }
   async function checkRows(fix){
-    const list=await load();
-    document.querySelectorAll('#vehicleBody tr').forEach(tr=>{
+    const list=await load();const fixes=[];
+    document.querySelectorAll('#vehicleBody tr').forEach((tr,row)=>{
       const plate=tr.querySelector('td:nth-child(2) input'),empty=tr.querySelector('td:nth-child(3) input');if(!plate||!empty)return;
       let res=checkRow(list,{plate:plate.value,empty:empty.value});
-      if(res.fixed){if(fix)plate.value=res.plate;else res={plateOk:false,emptyOk:false,hint:0,scale:null};}
+      if(res.fixed){if(fix){fixes.push({row,from:plate.value,to:res.plate});plate.value=res.plate;}else res={plateOk:false,emptyOk:false,hint:0,scale:null};}
       paint(tr,res);
     });
+    return fixes;
   }
+  // customshub D125 (V38): what Gemini read (same shape as the saved slip), the model that read it, the plate list's fixes and scale taps —
+  // sent with the save so weight-ht keeps a read log (customshub Setting › บันทึกการอ่าน AI)
+  let aiRead=null,lastModel='';
+  Object.defineProperty(window,'__aiRead',{get:()=>aiRead});
+  const nativeFetch=window.fetch.bind(window);
+  window.fetch=async(input,init)=>{const r=await nativeFetch(input,init);
+    if(String(typeof input==='string'?input:input.url).startsWith('/api/gemini'))r.clone().json().then(j=>{lastModel=j.model_used||'';}).catch(()=>{});
+    return r;};
+  const val=id=>document.getElementById(id)?.value||'';
+  function pageRecord(){
+    const dn=val('f_declaration').trim();
+    const vehicles=[...document.querySelectorAll('#vehicleBody tr')].map(tr=>{
+      const n=k=>parseFloat((tr.querySelector(`td:nth-child(${k}) input`)?.value||'').replace(/,/g,''))||0;
+      return{plate:tr.querySelector('td:nth-child(2) input')?.value||'-',empty:n(3),gross:n(4)};});
+    return{fields:{importer:val('f_importer')||'-',goodsType:val('f_goods_type')||'-',origin:val('f_origin'),declarationNo:dn&&dn!=='A'?dn:'-',
+      period:val('f_period'),dateIso:(()=>{try{return getFormDateIso();}catch(e){return'';}})(),declaredWeight:parseFloat(val('f_declared_weight').replace(/,/g,''))||0},vehicles};
+  }
+  for(const name of ['manualEntry','clearAllData']){const orig=window[name];if(orig)window[name]=function(...a){aiRead=null;return orig.apply(this,a);};}
   let t;document.getElementById('vehicleBody')?.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(()=>checkRows(false),150);});
   const origPopulate=window.populateForm;
-  window.populateForm=function(data){origPopulate(data);checkRows(true).catch(()=>{});};
+  window.populateForm=function(data){origPopulate(data);aiRead={...pageRecord(),model:lastModel,fixes:[],scaleTaps:[]};
+    checkRows(true).then(f=>{if(aiRead)aiRead.fixes=f;}).catch(()=>{});};
   const origAddRow=window.addRow;
   window.addRow=function(...a){origAddRow(...a);document.querySelector('#vehicleBody tr:last-child td:nth-child(2) input')?.setAttribute('list','plateList');};
   load();

@@ -104,42 +104,51 @@ async function callGeminiWithRotation(parts, opts = {}) {
       const ctl = new AbortController();
       const timer = setTimeout(() => ctl.abort(), Math.min(perCall, left));
       try {
-        const think = thinkingFor(model);
-        const body = { contents: [{ parts }], ...(think ? { generationConfig: { thinkingConfig: think } } : {}) };
         // V33 (WR-SEC-08): the key goes in a header, never in the URL (URLs end up in logs and error texts)
-        const resp = await fetchFn(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        const send = (think) => fetchFn(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-          body: JSON.stringify(body),
+          body: JSON.stringify({ contents: [{ parts }], ...(think ? { generationConfig: { thinkingConfig: think } } : {}) }),
           signal: ctl.signal
         });
+        const think = thinkingFor(model);
+        let resp = await send(think);
+        let err = null;
+        if (!resp.ok) err = await resp.json().catch(() => ({}));
+        // customshub D125 (as customshub D57): a model that does not take our thinking setting → the same model once without it
+        if (!resp.ok && resp.status === 400 && think && /thinking/i.test(err?.error?.message || '')) {
+          resp = await send(null);
+          err = resp.ok ? null : await resp.json().catch(() => ({}));
+        }
         if (!resp.ok) {
-          const err = await resp.json().catch(() => ({}));
-          const msg = err.error?.message || `HTTP ${resp.status}`;
+          const msg = err?.error?.message || `HTTP ${resp.status}`;
           if (resp.status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(msg)) { quota++; events.push({ slot, model, kind: 'q429' }); continue; }
-          if (resp.status === 404 || err.error?.status === 'NOT_FOUND') {
+          if (resp.status === 404 || err?.error?.status === 'NOT_FOUND') {
             console.warn(`[GEMINI MODEL GONE] ${model}: ${msg}`);
             gone.add(model);
+            events.push({ slot, model, kind: 'gone' });
             continue;
           }
           // คีย์เสีย/ถูกปิด → คีย์ถัดไป (คีย์อื่นอาจยังดี)
-          if (resp.status === 401 || resp.status === 403 || /API.?KEY/i.test(msg + (err.error?.details?.[0]?.reason || ''))) {
+          if (resp.status === 401 || resp.status === 403 || /API.?KEY/i.test(msg + (err?.error?.details?.[0]?.reason || ''))) {
             console.warn(`[GEMINI BAD KEY] ${msg}`);
             keyErr = new GeminiError(502, `คีย์ Gemini ใช้ไม่ได้: ${msg}`);
             events.push({ slot, model, kind: 'bad' });
             break;
           }
-          if (resp.status >= 500) { other = new GeminiError(502, `${model}: ${msg}`); continue; } // โมเดลล่ม/คนแน่น → ตัวถัดไป
+          if (resp.status >= 500) { other = new GeminiError(502, `${model}: ${msg}`); events.push({ slot, model, kind: 'err', code: resp.status }); continue; } // โมเดลล่ม/คนแน่น → ตัวถัดไป
           throw new GeminiError(resp.status === 400 ? 400 : 502, msg, { gone: [...gone], events, final: true }); // รูป/คำขอผิด ลองตัวอื่นก็ผิดเหมือนกัน
         }
         const data = await resp.json();
         const raw = (data.candidates?.[0]?.content?.parts || []).filter(p => !p.thought).map(p => p.text || '').join('');
         if (raw) { events.push({ slot, model, kind: 'ok' }); return { raw, modelUsed: model, gone: [...gone], events }; }
         other = new GeminiError(502, `${model}: ไม่มีข้อความตอบกลับ`);
+        events.push({ slot, model, kind: 'empty' });
       } catch (e) {
         if (e.final) throw e;
-        if (e.name === 'AbortError') { slow++; console.warn(`[GEMINI TIMEOUT] ${model}`); continue; }
+        if (e.name === 'AbortError') { slow++; events.push({ slot, model, kind: 'slow' }); console.warn(`[GEMINI TIMEOUT] ${model}`); continue; }
         other = e instanceof GeminiError ? e : new GeminiError(502, e.message);
+        events.push({ slot, model, kind: 'other' });
       } finally {
         clearTimeout(timer);
       }
