@@ -9,4 +9,4 @@ Decided in customshub PLAN.md D125 (Q1, Q4).
   (`aiRead`); api/summary writes `readlog/{recordId}` (lib/readlog.js — `readDiff` is a copy of customshub's, keep them equal). Slips typed by
   hand leave no row. customshub's Setting › บันทึกการอ่าน AI shows these next to Hub's.
 
-- **BUILT 2026-11-17, not committed / not pushed.** Tests 16.
+- **LIVE 2026-11-17** (58f2b9f, with customshub 93c57ff). Tests 16.
