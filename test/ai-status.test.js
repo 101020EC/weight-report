@@ -57,3 +57,13 @@ test('D125: skips keep why a model was passed over, until it answers again', () 
   assert.deepEqual(Object.keys(s.skips), ['gemini-3.8-flash']);
   assert.equal(s.fail, null);
 });
+
+test('D127: a model that failed in the last 30 min rests at the end; quota (per key) does not count', () => {
+  const { coolOrder } = require('../lib/ai-status.js');
+  const now = 10 * 3600e3;
+  const order = ['gemini-4-hydrogen', 'gemini-3.6-flash', 'gemini-2.5-flash'];
+  assert.deepEqual(coolOrder(order, { 'gemini-4-hydrogen': { why: 'slow', at: now - 60e3 } }, now), ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-4-hydrogen']);
+  assert.deepEqual(coolOrder(order, { 'gemini-4-hydrogen': { why: 'slow', at: now - 31 * 60e3 } }, now), order, 'after 30 min it is first again');
+  assert.deepEqual(coolOrder(order, { 'gemini-4-hydrogen': { why: 'q429', at: now } }, now), order);
+  assert.deepEqual(coolOrder(order, { 'gemini-4-hydrogen': { why: 'err', at: now }, 'gemini-3.6-flash': { why: 'gone', at: now } }, now), ['gemini-2.5-flash', 'gemini-4-hydrogen', 'gemini-3.6-flash']);
+});
