@@ -131,3 +131,10 @@ test('D125 (V38): a slip read by Gemini leaves a read log next to it; one typed 
   const typed = await api('submit', slip({ declarationNo: 'A018-06909-09998' }));
   assert.equal(main.store.has(`readlog/${typed.body.id}`), false);
 });
+
+test('D129: the สรุปผล token lasts 90 days', async () => {
+  const before = Date.now();
+  const ok = await api('login', { pin: '1234' });
+  const days = (ok.body.expiresAt - before) / 864e5;
+  assert.ok(days > 89.9 && days < 90.1, String(days));
+});

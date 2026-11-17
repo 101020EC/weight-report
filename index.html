@@ -2199,7 +2199,7 @@ function scrollBelowHeader(el){
 
 // ── NAV ───────────────────────────────────────────────────
 function switchPage(page){
-  // เมนูสรุปผลต้องมี token (จำ 15 วัน) — ไม่มีก็ขอ PIN ก่อน แล้วค่อยสลับหน้า
+  // เมนูสรุปผลต้องมี token (จำ 90 วัน — customshub D129) — ไม่มีก็ขอ PIN ก่อน แล้วค่อยสลับหน้า
   if(page==='summary' && !sumToken()){ openPinModal(); return; }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item,.sidebar-item').forEach(i=>i.classList.remove('active'));
@@ -3099,7 +3099,7 @@ async function modalBusy(btn,fn){
 let pinAfterLogin=null;
 function openPinModal(after){
   pinAfterLogin=typeof after==='function'?after:null;
-  openSumModal(`<h3>เข้าเมนูสรุปผล</h3><div class="sub">กรอกรหัส 4 หลัก (จำไว้ 15 วัน)</div>
+  openSumModal(`<h3>เข้าเมนูสรุปผล</h3><div class="sub">กรอกรหัส 4 หลัก (จำไว้ 90 วัน)</div>
     <input class="pin-input" id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
       oninput="this.value=this.value.replace(/\\D/g,'');if(this.value.length===4)submitPin()" onkeydown="if(event.key==='Enter')submitPin()">
     <div class="sum-modal-err" id="sumModalErr"></div>

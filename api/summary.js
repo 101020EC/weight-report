@@ -3,7 +3,7 @@
 //
 // POST { action, ... }
 //   submit            — ส่งใบขนจากหน้าชั่ง (ไม่ต้องใช้ PIN)
-//   login { pin }     — ตรวจ PIN คืน token อายุ 15 วัน
+//   login { pin }     — ตรวจ PIN คืน token อายุ 90 วัน (customshub D129, เดิม 15)
 //   ที่เหลือต้องมี header  Authorization: Bearer <token>
 //   load { shiftId? } · createShift · updateShift { startDate, endDate } · deleteShift { pin } ·
 //   createRecord { shiftId } · updateRecord · moveRecord { id, shiftId } · deleteRecord · renameImporter · recordsByDate { dateIso } ·
@@ -17,7 +17,7 @@ const { cleanAiRead, readlogDoc } = require('../lib/readlog.js');
 const { initializeApp, cert, getApps } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 
-const TOKEN_TTL_MS = 15 * 24 * 60 * 60 * 1000;
+const TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000; // customshub D129: 90 days (was 15)
 const LOCK_MAX_FAILS = 8;
 const LOCK_MAX_FAILS_IP = 30;
 const EXPORT_TOKEN_TTL_MS = 10 * 60 * 1000;
